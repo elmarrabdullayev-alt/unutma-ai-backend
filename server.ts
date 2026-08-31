@@ -191,6 +191,7 @@ Hazırkı cari vaxt: ${userNowFormatted} (ISO: ${now.toISOString()}).
 // API 2: STRUCTURED AI ACTION ENGINE (DISPATCH ACTIONS & SCHEDULE QUERY)
 // =========================================================================
 app.post("/api/ai-action", async (req, res) => {
+  console.log('[AI-ACTION] request received');
   try {
     const { userPrompt, reminders, userNowISO, userTimezone } = req.body;
 
@@ -247,6 +248,7 @@ SƏNİN MƏQSƏDİN:
 8. 'general_chat':
    - Ümumi söhbət və ya köməkçi sualları üçün.`;
 
+    console.log('[AI-ACTION] Gemini request started');
     const response = await ai.models.generateContent({
       model: "gemini-3.6-flash",
       contents: `İstifadəçinin sözləri: "${userPrompt}"`,
@@ -329,6 +331,7 @@ SƏNİN MƏQSƏDİN:
       },
     });
 
+    console.log('[AI-ACTION] Gemini response received');
     const parsed = JSON.parse(response.text || "{}");
     return res.json({
       success: true,
