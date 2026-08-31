@@ -1,0 +1,7 @@
+{
+  "name": "Unutma AI",
+  "description": "Azərbaycan dilində süni intellekt dəstəkli səsli xatırlatma və şəxsi yaddaş köməkçisi mobil tətbiqi.",
+  "requestFramePermissions": ["microphone"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
+
