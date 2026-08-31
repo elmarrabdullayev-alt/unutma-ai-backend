@@ -112,7 +112,7 @@ Hazırkı cari vaxt: ${userNowFormatted} (ISO: ${now.toISOString()}).
    Azərbaycan dilində çox aydın, səliqəli və mehriban xülasə cümləsi qaytar (məsələn: "3 xatırlatma tapdım: Sabah 10:00 Anara zəng, 14:00 usta və axşam 20:00 dərman.").`;
 
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
+      model: "gemini-3.6-flash",
       contents: `İstifadəçinin mətni: "${text}"`,
       config: {
         systemInstruction,
@@ -248,7 +248,7 @@ SƏNİN MƏQSƏDİN:
    - Ümumi söhbət və ya köməkçi sualları üçün.`;
 
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
+      model: "gemini-3.6-flash",
       contents: `İstifadəçinin sözləri: "${userPrompt}"`,
       config: {
         systemInstruction,
@@ -377,7 +377,7 @@ app.post("/api/transcribe-audio", async (req, res) => {
     };
 
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
+      model: "gemini-3.6-flash",
       contents: {
         parts: [
           audioPart,
