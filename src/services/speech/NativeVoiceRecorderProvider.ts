@@ -94,21 +94,33 @@ export class NativeVoiceRecorderProvider implements SpeechRecognitionProvider {
         this.isRecording = false;
         this.isStopping = false;
 
-        const base64Data = recordingData.value?.recordDataBase64 || '';
+        const base64Audio = recordingData.value?.recordDataBase64 || '';
         const mimeType = recordingData.value?.mimeType || 'audio/aac';
         const duration = recordingData.value?.msDuration || 0;
 
-        console.log(`[NATIVE VOICE] audio size: ${base64Data.length} chars, duration: ${duration}ms, mime: ${mimeType}`);
+        // 2. Normalize Base64 before sending (strip data URL prefix and whitespace)
+        const normalizedBase64 = base64Audio
+          .replace(/^data:.*?;base64,/, '')
+          .replace(/\s/g, '')
+          .trim();
 
-        if (!base64Data || base64Data.length < 50) {
-          console.log('[NATIVE VOICE] Audio recording was empty or too short');
+        const prefixRemoved = base64Audio.length !== normalizedBase64.length;
+
+        console.log('[NATIVE VOICE] mimeType:', mimeType);
+        console.log('[NATIVE VOICE] raw base64 length:', base64Audio.length);
+        console.log('[NATIVE VOICE] normalized base64 length:', normalizedBase64.length);
+        console.log('[NATIVE VOICE] base64 prefix removed:', prefixRemoved);
+
+        // 3. Validate Base64 client-side before request
+        if (!normalizedBase64 || normalizedBase64.length < 100 || !/^[A-Za-z0-9+/=]+$/.test(normalizedBase64)) {
+          console.warn('[NATIVE VOICE] Audio recording was empty, too short, or contained invalid characters');
           if (this.callbacks?.onEnd) this.callbacks.onEnd();
           return '';
         }
 
-        // Send to Gemini transcription backend
+        // Send to Gemini transcription backend with normalized payload
         console.log('[NATIVE VOICE] transcription started');
-        const transcriptionResponse = await apiClient.transcribeAudio(base64Data, mimeType);
+        const transcriptionResponse = await apiClient.transcribeAudio(normalizedBase64, mimeType);
         const text = (transcriptionResponse.transcription || '').trim();
 
         console.log(`[NATIVE VOICE] transcription completed: "${text}"`);

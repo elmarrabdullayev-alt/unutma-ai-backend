@@ -492,14 +492,31 @@ app.post("/api/transcribe-audio", async (req, res) => {
   console.log("[TRANSCRIBE] request received");
   try {
     const { base64Audio, mimeType } = req.body;
-    if (!base64Audio) {
-      return res.status(400).json({ error: "Səs faylı göndərilməyib." });
+
+    // Normalize Base64 defensively server-side
+    const cleanBase64 = String(base64Audio || "")
+      .replace(/^data:.*?;base64,/, "")
+      .replace(/\s/g, "")
+      .trim();
+
+    const rawLen = typeof base64Audio === "string" ? base64Audio.length : 0;
+    console.log("[TRANSCRIBE] received mimeType:", mimeType);
+    console.log("[TRANSCRIBE] base64 length:", rawLen);
+    console.log("[TRANSCRIBE] normalized base64 length:", cleanBase64.length);
+
+    // Validate Base64 server-side before calling Gemini
+    if (!cleanBase64 || cleanBase64.length < 100 || !/^[A-Za-z0-9+/=]+$/.test(cleanBase64)) {
+      console.warn("[TRANSCRIBE] payload validation failed: invalid base64 string or length < 100");
+      return res.status(400).json({ error: "Səs məlumatı düzgün formatda deyil." });
     }
 
+    console.log("[TRANSCRIBE] payload validation passed: true");
+
+    const cleanMimeType = (mimeType || "audio/aac").trim();
     const audioPart = {
       inlineData: {
-        mimeType: mimeType || "audio/webm",
-        data: base64Audio,
+        mimeType: cleanMimeType,
+        data: cleanBase64,
       },
     };
 
@@ -517,6 +534,7 @@ app.post("/api/transcribe-audio", async (req, res) => {
       for (let attempt = 1; attempt <= MAX_RETRIES_PER_MODEL + 1; attempt++) {
         console.log(`[TRANSCRIBE] attempt: ${model} (attempt ${attempt}/${MAX_RETRIES_PER_MODEL + 1})`);
         try {
+          console.log("[TRANSCRIBE] model request started");
           const response = await ai.models.generateContent({
             model,
             contents: {
@@ -526,6 +544,7 @@ app.post("/api/transcribe-audio", async (req, res) => {
               ],
             },
           });
+          console.log("[TRANSCRIBE] model response received");
 
           const transcriptionText = response.text?.trim() || "";
           console.log(`[TRANSCRIBE] success: ${model} (length: ${transcriptionText.length} chars)`);
