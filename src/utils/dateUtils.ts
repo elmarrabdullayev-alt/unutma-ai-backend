@@ -117,8 +117,20 @@ export function isReminderUpcoming(r: Reminder): boolean {
   return target.getTime() > tomorrow.getTime();
 }
 
-export function getGreetingAz(): string {
+export function getGreetingAz(firstName?: string): string {
   const hour = new Date().getHours();
+  const trimmed = firstName ? firstName.trim() : '';
+
+  if (trimmed) {
+    if (hour >= 5 && hour < 12) {
+      return `Sabahın xeyir, ${trimmed}`;
+    } else if (hour >= 12 && hour < 18) {
+      return `Günortan xeyir, ${trimmed}`;
+    } else {
+      return `Axşamın xeyir, ${trimmed}`;
+    }
+  }
+
   if (hour >= 5 && hour < 12) {
     return 'Sabahın xeyir 👋';
   } else if (hour >= 12 && hour < 18) {

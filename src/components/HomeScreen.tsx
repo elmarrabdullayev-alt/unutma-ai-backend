@@ -6,7 +6,7 @@ import {
   CalendarDays,
   Sparkles,
 } from 'lucide-react';
-import { Reminder } from '../types';
+import { Reminder, UserProfile } from '../types';
 import { MobileReminderCard } from './MobileReminderCard';
 import {
   getGreetingAz,
@@ -14,9 +14,12 @@ import {
   isReminderToday,
   isReminderPast,
 } from '../utils/dateUtils';
+import { userProfileService } from '../services/userProfileService';
 
 interface HomeScreenProps {
   reminders: Reminder[];
+  userProfile?: UserProfile | null;
+  onNavigateToProfile?: () => void;
   onToggleComplete: (id: string) => void;
   onDelete: (id: string) => void;
   onEdit: (reminder: Reminder) => void;
@@ -29,6 +32,8 @@ interface HomeScreenProps {
 
 export const HomeScreen: React.FC<HomeScreenProps> = ({
   reminders,
+  userProfile,
+  onNavigateToProfile,
   onToggleComplete,
   onDelete,
   onEdit,
@@ -40,8 +45,9 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
 }) => {
   const [filterMode, setFilterMode] = useState<'active' | 'completed'>('active');
 
-  const greeting = getGreetingAz();
+  const greeting = getGreetingAz(userProfile?.firstName);
   const todayFormatted = getFormattedTodayAz();
+  const initials = userProfileService.getInitials(userProfile);
 
   // Categorize into native agenda sections
   const overdueReminders = reminders.filter(
@@ -72,26 +78,27 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   return (
     <div className="w-full px-4 pt-2 pb-6 space-y-5">
       {/* Native App Top Header (Lightweight, No web hero cards) */}
-      <div className="flex items-start justify-between">
-        <div>
-          <h1 className="text-2xl font-black tracking-tight text-white">
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0 flex-1">
+          <h1 className="text-2xl font-black tracking-tight text-white truncate">
             {greeting}
           </h1>
-          <p className="text-xs font-semibold text-slate-400 mt-0.5">
-            {todayFormatted}
+          <p className="text-xs font-semibold text-violet-300/80 mt-0.5">
+            Bu gün nəyi yadda saxlayaq?
           </p>
-
-          {/* Subtle status text */}
-          <p className="text-xs font-medium text-violet-300/90 mt-1.5 flex items-center gap-1.5">
-            <span className="h-1.5 w-1.5 rounded-full bg-violet-400" />
-            {activeTodayCount > 0
-              ? `Bu gün ${activeTodayCount} xatırlatman var`
-              : 'Bu gün bütün xatırlatmalar tamamlanıb 🎉'}
+          <p className="text-[11px] font-medium text-slate-400 mt-1 flex items-center gap-1.5">
+            <span>{todayFormatted}</span>
+            <span>•</span>
+            <span className="text-violet-400 font-semibold">
+              {activeTodayCount > 0
+                ? `${activeTodayCount} aktiv tapşırıq`
+                : 'Hamısı tamamlandı 🎉'}
+            </span>
           </p>
         </div>
 
-        {/* Quick action buttons (Notification & Manual Add) */}
-        <div className="flex items-center gap-2">
+        {/* Quick action buttons (Avatar + Notification + Manual Add) */}
+        <div className="flex items-center gap-2 shrink-0">
           {notificationPermission !== 'granted' && (
             <button
               onClick={onRequestNotificationPermission}
@@ -109,6 +116,16 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
           >
             <Plus className="h-5 w-5" />
           </button>
+
+          {onNavigateToProfile && (
+            <button
+              onClick={onNavigateToProfile}
+              className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-tr from-violet-600 to-indigo-600 text-white font-black text-xs border border-violet-400/30 active:scale-90 transition-transform shadow-md"
+              title="Profilə keç"
+            >
+              {initials}
+            </button>
+          )}
         </div>
       </div>
 

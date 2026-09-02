@@ -1,3 +1,15 @@
+export type UserGender = 'male' | 'female' | 'other' | 'prefer_not_to_say';
+
+export interface UserProfile {
+  firstName: string;
+  lastName: string;
+  gender: UserGender;
+  birthDate: string; // ISO format e.g. YYYY-MM-DD
+  onboardingCompleted: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export type ReminderCategory =
   | 'health'
   | 'work'
