@@ -1,4 +1,4 @@
-﻿import { Capacitor } from '@capacitor/core';
+import { Capacitor } from '@capacitor/core';
 import { Reminder, AIActionPayload } from '../types';
 
 export interface ParseReminderResponse {
@@ -91,7 +91,7 @@ export class ApiClient {
     console.log(`[ApiClient] request=${endpoint}`);
 
     if (isNative && !baseUrl) {
-      throw new Error('AI server baÄŸlantÄ±sÄ± konfiqurasiya edilmÉ™yib.');
+      throw new Error('AI server bağlantısı konfiqurasiya edilməyib.');
     }
 
     const url = this.buildUrl(endpoint);
@@ -113,7 +113,7 @@ export class ApiClient {
       console.log(`[ApiClient] status=${response.status}`);
 
       if (!response.ok) {
-        let errMessage = `HTTP XÉ™tasÄ± ${response.status}`;
+        let errMessage = `HTTP Xətası ${response.status}`;
         try {
           const errData = await response.json();
           if (errData && errData.error) errMessage = errData.error;
@@ -126,15 +126,15 @@ export class ApiClient {
       clearTimeout(timer);
       console.warn(`[ApiClient] request failed:`, err);
       if (err.name === 'AbortError') {
-        throw new Error('AI xidmÉ™tinÉ™ qoÅŸulma vaxtÄ± bitdi. Ä°nternet baÄŸlantÄ±nÄ±zÄ± yoxlayÄ±n.');
+        throw new Error('AI xidmətinə qoşulma vaxtı bitdi. İnternet bağlantınızı yoxlayın.');
       }
       if (typeof navigator !== 'undefined' && !navigator.onLine) {
-        throw new Error('Ä°nternet baÄŸlantÄ±sÄ± yoxdur. ZÉ™hmÉ™t olmasa ÅŸÉ™bÉ™kÉ™ni yoxlayÄ±n.');
+        throw new Error('İnternet bağlantısı yoxdur. Zəhmət olmasa şəbəkəni yoxlayın.');
       }
       if (err.message && (err.message.includes('Failed to fetch') || err.message.includes('NetworkError'))) {
-        throw new Error('AI xidmÉ™tinÉ™ qoÅŸulmaq mÃ¼mkÃ¼n olmadÄ±. Ä°nternet baÄŸlantÄ±nÄ±zÄ± yoxlayÄ±n.');
+        throw new Error('AI xidmətinə qoşulmaq mümkün olmadı. İnternet bağlantınızı yoxlayın.');
       }
-      throw new Error(err.message || 'AI xidmÉ™tinÉ™ qoÅŸulmaq mÃ¼mkÃ¼n olmadÄ±. Ä°nternet baÄŸlantÄ±nÄ±zÄ± yoxlayÄ±n.');
+      throw new Error(err.message || 'AI xidmətinə qoşulmaq mümkün olmadı. İnternet bağlantınızı yoxlayın.');
     }
   }
 

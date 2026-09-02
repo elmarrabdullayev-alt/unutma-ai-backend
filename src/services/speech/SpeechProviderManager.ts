@@ -1,12 +1,14 @@
 import { Capacitor } from '@capacitor/core';
 import { SpeechCallbacks, SpeechRecognitionProvider } from './SpeechRecognitionProvider';
+import { NativeSpeechRecognitionProvider } from './NativeSpeechRecognitionProvider';
+import { NativeVoiceRecorderProvider } from './NativeVoiceRecorderProvider';
 import { WebSpeechRecognitionProvider } from './WebSpeechRecognitionProvider';
 import { GeminiAudioFallbackProvider } from './GeminiAudioFallbackProvider';
-import { NativeVoiceRecorderProvider } from './NativeVoiceRecorderProvider';
 
 export class SpeechProviderManager {
   private activeProvider: SpeechRecognitionProvider | null = null;
-  private nativeProvider = new NativeVoiceRecorderProvider();
+  private nativeSTTProvider = new NativeSpeechRecognitionProvider();
+  private nativeVoiceRecorderProvider = new NativeVoiceRecorderProvider();
   private webProvider = new WebSpeechRecognitionProvider();
   private geminiProvider = new GeminiAudioFallbackProvider();
 
@@ -19,21 +21,41 @@ export class SpeechProviderManager {
     console.log(`[SpeechProviderManager] runtime=${isNative ? 'native' : 'web'}`);
 
     if (isNative) {
-      // Inside Capacitor native runtime (Android/iOS), use NativeVoiceRecorderProvider as primary.
-      // Uses the native microphone plugin directly for 100% reliable hardware capture.
-      if (this.nativeProvider.isAvailable()) {
-        this.activeProvider = this.nativeProvider;
-        console.log('[SpeechProviderManager] provider=NativeVoiceRecorderProvider');
-        await this.nativeProvider.start(callbacks);
-        return;
-      } else if (this.geminiProvider.isAvailable()) {
+      // 1. Primary on Native Android: Native Speech Recognition (az-AZ locale)
+      if (this.nativeSTTProvider.isAvailable()) {
+        try {
+          this.activeProvider = this.nativeSTTProvider;
+          console.log('[SpeechProviderManager] primary provider=NativeSpeechRecognitionProvider (az-AZ)');
+          await this.nativeSTTProvider.start(callbacks);
+          return;
+        } catch (sttErr: any) {
+          console.warn('[SpeechProviderManager] Native STT start failed:', sttErr);
+          console.log('[NATIVE STT] failed');
+          console.log('[NATIVE STT] Gemini fallback activated');
+        }
+      }
+
+      // 2. Fallback on Native: Native Audio Recorder (capacitor-voice-recorder + /api/transcribe-audio)
+      if (this.nativeVoiceRecorderProvider.isAvailable()) {
+        try {
+          this.activeProvider = this.nativeVoiceRecorderProvider;
+          console.log('[SpeechProviderManager] fallback provider=NativeVoiceRecorderProvider');
+          await this.nativeVoiceRecorderProvider.start(callbacks);
+          return;
+        } catch (recErr: any) {
+          console.warn('[SpeechProviderManager] Native voice recorder start failed:', recErr);
+        }
+      }
+
+      // 3. Last-resort fallback: MediaRecorder fallback
+      if (this.geminiProvider.isAvailable()) {
         this.activeProvider = this.geminiProvider;
-        console.log('[SpeechProviderManager] fallback provider=GeminiAudioFallbackProvider');
+        console.log('[SpeechProviderManager] last resort provider=GeminiAudioFallbackProvider');
         await this.geminiProvider.start(callbacks);
         return;
-      } else {
-        throw new Error('Mikrofon/səs qəbulu vasitəsi bu cihazda dəstəklənmir.');
       }
+
+      throw new Error('Mikrofon/səs qəbulu vasitəsi bu cihazda dəstəklənmir.');
     }
 
     // Web browser environment: prefer WebSpeechRecognitionProvider for real-time streaming, fallback to GeminiAudioFallbackProvider
@@ -48,7 +70,7 @@ export class SpeechProviderManager {
       }
     }
 
-    // Fallback to Gemini MediaRecorder capture
+    // Fallback to Gemini MediaRecorder capture on web
     if (this.geminiProvider.isAvailable()) {
       this.activeProvider = this.geminiProvider;
       console.log('[SpeechProviderManager] provider=GeminiAudioFallbackProvider');
@@ -60,9 +82,10 @@ export class SpeechProviderManager {
 
   public async stopListening(): Promise<string> {
     if (this.activeProvider) {
-      const result = await this.activeProvider.stop();
+      const provider = this.activeProvider;
       this.activeProvider = null;
-      return result;
+      const result = await provider.stop();
+      return result || '';
     }
     return '';
   }

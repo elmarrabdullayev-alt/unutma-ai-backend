@@ -480,15 +480,16 @@ SƏNİN MƏQSƏDİN:
 // API 3: AUDIO TRANSCRIPTION WITH GEMINI (RESILIENT RETRIES & MODEL FALLBACK)
 // =========================================================================
 
-// Audio-capable Gemini models in preferred priority order
+// Supported Gemini multimodal models for audio transcription
 const AUDIO_TRANSCRIPTION_MODELS = [
-  "gemini-3.5-transcribe",
-  "gemini-flash-latest",
-  "gemini-3.7-flash",
   "gemini-2.5-flash",
+  "gemini-3.7-flash",
 ];
 
+const MAX_TRANSCRIPTION_BUDGET_MS = 15000; // Strict 15s overall budget for fallback transcription
+
 app.post("/api/transcribe-audio", async (req, res) => {
+  const startTime = Date.now();
   console.log("[TRANSCRIBE] request received");
   try {
     const { base64Audio, mimeType } = req.body;
@@ -525,13 +526,25 @@ app.post("/api/transcribe-audio", async (req, res) => {
 
     let lastError: any = null;
     let hadOverloadOrQuota = false;
-    const MAX_RETRIES_PER_MODEL = 2; // Maximum 2 retries per model (total 3 attempts per model)
+    const MAX_RETRIES_PER_MODEL = 1; // 1 retry per model (total 2 attempts per model)
 
     for (let mIdx = 0; mIdx < AUDIO_TRANSCRIPTION_MODELS.length; mIdx++) {
+      const elapsed = Date.now() - startTime;
+      if (elapsed >= MAX_TRANSCRIPTION_BUDGET_MS) {
+        console.warn(`[TRANSCRIBE] Budget exhausted (${elapsed}ms >= ${MAX_TRANSCRIPTION_BUDGET_MS}ms) before trying ${AUDIO_TRANSCRIPTION_MODELS[mIdx]}`);
+        break;
+      }
+
       const model = AUDIO_TRANSCRIPTION_MODELS[mIdx];
       console.log(`[TRANSCRIBE] audio model selected: ${model}`);
 
       for (let attempt = 1; attempt <= MAX_RETRIES_PER_MODEL + 1; attempt++) {
+        const attemptElapsed = Date.now() - startTime;
+        if (attemptElapsed >= MAX_TRANSCRIPTION_BUDGET_MS) {
+          console.warn(`[TRANSCRIBE] Budget exhausted (${attemptElapsed}ms >= ${MAX_TRANSCRIPTION_BUDGET_MS}ms) during attempt ${attempt} of ${model}`);
+          break;
+        }
+
         console.log(`[TRANSCRIBE] attempt: ${model} (attempt ${attempt}/${MAX_RETRIES_PER_MODEL + 1})`);
         try {
           console.log("[TRANSCRIBE] model request started");
@@ -568,15 +581,20 @@ app.post("/api/transcribe-audio", async (req, res) => {
             console.warn(`[TRANSCRIBE] error: ${model} (attempt ${attempt}) - ${err?.message || err}`);
           }
 
-          // If retryable (503/429/overload) and retries remain for this model
-          if (isOverloadedOrQuota && attempt <= MAX_RETRIES_PER_MODEL) {
-            const delay = getRetryDelay(attempt, retryAfterMs);
-            console.log(`[TRANSCRIBE] Retrying ${model} in ${delay}ms...`);
-            await sleep(delay);
-            continue;
+          const currentElapsed = Date.now() - startTime;
+          const remainingBudget = MAX_TRANSCRIPTION_BUDGET_MS - currentElapsed;
+
+          // If retryable and budget allows
+          if (isOverloadedOrQuota && attempt <= MAX_RETRIES_PER_MODEL && remainingBudget > 1500) {
+            const delay = Math.min(getRetryDelay(attempt, retryAfterMs), remainingBudget - 1000);
+            if (delay > 0) {
+              console.log(`[TRANSCRIBE] Retrying ${model} in ${delay}ms... (budget left: ${remainingBudget}ms)`);
+              await sleep(delay);
+              continue;
+            }
           }
 
-          // If not retryable or retries for this model are exhausted, break attempt loop to try fallback model
+          // Break attempt loop to try fallback model
           break;
         }
       }
@@ -588,7 +606,7 @@ app.post("/api/transcribe-audio", async (req, res) => {
       }
     }
 
-    console.error(`[TRANSCRIBE] all models failed: all ${AUDIO_TRANSCRIPTION_MODELS.length} audio models exhausted. Last error:`, lastError);
+    console.error(`[TRANSCRIBE] all models failed: all ${AUDIO_TRANSCRIPTION_MODELS.length} audio models exhausted or budget exceeded. Last error:`, lastError);
 
     // Controlled Azerbaijani error response for overload / high demand without HTTP 500
     if (hadOverloadOrQuota) {
