@@ -39,9 +39,7 @@ export class ApiClient {
   private customBaseUrl: string = '';
 
   constructor() {
-   const envUrl =
-  import.meta.env.VITE_API_BASE_URL ||
-  "https://unutma-ai-backend.onrender.com";
+    const envUrl = import.meta.env.VITE_API_BASE_URL || '';
     this.customBaseUrl = envUrl.trim().replace(/\/+$/, '');
   }
 
@@ -167,10 +165,25 @@ export class ApiClient {
     base64Audio: string,
     mimeType: string = 'audio/webm'
   ): Promise<TranscribeAudioResponse> {
-    return this.request<TranscribeAudioResponse>('/api/transcribe-audio', {
-      method: 'POST',
-      body: JSON.stringify({ base64Audio, mimeType }),
-    }, 45000);
+    const timeoutMs = 120000;
+    console.log(`[TRANSCRIBE CLIENT] timeoutMs=${timeoutMs}`);
+    try {
+      return await this.request<TranscribeAudioResponse>(
+        '/api/transcribe-audio',
+        {
+          method: 'POST',
+          body: JSON.stringify({ base64Audio, mimeType }),
+        },
+        timeoutMs
+      );
+    } catch (err: any) {
+      if (err.name === 'AbortError' || err.message?.includes('vaxtı bitdi')) {
+        throw new Error(
+          'Səs qeydə alındı, lakin transkripsiya xidməti cavab vermədi. Bir az sonra yenidən cəhd edin.'
+        );
+      }
+      throw err;
+    }
   }
 
   public async askAssistant(

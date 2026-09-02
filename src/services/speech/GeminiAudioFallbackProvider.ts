@@ -10,6 +10,7 @@ export class GeminiAudioFallbackProvider implements SpeechRecognitionProvider {
   private animFrame: number | null = null;
   private currentAudioLevel = 0;
   private callbacks: SpeechCallbacks | null = null;
+  private activeStopPromise: Promise<string> | null = null;
 
   public isAvailable(): boolean {
     return (
@@ -28,6 +29,7 @@ export class GeminiAudioFallbackProvider implements SpeechRecognitionProvider {
 
     this.callbacks = callbacks;
     this.audioChunks = [];
+    this.activeStopPromise = null;
 
     // 1. Acquire microphone media stream
     try {
@@ -107,6 +109,10 @@ export class GeminiAudioFallbackProvider implements SpeechRecognitionProvider {
   }
 
   public async stop(): Promise<string> {
+    if (this.activeStopPromise) {
+      return this.activeStopPromise;
+    }
+
     if (this.animFrame) {
       cancelAnimationFrame(this.animFrame);
       this.animFrame = null;
@@ -118,12 +124,14 @@ export class GeminiAudioFallbackProvider implements SpeechRecognitionProvider {
     }
 
     const currentRecorder = this.mediaRecorder;
+    this.mediaRecorder = null;
+
     if (!currentRecorder || currentRecorder.state === 'inactive') {
       this.cleanupStream();
       return '';
     }
 
-    return new Promise<string>((resolve, reject) => {
+    this.activeStopPromise = new Promise<string>((resolve, reject) => {
       currentRecorder.onstop = async () => {
         try {
           this.cleanupStream();
@@ -166,6 +174,8 @@ export class GeminiAudioFallbackProvider implements SpeechRecognitionProvider {
             this.callbacks.onError(new Error(errorMsg));
           }
           reject(new Error(errorMsg));
+        } finally {
+          this.activeStopPromise = null;
         }
       };
 
@@ -173,9 +183,12 @@ export class GeminiAudioFallbackProvider implements SpeechRecognitionProvider {
         currentRecorder.stop();
       } catch (e) {
         this.cleanupStream();
+        this.activeStopPromise = null;
         resolve('');
       }
     });
+
+    return this.activeStopPromise;
   }
 
   private cleanupStream(): void {

@@ -19,6 +19,8 @@ import { playMicStartSound, playSuccessSound } from '../utils/soundUtils';
 import { ParsedReminderResult, Reminder } from '../types';
 import { apiClient } from '../services/apiClient';
 import { speechManager } from '../services/speech/SpeechProviderManager';
+import { intelligentRouter } from '../services/intelligentRouter';
+import { reminderService } from '../services/reminderService';
 
 interface VoiceInputModalProps {
   isOpen: boolean;
@@ -37,8 +39,37 @@ export const VoiceInputModal: React.FC<VoiceInputModalProps> = ({
   const [parsedResult, setParsedResult] = useState<ParsedReminderResult | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [audioLevel, setAudioLevel] = useState(0);
+  const [recordingSeconds, setRecordingSeconds] = useState(0);
 
   const isMountedRef = useRef(true);
+  const timerIntervalRef = useRef<number | null>(null);
+
+  // Timer effect for live recording duration
+  useEffect(() => {
+    if (isListening) {
+      setRecordingSeconds(0);
+      timerIntervalRef.current = window.setInterval(() => {
+        setRecordingSeconds((prev) => prev + 1);
+      }, 1000);
+    } else {
+      if (timerIntervalRef.current !== null) {
+        clearInterval(timerIntervalRef.current);
+        timerIntervalRef.current = null;
+      }
+    }
+    return () => {
+      if (timerIntervalRef.current !== null) {
+        clearInterval(timerIntervalRef.current);
+        timerIntervalRef.current = null;
+      }
+    };
+  }, [isListening]);
+
+  const formatSeconds = (sec: number): string => {
+    const mins = Math.floor(sec / 60);
+    const s = sec % 60;
+    return `${mins.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+  };
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -152,8 +183,46 @@ export const VoiceInputModal: React.FC<VoiceInputModalProps> = ({
       return;
     }
 
-    setIsProcessing(true);
     setErrorMessage(null);
+
+    // 1. Evaluate local fast path first
+    const currentReminders = reminderService.getAll();
+    const evaluation = intelligentRouter.evaluateLocalFastPath(text, currentReminders);
+
+    if (
+      evaluation.handledLocally &&
+      evaluation.confidence >= 0.8 &&
+      evaluation.payload.remindersToCreate &&
+      evaluation.payload.remindersToCreate.length > 0
+    ) {
+      console.log(`[VOICE-MODAL-FAST-PATH] Created ${evaluation.payload.remindersToCreate.length} reminders locally for: "${text}"`);
+      const generatedReminders: Reminder[] = evaluation.payload.remindersToCreate.map((r: any, idx: number) => ({
+        id: `rem-${Date.now()}-${idx}-${Math.random().toString(36).substr(2, 5)}`,
+        title: r.title,
+        description: r.description || '',
+        dueDateTime: r.dueDateTime,
+        category: r.category || 'other',
+        recurrence: r.recurrence || 'none',
+        priority: r.priority || 'medium',
+        isCompleted: false,
+        notificationEnabled: true,
+        createdAt: new Date().toISOString(),
+        sourceVoiceText: text,
+      }));
+
+      playSuccessSound();
+      setParsedResult({
+        summary: evaluation.payload.responseMessage || `${generatedReminders.length} xatırlatma yaradıldı`,
+        reminders: evaluation.payload.remindersToCreate as any,
+      });
+
+      onRemindersCreated(generatedReminders, evaluation.payload.responseMessage || `${generatedReminders.length} xatırlatma yaradıldı`);
+      setIsProcessing(false);
+      return;
+    }
+
+    // 2. Otherwise trigger Gemini path
+    setIsProcessing(true);
 
     try {
       const data = await apiClient.parseReminder(
@@ -278,9 +347,9 @@ export const VoiceInputModal: React.FC<VoiceInputModalProps> = ({
 
           <span className="mt-4 text-xs font-medium text-slate-300">
             {isListening ? (
-              <span className="flex items-center gap-1.5 text-rose-400">
+              <span className="flex items-center gap-1.5 text-rose-400 font-semibold">
                 <span className="h-2 w-2 rounded-full bg-rose-500 animate-ping" />
-                Dinləyir... Danışın və ya bitirdikdə toxunun
+                Dinləyirəm... ({formatSeconds(recordingSeconds)})
               </span>
             ) : (
               'Danışmaq üçün mikrofona toxunun'

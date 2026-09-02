@@ -20,6 +20,7 @@ import { SAMPLE_QUESTIONS } from '../utils/categoryMeta';
 import { speakText, stopSpeaking, playMicStartSound } from '../utils/soundUtils';
 import { apiClient } from '../services/apiClient';
 import { speechManager } from '../services/speech/SpeechProviderManager';
+import { intelligentRouter } from '../services/intelligentRouter';
 
 interface AssistantChatModalProps {
   isOpen: boolean;
@@ -114,17 +115,35 @@ export const AssistantChatModal: React.FC<AssistantChatModalProps> = ({
 
     setMessages((prev) => [...prev, userMessage]);
     setInputQuery('');
+
+    // Check local fast path
+    const evaluation = intelligentRouter.evaluateLocalFastPath(query, reminders);
+    if (evaluation.handledLocally && evaluation.confidence >= 0.8) {
+      console.log(`[ASSISTANT-MODAL] Local answer for "${query}"`);
+      const answer = evaluation.payload.responseMessage || 'Məlumat tapıldı.';
+      const assistantMessage: AssistantMessage = {
+        id: `ai-${Date.now()}`,
+        role: 'assistant',
+        text: answer,
+        timestamp: new Date().toLocaleTimeString('az-AZ', { hour: '2-digit', minute: '2-digit' }),
+      };
+
+      setMessages((prev) => [...prev, assistantMessage]);
+      speakText(answer);
+      setIsSpeaking(true);
+      return;
+    }
+
     setIsLoading(true);
 
     try {
-      const data = await apiClient.askAssistant(
-        query,
-        reminders.filter((r) => !r.isCompleted),
-        new Date().toISOString(),
-        Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Baku'
-      );
+      const routeResult = await intelligentRouter.route(query, reminders, {
+        userNowISO: new Date().toISOString(),
+        userTimezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Baku',
+        executeDirectly: true,
+      });
 
-      const answer = data.answer || 'Məlumat tapılmadı.';
+      const answer = routeResult.actionPayload.responseMessage || 'Məlumat tapılmadı.';
 
       const assistantMessage: AssistantMessage = {
         id: `ai-${Date.now()}`,
