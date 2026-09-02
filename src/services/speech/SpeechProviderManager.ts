@@ -2,9 +2,11 @@ import { Capacitor } from '@capacitor/core';
 import { SpeechCallbacks, SpeechRecognitionProvider } from './SpeechRecognitionProvider';
 import { WebSpeechRecognitionProvider } from './WebSpeechRecognitionProvider';
 import { GeminiAudioFallbackProvider } from './GeminiAudioFallbackProvider';
+import { NativeVoiceRecorderProvider } from './NativeVoiceRecorderProvider';
 
 export class SpeechProviderManager {
   private activeProvider: SpeechRecognitionProvider | null = null;
+  private nativeProvider = new NativeVoiceRecorderProvider();
   private webProvider = new WebSpeechRecognitionProvider();
   private geminiProvider = new GeminiAudioFallbackProvider();
 
@@ -17,12 +19,16 @@ export class SpeechProviderManager {
     console.log(`[SpeechProviderManager] runtime=${isNative ? 'native' : 'web'}`);
 
     if (isNative) {
-      // Inside Capacitor native runtime (Android/iOS), do NOT use WebSpeechRecognitionProvider as primary.
-      // WebSpeech in WebView often hangs without returning speech events.
-      // Use GeminiAudioFallbackProvider directly for guaranteed audio capture & server-side AI transcription.
-      if (this.geminiProvider.isAvailable()) {
+      // Inside Capacitor native runtime (Android/iOS), use NativeVoiceRecorderProvider as primary.
+      // Uses the native microphone plugin directly for 100% reliable hardware capture.
+      if (this.nativeProvider.isAvailable()) {
+        this.activeProvider = this.nativeProvider;
+        console.log('[SpeechProviderManager] provider=NativeVoiceRecorderProvider');
+        await this.nativeProvider.start(callbacks);
+        return;
+      } else if (this.geminiProvider.isAvailable()) {
         this.activeProvider = this.geminiProvider;
-        console.log('[SpeechProviderManager] provider=GeminiAudioFallbackProvider');
+        console.log('[SpeechProviderManager] fallback provider=GeminiAudioFallbackProvider');
         await this.geminiProvider.start(callbacks);
         return;
       } else {

@@ -18,6 +18,7 @@ import { speakText } from '../utils/soundUtils';
 import { reminderService } from '../services/reminderService';
 import { formatDateAz, formatTimeOnly } from '../utils/dateUtils';
 import { apiClient } from '../services/apiClient';
+import { intelligentRouter } from '../services/intelligentRouter';
 
 interface AiAssistantScreenProps {
   reminders: Reminder[];
@@ -64,25 +65,16 @@ export const AiAssistantScreen: React.FC<AiAssistantScreenProps> = ({
 
     setMessages((prev) => [...prev, userMsg]);
     setInputText('');
-    setIsLoading(true);
 
-    try {
-      // 1. Send to AI action engine
-      const currentReminders = reminderService.getAll();
-      const data = await apiClient.executeAiAction(
-        textToSend,
-        currentReminders,
-        new Date().toISOString(),
-        Intl.DateTimeFormat().resolvedOptions().timeZone
-      );
+    const currentReminders = reminderService.getAll();
+    const evaluation = intelligentRouter.evaluateLocalFastPath(textToSend, currentReminders);
 
-      const payload: AIActionPayload = data.actionPayload || {
-        action: 'general_chat',
-        responseMessage: 'Sorğu cavablandırıldı.',
-      };
-
-      // 2. Execute any actionable intent if present
+    // If local fast path can resolve with high confidence, execute instantly without loading state
+    if (evaluation.handledLocally && evaluation.confidence >= 0.8) {
+      console.log(`[AI-CHAT-ROUTER] Local fast path for "${textToSend}"`);
+      const payload = evaluation.payload;
       let actionResultMessage = '';
+
       if (
         payload.action === 'create_reminder' ||
         payload.action === 'create_multiple_reminders' ||
@@ -94,6 +86,39 @@ export const AiAssistantScreen: React.FC<AiAssistantScreenProps> = ({
         if (execution.message) {
           actionResultMessage = execution.message;
         }
+      }
+
+      const assistantMsg: AssistantMessage = {
+        id: `msg-${Date.now()}-assistant`,
+        role: 'assistant',
+        text: actionResultMessage || payload.responseMessage,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        actionPayload: payload,
+        executed: true,
+      };
+
+      setMessages((prev) => [...prev, assistantMsg]);
+      return;
+    }
+
+    // Otherwise show loading indicator while calling Gemini path
+    setIsLoading(true);
+
+    try {
+      const routeResult = await intelligentRouter.route(textToSend, currentReminders, {
+        userNowISO: new Date().toISOString(),
+        userTimezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        executeDirectly: true,
+      });
+
+      const payload: AIActionPayload = routeResult.actionPayload || {
+        action: 'general_chat',
+        responseMessage: 'Sorğu cavablandırıldı.',
+      };
+
+      let actionResultMessage = '';
+      if (routeResult.executionResult?.message) {
+        actionResultMessage = routeResult.executionResult.message;
       }
 
       const assistantMsg: AssistantMessage = {

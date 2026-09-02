@@ -44,6 +44,120 @@ app.get("/api/health", (req, res) => {
   res.json({ status: "ok", service: "unutma-ai-api" });
 });
 
+// Helper to inspect whether an error is temporary overload (503), rate limit (429), or quota exhaustion
+function classifyGeminiError(error: any): {
+  is503: boolean;
+  is429: boolean;
+  isOverloadedOrQuota: boolean;
+  retryAfterMs?: number;
+} {
+  const msg = String(error?.message || "");
+  const status = Number(error?.status || error?.statusCode || error?.code);
+  const statusStr = String(error?.status || error?.statusCode || error?.code || "");
+
+  const is503 =
+    status === 503 ||
+    statusStr.includes("503") ||
+    /503|UNAVAILABLE|high demand|overloaded|service unavailable|backend unavailable|currently experiencing high demand/i.test(msg);
+
+  const is429 =
+    status === 429 ||
+    statusStr.includes("429") ||
+    /429|RESOURCE_EXHAUSTED|resource exhausted|quota exceeded|too many requests|rate limit/i.test(msg);
+
+  let retryAfterMs: number | undefined;
+  if (error?.retryAfter && Number(error.retryAfter) > 0) {
+    retryAfterMs = Number(error.retryAfter) * 1000;
+  } else if (error?.response?.headers) {
+    const headerVal =
+      error.response.headers.get?.("retry-after") ||
+      error.response.headers["retry-after"];
+    if (headerVal && Number(headerVal) > 0) {
+      retryAfterMs = Number(headerVal) * 1000;
+    }
+  }
+
+  if (!retryAfterMs) {
+    const match = msg.match(/retry (?:after|in) ([0-9.]+)s/i);
+    if (match && match[1]) {
+      const parsed = parseFloat(match[1]);
+      if (!isNaN(parsed) && parsed > 0) {
+        retryAfterMs = Math.round(parsed * 1000);
+      }
+    }
+  }
+
+  return {
+    is503,
+    is429,
+    isOverloadedOrQuota: is503 || is429,
+    retryAfterMs,
+  };
+}
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+function getRetryDelay(attemptIndex: number, suggestedRetryAfterMs?: number): number {
+  if (suggestedRetryAfterMs && suggestedRetryAfterMs >= 500 && suggestedRetryAfterMs <= 10000) {
+    return suggestedRetryAfterMs;
+  }
+  return attemptIndex === 1 ? 2000 : 5000;
+}
+
+// =========================================================================
+// TEXT AI CONFIGURATION (1 PRIMARY, 1 FALLBACK, MAX 1 RETRY, 10-15s BUDGET)
+// =========================================================================
+const TEXT_AI_MODELS = [
+  "gemini-3.7-flash", // Primary model
+  "gemini-2.5-flash", // Fallback model
+];
+const MAX_TEXT_AI_BUDGET_MS = 14000; // 14s budget
+const MAX_RETRIES_PER_TEXT_MODEL = 1; // Max 1 retry per model
+
+async function generateTextAIWithBudget(configParams: {
+  contents: any;
+  config: any;
+  tag?: string;
+}): Promise<{ text: string | undefined; modelUsed: string }> {
+  const startTime = Date.now();
+  let lastError: any = null;
+  const tag = configParams.tag || "TEXT-AI";
+
+  for (let mIdx = 0; mIdx < TEXT_AI_MODELS.length; mIdx++) {
+    const model = TEXT_AI_MODELS[mIdx];
+    for (let attempt = 1; attempt <= MAX_RETRIES_PER_TEXT_MODEL + 1; attempt++) {
+      const elapsed = Date.now() - startTime;
+      if (elapsed > MAX_TEXT_AI_BUDGET_MS) {
+        console.warn(`[${tag}] budget exceeded: ${elapsed}ms > ${MAX_TEXT_AI_BUDGET_MS}ms. Immediate fallback.`);
+        throw new Error(`AI icra büdcəsi (${MAX_TEXT_AI_BUDGET_MS / 1000}s) başa çatdı`);
+      }
+
+      console.log(`[${tag}] model: ${model} (attempt ${attempt}/${MAX_RETRIES_PER_TEXT_MODEL + 1}, elapsed ${elapsed}ms)`);
+      try {
+        const response = await ai.models.generateContent({
+          model,
+          contents: configParams.contents,
+          config: configParams.config,
+        });
+        return { text: response.text, modelUsed: model };
+      } catch (err: any) {
+        lastError = err;
+        const { isOverloadedOrQuota, retryAfterMs } = classifyGeminiError(err);
+        console.warn(`[${tag}] error on ${model} (attempt ${attempt}):`, err?.message || err);
+
+        if (isOverloadedOrQuota && attempt <= MAX_RETRIES_PER_TEXT_MODEL) {
+          const delay = Math.min(getRetryDelay(attempt, retryAfterMs), 2000);
+          console.log(`[${tag}] retrying ${model} in ${delay}ms...`);
+          await sleep(delay);
+          continue;
+        }
+        break; // switch to fallback model
+      }
+    }
+  }
+  throw lastError || new Error("Text AI models exhausted");
+}
+
 // =========================================================================
 // API 1: PARSE VOICE/TEXT INTO STRUCTURED REMINDERS (MULTI-TASK EXTRACTION)
 // =========================================================================
@@ -111,8 +225,7 @@ Hazırkı cari vaxt: ${userNowFormatted} (ISO: ${now.toISOString()}).
 6. XÜLASƏ (summary):
    Azərbaycan dilində çox aydın, səliqəli və mehriban xülasə cümləsi qaytar (məsələn: "3 xatırlatma tapdım: Sabah 10:00 Anara zəng, 14:00 usta və axşam 20:00 dərman.").`;
 
-    const response = await ai.models.generateContent({
-      model: "gemini-3.6-flash",
+    const aiResponse = await generateTextAIWithBudget({
       contents: `İstifadəçinin mətni: "${text}"`,
       config: {
         systemInstruction,
@@ -161,9 +274,10 @@ Hazırkı cari vaxt: ${userNowFormatted} (ISO: ${now.toISOString()}).
           required: ["summary", "reminders"],
         },
       },
+      tag: "PARSE-REMINDER",
     });
 
-    const parsed = JSON.parse(response.text || "{}");
+    const parsed = JSON.parse(aiResponse.text || "{}");
     return res.json({
       success: true,
       summary: parsed.summary || `${(parsed.reminders || []).length} xatırlatma tapıldı.`,
@@ -248,9 +362,8 @@ SƏNİN MƏQSƏDİN:
 8. 'general_chat':
    - Ümumi söhbət və ya köməkçi sualları üçün.`;
 
-    console.log('[AI-ACTION] Gemini request started');
-    const response = await ai.models.generateContent({
-      model: "gemini-3.6-flash",
+    console.log('[AI-ACTION] Text AI generation started (1 primary + 1 fallback, 10-15s budget)');
+    const aiResponse = await generateTextAIWithBudget({
       contents: `İstifadəçinin sözləri: "${userPrompt}"`,
       config: {
         systemInstruction,
@@ -329,10 +442,11 @@ SƏNİN MƏQSƏDİN:
           required: ["action", "responseMessage"],
         },
       },
+      tag: "AI-ACTION",
     });
 
-    console.log('[AI-ACTION] Gemini response received');
-    const parsed = JSON.parse(response.text || "{}");
+    console.log('[AI-ACTION] Text AI response received');
+    const parsed = JSON.parse(aiResponse.text || "{}");
     return res.json({
       success: true,
       actionPayload: {
@@ -363,9 +477,19 @@ SƏNİN MƏQSƏDİN:
 });
 
 // =========================================================================
-// API 3: AUDIO TRANSCRIPTION WITH GEMINI
+// API 3: AUDIO TRANSCRIPTION WITH GEMINI (RESILIENT RETRIES & MODEL FALLBACK)
 // =========================================================================
+
+// Audio-capable Gemini models in preferred priority order
+const AUDIO_TRANSCRIPTION_MODELS = [
+  "gemini-3.5-transcribe",
+  "gemini-flash-latest",
+  "gemini-3.7-flash",
+  "gemini-2.5-flash",
+];
+
 app.post("/api/transcribe-audio", async (req, res) => {
+  console.log("[TRANSCRIBE] request received");
   try {
     const { base64Audio, mimeType } = req.body;
     if (!base64Audio) {
@@ -379,26 +503,135 @@ app.post("/api/transcribe-audio", async (req, res) => {
       },
     };
 
+    const promptText =
+      "Bu səs faylı Azərbaycan dilindədir. Zəhmət olmasa tələffüz edilən sözləri dəqiq Azərbaycan əlifbası və orfoqrafiyası ilə transkripsiya et. Heç bir əlavə giriş və ya şərh yazma, yalnız təmiz mətni qaytar.";
+
+    let lastError: any = null;
+    let hadOverloadOrQuota = false;
+    const MAX_RETRIES_PER_MODEL = 2; // Maximum 2 retries per model (total 3 attempts per model)
+
+    for (let mIdx = 0; mIdx < AUDIO_TRANSCRIPTION_MODELS.length; mIdx++) {
+      const model = AUDIO_TRANSCRIPTION_MODELS[mIdx];
+      console.log(`[TRANSCRIBE] audio model selected: ${model}`);
+
+      for (let attempt = 1; attempt <= MAX_RETRIES_PER_MODEL + 1; attempt++) {
+        console.log(`[TRANSCRIBE] attempt: ${model} (attempt ${attempt}/${MAX_RETRIES_PER_MODEL + 1})`);
+        try {
+          const response = await ai.models.generateContent({
+            model,
+            contents: {
+              parts: [
+                audioPart,
+                { text: promptText },
+              ],
+            },
+          });
+
+          const transcriptionText = response.text?.trim() || "";
+          console.log(`[TRANSCRIBE] success: ${model} (length: ${transcriptionText.length} chars)`);
+
+          return res.json({
+            success: true,
+            transcription: transcriptionText,
+            modelUsed: model,
+          });
+        } catch (err: any) {
+          lastError = err;
+          const { is503, is429, isOverloadedOrQuota, retryAfterMs } = classifyGeminiError(err);
+
+          if (is503) {
+            hadOverloadOrQuota = true;
+            console.warn(`[TRANSCRIBE] 503 detected: ${model} (attempt ${attempt}) - ${err?.message || err}`);
+          } else if (is429) {
+            hadOverloadOrQuota = true;
+            console.warn(`[TRANSCRIBE] 429 detected: ${model} (attempt ${attempt}) - ${err?.message || err}`);
+          } else {
+            console.warn(`[TRANSCRIBE] error: ${model} (attempt ${attempt}) - ${err?.message || err}`);
+          }
+
+          // If retryable (503/429/overload) and retries remain for this model
+          if (isOverloadedOrQuota && attempt <= MAX_RETRIES_PER_MODEL) {
+            const delay = getRetryDelay(attempt, retryAfterMs);
+            console.log(`[TRANSCRIBE] Retrying ${model} in ${delay}ms...`);
+            await sleep(delay);
+            continue;
+          }
+
+          // If not retryable or retries for this model are exhausted, break attempt loop to try fallback model
+          break;
+        }
+      }
+
+      // Log fallback model transition if another model is available
+      if (mIdx < AUDIO_TRANSCRIPTION_MODELS.length - 1) {
+        const nextModel = AUDIO_TRANSCRIPTION_MODELS[mIdx + 1];
+        console.log(`[TRANSCRIBE] fallback model: switching from ${model} to ${nextModel}`);
+      }
+    }
+
+    console.error(`[TRANSCRIBE] all models failed: all ${AUDIO_TRANSCRIPTION_MODELS.length} audio models exhausted. Last error:`, lastError);
+
+    // Controlled Azerbaijani error response for overload / high demand without HTTP 500
+    if (hadOverloadOrQuota) {
+      return res.status(503).json({
+        error: "Səs qeydə alındı, lakin AI transkripsiya xidməti hazırda məşğuldur. Bir az sonra yenidən cəhd edin.",
+      });
+    }
+
+    return res.status(500).json({
+      error: "Səsin transkripsiyası zamanı xəta: " + (lastError?.message || "Bilinməyən xəta"),
+    });
+  } catch (error: any) {
+    console.error("Error in transcribe-audio route handler:", error);
+    return res.status(500).json({
+      error: "Səsin transkripsiyası zamanı xəta: " + (error?.message || "Bilinməyən xəta"),
+    });
+  }
+});
+
+// =========================================================================
+// API 4: GENERAL ASSISTANT CHAT
+// =========================================================================
+app.post("/api/ask-assistant", async (req, res) => {
+  try {
+    const { question, reminders, userNowISO, userTimezone } = req.body;
+    if (!question) {
+      return res.status(400).json({ error: "Sual daxil edilməyib." });
+    }
+
+    const now = userNowISO ? new Date(userNowISO) : new Date();
+    const timezone = userTimezone || "Asia/Baku";
+    const userNowFormatted = now.toLocaleString("az-AZ", {
+      timeZone: timezone,
+      dateStyle: "full",
+      timeStyle: "medium",
+    });
+
+    const systemInstruction = `Sən "Unutma AI" tətbiqinin köməkçi mühərrikisən.
+Hazırkı cari vaxt: ${userNowFormatted} (ISO: ${now.toISOString()}).
+İstifadəçinin zaman qurşağı: ${timezone}.
+İstifadəçinin hazırkı xatırlatmaları:
+${JSON.stringify(reminders || [], null, 2)}
+
+İstifadəçinin sualına Azərbaycan dilində aydın, mehriban və lakonik cavab ver.`;
+
     const response = await ai.models.generateContent({
       model: "gemini-3.6-flash",
-      contents: {
-        parts: [
-          audioPart,
-          {
-            text: "Bu səs faylı Azərbaycan dilindədir. Zəhmət olmasa tələffüz edilən sözləri dəqiq Azərbaycan əlifbası və orfoqrafiyası ilə transkripsiya et. Heç bir əlavə giriş və ya şərh yazma, yalnız təmiz mətni qaytar.",
-          },
-        ],
+      contents: `İstifadəçinin sualı: "${question}"`,
+      config: {
+        systemInstruction,
+        temperature: 0.3,
       },
     });
 
     return res.json({
       success: true,
-      transcription: response.text?.trim() || "",
+      answer: response.text?.trim() || "Cavab hazırlana bilmədi.",
     });
   } catch (error: any) {
-    console.error("Error in transcribe-audio:", error);
+    console.error("Error in ask-assistant:", error);
     return res.status(500).json({
-      error: "Səsin transkripsiyası zamanı xəta: " + (error?.message || "Bilinməyən xəta"),
+      error: "Köməkçi ilə əlaqə zamanı xəta: " + (error?.message || "Bilinməyən xəta"),
     });
   }
 });

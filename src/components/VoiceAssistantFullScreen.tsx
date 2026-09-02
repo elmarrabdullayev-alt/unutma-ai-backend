@@ -12,6 +12,7 @@ import {
   ArrowRight,
   RefreshCw,
   Volume2,
+  AlertCircle,
 } from 'lucide-react';
 import { Reminder, ReminderCategory, ReminderRecurrence, ReminderPriority } from '../types';
 import { CATEGORIES } from '../utils/categoryMeta';
@@ -20,6 +21,7 @@ import { formatTimeOnly, formatDateAz } from '../utils/dateUtils';
 import { reminderService } from '../services/reminderService';
 import { speechManager } from '../services/speech/SpeechProviderManager';
 import { apiClient } from '../services/apiClient';
+import { intelligentRouter } from '../services/intelligentRouter';
 
 interface VoiceAssistantFullScreenProps {
   isOpen: boolean;
@@ -49,6 +51,8 @@ export const VoiceAssistantFullScreen: React.FC<VoiceAssistantFullScreenProps> =
   const [interimText, setInterimText] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [audioLevel, setAudioLevel] = useState(0);
+  const [recordingSeconds, setRecordingSeconds] = useState(0);
+  const [recordingError, setRecordingError] = useState<string | null>(null);
   const [parsedReminders, setParsedReminders] = useState<EditableExtractedReminder[]>([]);
   const [parsedSummary, setParsedSummary] = useState('');
   const [assistantSpokenResponse, setAssistantSpokenResponse] = useState<string | null>(null);
@@ -56,6 +60,28 @@ export const VoiceAssistantFullScreen: React.FC<VoiceAssistantFullScreenProps> =
   const [editingCardId, setEditingCardId] = useState<string | null>(null);
 
   const isMountedRef = useRef(true);
+  const timerIntervalRef = useRef<number | null>(null);
+
+  // Timer effect for live recording duration
+  useEffect(() => {
+    if (isListening) {
+      setRecordingSeconds(0);
+      timerIntervalRef.current = window.setInterval(() => {
+        setRecordingSeconds((prev) => prev + 1);
+      }, 1000);
+    } else {
+      if (timerIntervalRef.current !== null) {
+        clearInterval(timerIntervalRef.current);
+        timerIntervalRef.current = null;
+      }
+    }
+    return () => {
+      if (timerIntervalRef.current !== null) {
+        clearInterval(timerIntervalRef.current);
+        timerIntervalRef.current = null;
+      }
+    };
+  }, [isListening]);
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -70,6 +96,8 @@ export const VoiceAssistantFullScreen: React.FC<VoiceAssistantFullScreenProps> =
       setViewStep('listening');
       setTranscript('');
       setInterimText('');
+      setRecordingError(null);
+      setRecordingSeconds(0);
       setParsedReminders([]);
       setParsedSummary('');
       setAssistantSpokenResponse(null);
@@ -79,8 +107,15 @@ export const VoiceAssistantFullScreen: React.FC<VoiceAssistantFullScreenProps> =
     }
   }, [isOpen]);
 
+  const formatSeconds = (sec: number): string => {
+    const mins = Math.floor(sec / 60);
+    const s = sec % 60;
+    return `${mins.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+  };
+
   const startListeningProcess = async () => {
     try {
+      setRecordingError(null);
       playMicStartSound();
       setIsListening(true);
 
@@ -90,6 +125,10 @@ export const VoiceAssistantFullScreen: React.FC<VoiceAssistantFullScreenProps> =
             if (isFinal) {
               setTranscript(text);
               setInterimText('');
+              // If final text is received directly, analyze it
+              if (text.trim()) {
+                handleAnalyzeText(text.trim());
+              }
             } else {
               setInterimText(text);
             }
@@ -102,25 +141,40 @@ export const VoiceAssistantFullScreen: React.FC<VoiceAssistantFullScreenProps> =
         },
         onError: (err) => {
           console.warn('[VoiceAssistant] Speech error:', err);
+          if (isMountedRef.current) {
+            setRecordingError(err.message || 'Səs qəbulu zamanı xəta baş verdi.');
+            setIsListening(false);
+          }
         },
         onEnd: () => {
-          // Handled gracefully
+          if (isMountedRef.current) {
+            setIsListening(false);
+          }
         },
       });
-    } catch (err) {
-      console.warn('[VoiceAssistant] Mic stream error:', err);
+    } catch (err: any) {
+      console.warn('[VoiceAssistant] Mic start error:', err);
+      if (isMountedRef.current) {
+        setIsListening(false);
+        setRecordingError(err.message || 'Mikrofona qoşulmaq mümkün olmadı.');
+      }
     }
   };
 
-  const stopListeningProcess = async () => {
+  const stopListeningProcess = async (): Promise<string> => {
     setIsListening(false);
     try {
       const finalRecorded = await speechManager.stopListening();
-      if (finalRecorded && !transcript) {
+      if (finalRecorded && isMountedRef.current && !transcript) {
         setTranscript(finalRecorded);
       }
-    } catch (e) {
+      return finalRecorded || '';
+    } catch (e: any) {
       console.warn('[VoiceAssistant] Stop error:', e);
+      if (isMountedRef.current && e.message) {
+        setRecordingError(e.message);
+      }
+      return '';
     }
   };
 
@@ -129,7 +183,6 @@ export const VoiceAssistantFullScreen: React.FC<VoiceAssistantFullScreenProps> =
 
     if (!textToAnalyze) {
       // If live transcript empty, trigger provider stop to check audio fallback buffer
-      setIsProcessing(true);
       const fallbackResult = await speechManager.stopListening();
       setIsListening(false);
       if (fallbackResult) {
@@ -145,61 +198,48 @@ export const VoiceAssistantFullScreen: React.FC<VoiceAssistantFullScreenProps> =
       return;
     }
 
-    setIsProcessing(true);
+    // Check if deterministic local fast path handles this instantly
+    const currentReminders = reminderService.getAll();
+    const evaluation = intelligentRouter.evaluateLocalFastPath(textToAnalyze, currentReminders);
 
-    try {
-      // 1. Send to AI action & reminder parser
-      const currentReminders = reminderService.getAll();
-      const actionData = await apiClient.executeAiAction(
-        textToAnalyze,
-        currentReminders,
-        new Date().toISOString(),
-        Intl.DateTimeFormat().resolvedOptions().timeZone
-      );
+    if (evaluation.handledLocally && evaluation.confidence >= 0.8) {
+      console.log(`[ROUTER-UI] Instant local execution for "${textToAnalyze}" (${evaluation.action})`);
+      const payload = evaluation.payload;
 
-      if (actionData.success && actionData.actionPayload) {
-        const payload = actionData.actionPayload;
-
-        // If the intent is a schedule inquiry or direct action (e.g. "Sabah nə planım var?", "Cümə görüşümü sil")
-        if (
-          payload.action === 'get_daily_schedule' ||
-          payload.action === 'get_weekly_schedule' ||
-          payload.action === 'search_reminders' ||
-          payload.action === 'general_chat'
-        ) {
-          setAssistantSpokenResponse(payload.responseMessage);
-          speakText(payload.responseMessage);
-          setViewStep('answer');
-          setIsProcessing(false);
-          return;
-        }
-
-        // If it's update/delete/complete action
-        if (
-          payload.action === 'update_reminder' ||
-          payload.action === 'delete_reminder' ||
-          payload.action === 'complete_reminder'
-        ) {
-          const result = reminderService.executeAIAction(payload);
-          playSuccessSound();
-          setAssistantSpokenResponse(result.message);
-          speakText(result.message);
-          setViewStep('answer');
-          setIsProcessing(false);
-          return;
-        }
+      if (
+        payload.action === 'get_daily_schedule' ||
+        payload.action === 'get_weekly_schedule' ||
+        payload.action === 'search_reminders' ||
+        payload.action === 'general_chat'
+      ) {
+        setAssistantSpokenResponse(payload.responseMessage);
+        speakText(payload.responseMessage);
+        setViewStep('answer');
+        setIsProcessing(false);
+        return;
       }
 
-      // If it's reminder creation, perform deep multi-task parsing
-      const parseData = await apiClient.parseReminder(
-        textToAnalyze,
-        new Date().toISOString(),
-        Intl.DateTimeFormat().resolvedOptions().timeZone
-      );
-
-      if (parseData.success && Array.isArray(parseData.reminders) && parseData.reminders.length > 0) {
+      if (
+        payload.action === 'update_reminder' ||
+        payload.action === 'delete_reminder' ||
+        payload.action === 'complete_reminder'
+      ) {
+        const result = reminderService.executeAIAction(payload);
         playSuccessSound();
-        const editableList: EditableExtractedReminder[] = parseData.reminders.map((r: any, idx: number) => ({
+        setAssistantSpokenResponse(result.message);
+        speakText(result.message);
+        setViewStep('answer');
+        setIsProcessing(false);
+        return;
+      }
+
+      if (
+        (payload.action === 'create_reminder' || payload.action === 'create_multiple_reminders') &&
+        payload.remindersToCreate &&
+        payload.remindersToCreate.length > 0
+      ) {
+        playSuccessSound();
+        const editableList: EditableExtractedReminder[] = payload.remindersToCreate.map((r: any, idx: number) => ({
           id: `extracted-${Date.now()}-${idx}`,
           title: r.title,
           description: r.description || '',
@@ -210,9 +250,68 @@ export const VoiceAssistantFullScreen: React.FC<VoiceAssistantFullScreenProps> =
           inferredTime: Boolean(r.inferredTime),
           timeConfidence: r.timeConfidence || (r.inferredTime ? 'inferred' : 'exact'),
         }));
-
         setParsedReminders(editableList);
-        setParsedSummary(parseData.summary || `${editableList.length} xatırlatma tapdım`);
+        setParsedSummary(payload.responseMessage || `${editableList.length} xatırlatma tapdım`);
+        setViewStep('review');
+        setIsProcessing(false);
+        return;
+      }
+    }
+
+    // Only show AI loading spinner if actually calling AI path
+    setIsProcessing(true);
+
+    try {
+      const routeResult = await intelligentRouter.route(textToAnalyze, currentReminders, {
+        userNowISO: new Date().toISOString(),
+        userTimezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        executeDirectly: false,
+      });
+
+      const payload = routeResult.actionPayload;
+
+      if (
+        payload.action === 'get_daily_schedule' ||
+        payload.action === 'get_weekly_schedule' ||
+        payload.action === 'search_reminders' ||
+        payload.action === 'general_chat'
+      ) {
+        setAssistantSpokenResponse(payload.responseMessage);
+        speakText(payload.responseMessage);
+        setViewStep('answer');
+        setIsProcessing(false);
+        return;
+      }
+
+      if (
+        payload.action === 'update_reminder' ||
+        payload.action === 'delete_reminder' ||
+        payload.action === 'complete_reminder'
+      ) {
+        const result = reminderService.executeAIAction(payload);
+        playSuccessSound();
+        setAssistantSpokenResponse(result.message);
+        speakText(result.message);
+        setViewStep('answer');
+        setIsProcessing(false);
+        return;
+      }
+
+      if (payload.remindersToCreate && payload.remindersToCreate.length > 0) {
+        playSuccessSound();
+        const editableList: EditableExtractedReminder[] = payload.remindersToCreate.map((r: any, idx: number) => ({
+          id: `extracted-${Date.now()}-${idx}`,
+          title: r.title,
+          description: r.description || '',
+          dueDateTime: r.dueDateTime,
+          category: r.category || 'other',
+          recurrence: r.recurrence || 'none',
+          priority: r.priority || 'medium',
+          inferredTime: Boolean(r.inferredTime),
+          timeConfidence: r.timeConfidence || (r.inferredTime ? 'inferred' : 'exact'),
+        }));
+        setParsedReminders(editableList);
+        setParsedSummary(payload.responseMessage || `${editableList.length} xatırlatma tapdım`);
         setViewStep('review');
       } else {
         const single: EditableExtractedReminder = {
@@ -314,18 +413,28 @@ export const VoiceAssistantFullScreen: React.FC<VoiceAssistantFullScreenProps> =
           <>
             {/* Top Prompt Section */}
             <div className="text-center pt-4">
-              <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full border border-violet-500/30 bg-violet-500/10 text-[11px] font-semibold text-violet-300 mb-3">
-                <span className="h-1.5 w-1.5 rounded-full bg-violet-400 animate-ping" />
-                {isListening ? 'Azərbaycan dilində dinləyirəm' : 'Mikrofon dayandırılıb'}
+              <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full border border-violet-500/30 bg-violet-500/10 text-xs font-semibold text-violet-300 mb-3 shadow-sm">
+                <span className={`h-2 w-2 rounded-full ${isListening ? 'bg-rose-400 animate-ping' : 'bg-slate-500'}`} />
+                <span>{isListening ? `Dinləyirəm... (${formatSeconds(recordingSeconds)})` : isProcessing ? 'AI Emal Edir...' : 'Mikrofon dayandırılıb'}</span>
               </div>
 
               <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">
-                Səni dinləyirəm...
+                {isListening ? 'Dinləyirəm...' : 'Səslə idarə et'}
               </h2>
 
               <p className="text-xs text-slate-400 mt-1 max-w-[280px] mx-auto">
-                Xatırlatmalarınızı və ya sualınızı sərbəst şəkildə söyləyin.
+                {isListening
+                  ? 'Planlarınızı və ya xatırlatmalarınızı söyləyin, bitirdikdə mikrofona toxunun.'
+                  : 'Danışmağa başlamaq üçün mikrofona toxunun.'}
               </p>
+
+              {/* Localized Error Display */}
+              {recordingError && (
+                <div className="mt-2.5 mx-auto max-w-sm rounded-xl border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-xs text-rose-300 flex items-center justify-center gap-1.5">
+                  <AlertCircle className="h-3.5 w-3.5 shrink-0 text-rose-400" />
+                  <span>{recordingError}</span>
+                </div>
+              )}
             </div>
 
             {/* Center Dynamic AI Orb & Audio Waves */}
@@ -353,16 +462,19 @@ export const VoiceAssistantFullScreen: React.FC<VoiceAssistantFullScreenProps> =
                 {/* Hero Mic Action Orb */}
                 <button
                   id="voice-screen-toggle-mic"
-                  onClick={() => {
+                  onClick={async () => {
                     if (isListening) {
-                      stopListeningProcess();
+                      const text = await stopListeningProcess();
+                      if (text.trim()) {
+                        handleAnalyzeText(text.trim());
+                      }
                     } else {
                       startListeningProcess();
                     }
                   }}
                   className={`relative z-10 flex h-24 w-24 items-center justify-center rounded-full shadow-2xl transition-all duration-300 active:scale-95 border-2 border-white/20 ${
                     isListening
-                      ? 'bg-gradient-to-tr from-violet-600 via-indigo-600 to-purple-600 text-white shadow-violet-500/50 ring-4 ring-violet-500/25 animate-pulse-glow'
+                      ? 'bg-gradient-to-tr from-rose-600 via-violet-600 to-indigo-600 text-white shadow-rose-500/40 ring-4 ring-rose-500/25 animate-pulse-glow'
                       : 'bg-slate-800 text-slate-400 border-white/5 hover:bg-slate-700'
                   }`}
                 >
@@ -381,7 +493,9 @@ export const VoiceAssistantFullScreen: React.FC<VoiceAssistantFullScreenProps> =
                     “{transcript} {interimText}”
                   </p>
                 ) : (
-                  <p className="text-xs text-slate-500 font-medium">Danışmağınızı gözləyirəm...</p>
+                  <p className="text-xs text-slate-500 font-medium">
+                    {isListening ? 'Danışın... Səs qeyd olunur' : 'Danışmaq üçün mikrofona toxunun'}
+                  </p>
                 )}
               </div>
             </div>
