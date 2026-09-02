@@ -9,6 +9,11 @@ const config: CapacitorConfig = {
     cleartext: true,
   },
   plugins: {
+    Keyboard: {
+      resize: 'body',
+      style: 'DARK',
+      resizeOnFullScreen: true,
+    },
     LocalNotifications: {
       smallIcon: 'ic_stat_unutma_reminder',
       iconColor: '#7C3AED',

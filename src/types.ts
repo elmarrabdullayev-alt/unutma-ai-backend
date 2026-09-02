@@ -115,3 +115,59 @@ export interface CategoryMeta {
   borderColor: string;
   icon: string;
 }
+
+// Focus Mode Types
+export type FocusSessionStatus = 'running' | 'paused' | 'completed' | 'stopped';
+
+export type FocusAudioPreset =
+  | 'silent'
+  | 'lofi'
+  | 'rain'
+  | 'cafe'
+  | 'white-noise'
+  | 'deep-focus'
+  | 'nature';
+
+export interface FocusAudioOption {
+  id: FocusAudioPreset;
+  name: string;
+  subtitle?: string;
+  iconName: string;
+  fileName?: string;
+}
+
+export interface FocusAudioSettings {
+  preset: FocusAudioPreset;
+  volume: number; // 0 to 1
+  autoPlay: boolean;
+}
+
+export interface FocusSession {
+  id: string;
+  taskTitle: string;
+  linkedReminderId?: string;
+  plannedMinutes: number;
+  startedAt: string; // ISO string
+  expectedEndAt: string; // ISO string
+  pausedAt?: string | null; // ISO string or null
+  totalPausedMs: number;
+  status: FocusSessionStatus;
+  audioPreset: string;
+}
+
+export interface FocusHistoryItem {
+  id: string;
+  taskTitle: string;
+  linkedReminderId?: string;
+  startedAt: string;
+  endedAt: string;
+  plannedMinutes: number;
+  actualMinutes: number;
+  completed: boolean;
+  interrupted: boolean;
+}
+
+export interface FocusTodayStats {
+  count: number;
+  totalMinutes: number;
+}

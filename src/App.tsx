@@ -12,9 +12,12 @@ import { ManualAddModal } from './components/ManualAddModal';
 import { ActiveAlarmBanner } from './components/ActiveAlarmBanner';
 import { AnimatedSplash } from './components/AnimatedSplash';
 import { OnboardingFlow } from './components/onboarding/OnboardingFlow';
+import { FocusModal } from './components/focus/FocusModal';
 import { reminderService } from './services/reminderService';
 import { notificationService } from './services/notificationService';
 import { userProfileService } from './services/userProfileService';
+import { focusService } from './services/focusService';
+import { FocusSession } from './types';
 
 export default function App() {
   const [reminders, setReminders] = useState<Reminder[]>(() => reminderService.getAll());
@@ -22,6 +25,11 @@ export default function App() {
   const [currentTab, setCurrentTab] = useState<MobileTab>('home');
   const [isVoiceFullScreenOpen, setIsVoiceFullScreenOpen] = useState(false);
   const [isManualModalOpen, setIsManualModalOpen] = useState(false);
+  const [isFocusModalOpen, setIsFocusModalOpen] = useState(false);
+  const [focusInitialReminder, setFocusInitialReminder] = useState<Reminder | null>(null);
+  const [activeFocusSession, setActiveFocusSession] = useState<FocusSession | null>(() =>
+    focusService.getActiveSession()
+  );
   const [editingReminder, setEditingReminder] = useState<Reminder | null>(null);
   const [activeAlarmReminder, setActiveAlarmReminder] = useState<Reminder | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -54,6 +62,15 @@ export default function App() {
       setActiveAlarmReminder(alarmReminder);
     });
 
+    // Initialize focusService
+    focusService.init().then((session) => {
+      setActiveFocusSession(session);
+    });
+
+    const unsubFocus = focusService.subscribe((session) => {
+      setActiveFocusSession(session);
+    });
+
     // Listen for notification tap / action deep links
     const unsubAction = notificationService.onNotificationAction((reminderId, actionId) => {
       if (actionId === 'complete') {
@@ -81,9 +98,15 @@ export default function App() {
       unsubProfile();
       unsubscribe();
       unsubAlarm();
+      unsubFocus();
       unsubAction();
     };
   }, []);
+
+  const handleOpenFocus = (reminder?: Reminder) => {
+    setFocusInitialReminder(reminder || null);
+    setIsFocusModalOpen(true);
+  };
 
   const handleSplashComplete = () => {
     setShowSplash(false);
@@ -154,7 +177,7 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-[#060911] text-slate-50 font-sans selection:bg-violet-500/30 selection:text-violet-200 flex justify-center">
+    <div className="min-h-[100dvh] w-full bg-[#090D16] text-slate-50 font-sans selection:bg-violet-500/30 selection:text-violet-200 flex justify-center overflow-x-hidden">
       {/* 1. Animated Startup Splash */}
       {showSplash && <AnimatedSplash onComplete={handleSplashComplete} />}
 
@@ -168,7 +191,7 @@ export default function App() {
 
       {/* 3. Main Application Canvas */}
       {!showSplash && !showOnboarding && (
-        <div className="w-full max-w-md min-h-screen bg-[#090D16] flex flex-col relative shadow-2xl safe-top">
+        <div className="w-full max-w-md min-h-[100dvh] bg-[#090D16] flex flex-col relative shadow-2xl safe-top">
           {/* Active Alarm Banner */}
           <ActiveAlarmBanner
             activeAlarmReminder={activeAlarmReminder}
@@ -209,6 +232,8 @@ export default function App() {
                 onSnooze={handleSnooze}
                 onOpenVoice={() => setIsVoiceFullScreenOpen(true)}
                 onOpenManualAdd={() => setIsManualModalOpen(true)}
+                onOpenFocus={handleOpenFocus}
+                activeFocusSession={activeFocusSession}
                 notificationPermission={notificationPermission}
                 onRequestNotificationPermission={handleRequestNotification}
               />
@@ -221,6 +246,7 @@ export default function App() {
                 onDelete={handleDeleteReminder}
                 onEdit={(r) => setEditingReminder(r)}
                 onSnooze={handleSnooze}
+                onFocus={handleOpenFocus}
                 onOpenVoice={() => setIsVoiceFullScreenOpen(true)}
                 onOpenManualAdd={() => setIsManualModalOpen(true)}
               />
@@ -271,6 +297,18 @@ export default function App() {
             isOpen={isManualModalOpen}
             onClose={() => setIsManualModalOpen(false)}
             onRemindersCreated={handleRemindersCreated}
+          />
+
+          {/* Focus Mode Modal */}
+          <FocusModal
+            isOpen={isFocusModalOpen}
+            onClose={() => {
+              setIsFocusModalOpen(false);
+              setFocusInitialReminder(null);
+            }}
+            reminders={reminders}
+            initialReminder={focusInitialReminder}
+            onToggleCompleteReminder={handleToggleComplete}
           />
         </div>
       )}

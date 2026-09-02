@@ -8,6 +8,7 @@ import {
   Trash2,
   Volume2,
   Clock3,
+  Flame,
 } from 'lucide-react';
 import { Reminder } from '../types';
 import { CATEGORIES } from '../utils/categoryMeta';
@@ -20,6 +21,7 @@ interface MobileReminderCardProps {
   onDelete: (id: string) => void;
   onEdit: (reminder: Reminder) => void;
   onSnooze: (id: string, minutes: number) => void;
+  onFocus?: (reminder: Reminder) => void;
   variant?: 'overdue' | 'now' | 'later' | 'default';
 }
 
@@ -29,6 +31,7 @@ export const MobileReminderCard: React.FC<MobileReminderCardProps> = ({
   onDelete,
   onEdit,
   onSnooze,
+  onFocus,
   variant = 'default',
 }) => {
   const [showMenu, setShowMenu] = useState(false);
@@ -200,6 +203,20 @@ export const MobileReminderCard: React.FC<MobileReminderCardProps> = ({
                 className="absolute right-0 top-9 z-30 w-44 rounded-2xl border border-white/10 bg-[#0F1420]/98 p-1.5 shadow-2xl backdrop-blur-xl animate-fade-in"
                 onClick={(e) => e.stopPropagation()}
               >
+                {!reminder.isCompleted && onFocus && (
+                  <button
+                    id={`focus-mobile-btn-${reminder.id}`}
+                    onClick={() => {
+                      setShowMenu(false);
+                      onFocus(reminder);
+                    }}
+                    className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-xs font-bold text-violet-300 hover:bg-violet-950/40 transition-colors"
+                  >
+                    <Flame className="h-3.5 w-3.5 text-violet-400" />
+                    Fokuslan
+                  </button>
+                )}
+
                 <button
                   id={`edit-mobile-btn-${reminder.id}`}
                   onClick={() => {

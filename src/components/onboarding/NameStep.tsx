@@ -42,8 +42,18 @@ export const NameStep: React.FC<NameStepProps> = ({
   const isFirstValid = firstName.trim().length > 0;
   const isLastValid = lastName.trim().length > 0;
 
+  const handleInputFocus = (e: React.FocusEvent<HTMLInputElement>) => {
+    // Smoothly scroll active input into center view on mobile keyboard open
+    setTimeout(() => {
+      e.target.scrollIntoView({
+        behavior: 'smooth',
+        block: 'center',
+      });
+    }, 250);
+  };
+
   return (
-    <div className="relative flex flex-col justify-between h-full min-h-[80vh] px-6 py-8 select-none">
+    <div className="relative flex flex-col justify-between flex-1 px-6 py-6 min-h-0 bg-[#090D16] select-none">
       {/* Background ambient glow */}
       <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-violet-600/10 rounded-full blur-3xl pointer-events-none" />
 
@@ -93,6 +103,7 @@ export const NameStep: React.FC<NameStepProps> = ({
                   setFirstName(e.target.value);
                   if (error) setError(null);
                 }}
+                onFocus={handleInputFocus}
                 onBlur={() => setTouched((prev) => ({ ...prev, first: true }))}
                 placeholder="Məsələn: Elmar"
                 autoFocus
@@ -124,6 +135,7 @@ export const NameStep: React.FC<NameStepProps> = ({
                   setLastName(e.target.value);
                   if (error) setError(null);
                 }}
+                onFocus={handleInputFocus}
                 onBlur={() => setTouched((prev) => ({ ...prev, last: true }))}
                 placeholder="Məsələn: Abdullayev"
                 className={`w-full h-14 px-4 pl-11 rounded-2xl bg-[#101524] border text-white placeholder-slate-500 text-base font-medium outline-none transition-all duration-200 ${
@@ -150,7 +162,7 @@ export const NameStep: React.FC<NameStepProps> = ({
       </div>
 
       {/* CTA Button */}
-      <div className="pt-6">
+      <div className="pt-6 pb-2 mt-auto">
         <button
           type="button"
           onClick={() => handleSubmit()}

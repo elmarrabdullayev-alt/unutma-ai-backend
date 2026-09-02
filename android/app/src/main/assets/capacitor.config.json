@@ -1,0 +1,29 @@
+{
+	"appId": "ai.unutma.app",
+	"appName": "Unutma AI",
+	"webDir": "dist",
+	"server": {
+		"androidScheme": "https",
+		"cleartext": true
+	},
+	"plugins": {
+		"Keyboard": {
+			"resize": "body",
+			"style": "DARK",
+			"resizeOnFullScreen": true
+		},
+		"LocalNotifications": {
+			"smallIcon": "ic_stat_unutma_reminder",
+			"iconColor": "#7C3AED",
+			"sound": "reminder_alarm.wav"
+		},
+		"SplashScreen": {
+			"launchShowDuration": 1500,
+			"launchAutoHide": true,
+			"backgroundColor": "#090D16",
+			"androidSplashResourceName": "splash",
+			"androidScaleType": "CENTER_CROP",
+			"showSpinner": false
+		}
+	}
+}

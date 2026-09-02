@@ -8,20 +8,16 @@ import {
   ChevronRight,
   Smartphone,
   Check,
-  Server,
-  Database,
   Calendar,
   Sparkles,
   Edit3,
   RotateCcw,
   X,
   Heart,
-  HelpCircle,
-  Shield,
+  ShieldCheck,
+  Info,
 } from 'lucide-react';
 import { Reminder, UserProfile, UserGender } from '../types';
-import { reminderService } from '../services/reminderService';
-import { notificationService } from '../services/notificationService';
 import { userProfileService } from '../services/userProfileService';
 
 interface ProfileScreenProps {
@@ -73,11 +69,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
     return unsub;
   }, []);
 
-  const completedCount = reminders.filter((r) => r.isCompleted).length;
   const totalCount = reminders.length;
-
-  const storageProviderName = reminderService.getStorageProviderName();
-  const notificationProviderName = notificationService.getProviderName();
 
   const fullName = profile
     ? `${profile.firstName} ${profile.lastName}`.trim()
@@ -149,7 +141,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
     const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(reminders, null, 2));
     const downloadAnchor = document.createElement('a');
     downloadAnchor.setAttribute('href', dataStr);
-    downloadAnchor.setAttribute('download', `unutma_ai_yedek_${new Date().toISOString().slice(0, 10)}.json`);
+    downloadAnchor.setAttribute('download', `unutma_ai_ehtiyat_nusxe_${new Date().toISOString().slice(0, 10)}.json`);
     document.body.appendChild(downloadAnchor);
     downloadAnchor.click();
     downloadAnchor.remove();
@@ -184,13 +176,13 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
 
   return (
     <div className="w-full px-4 pt-2 pb-24 space-y-5">
-      {/* Native App Top Header */}
+      {/* Top Header */}
       <div>
         <h1 className="text-2xl font-black tracking-tight text-white">
-          Profil və Tənzimləmələr
+          Tətbiq ayarları
         </h1>
         <p className="text-xs font-semibold text-slate-400 mt-0.5">
-          Tətbiq parametrləri və şəxsi seçimlər
+          Tənzimləmələr və şəxsi seçimlər
         </p>
       </div>
 
@@ -208,13 +200,13 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
         <button
           onClick={handleOpenEdit}
           className="flex h-9 w-9 items-center justify-center rounded-xl bg-violet-500/10 text-violet-400 border border-violet-500/20 active:scale-95 transition-transform"
-          title="Profili redaktə et"
+          title="Şəxsi məlumatları redaktə et"
         >
           <Edit3 className="h-4 w-4" />
         </button>
       </div>
 
-      {/* SETTINGS GROUP 1: ŞƏXSİ MƏLUMATLAR */}
+      {/* SECTION 1: ŞƏXSİ MƏLUMATLAR */}
       <div className="space-y-1.5">
         <div className="flex items-center justify-between px-1">
           <h3 className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400">
@@ -292,11 +284,17 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
         </div>
       </div>
 
-      {/* SETTINGS GROUP 2: BİLDİRİŞLƏR */}
+      {/* SECTION A: BİLDİRİŞLƏR */}
       <div className="space-y-1.5">
-        <h3 className="px-1 text-[11px] font-extrabold uppercase tracking-wider text-slate-400">
-          Bildirişlər
-        </h3>
+        <div className="px-1">
+          <h3 className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400">
+            Bildirişlər
+          </h3>
+          <p className="text-[10px] text-slate-400 mt-0.5">
+            Xatırlatmaları vaxtında almaq üçün bildiriş ayarlarını idarə et.
+          </p>
+        </div>
+
         <div className="rounded-2xl border border-white/5 bg-[#101524] overflow-hidden divide-y divide-white/5">
           <div className="flex items-center justify-between p-3.5">
             <div className="flex items-center gap-3">
@@ -304,7 +302,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                 <Bell className="h-4 w-4" />
               </div>
               <div>
-                <p className="text-xs font-semibold text-white">Push Bildirişlər</p>
+                <p className="text-xs font-semibold text-white">Bildirişlər</p>
                 <p className="text-[10px] text-slate-400">
                   {notificationPermission === 'granted' ? 'Aktivdir' : 'İcazə tələb olunur'}
                 </p>
@@ -324,23 +322,15 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
               </button>
             )}
           </div>
-        </div>
-      </div>
 
-      {/* SETTINGS GROUP 3: SƏS VƏ AI */}
-      <div className="space-y-1.5">
-        <h3 className="px-1 text-[11px] font-extrabold uppercase tracking-wider text-slate-400">
-          Səs və AI
-        </h3>
-        <div className="rounded-2xl border border-white/5 bg-[#101524] overflow-hidden divide-y divide-white/5">
           <div className="flex items-center justify-between p-3.5">
             <div className="flex items-center gap-3">
               <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-violet-500/15 text-violet-400">
                 <Volume2 className="h-4 w-4" />
               </div>
               <div>
-                <p className="text-xs font-semibold text-white">Səs effektləri və TTS</p>
-                <p className="text-[10px] text-slate-400">Azərbaycan dilində səsli oxuma</p>
+                <p className="text-xs font-semibold text-white">Səs effektləri</p>
+                <p className="text-[10px] text-slate-400">Bildirişlərdə və tətbiqdə səs</p>
               </div>
             </div>
             <button
@@ -363,8 +353,8 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                 <Smartphone className="h-4 w-4" />
               </div>
               <div>
-                <p className="text-xs font-semibold text-white">Toxunma hissi (Haptics)</p>
-                <p className="text-[10px] text-slate-400">Düymə toxunuşlarında titrəmə</p>
+                <p className="text-xs font-semibold text-white">Toxunma hissi (Titrəmə)</p>
+                <p className="text-[10px] text-slate-400">Düymə toxunuşlarında geri bildiriş</p>
               </div>
             </div>
             <button
@@ -383,10 +373,10 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
         </div>
       </div>
 
-      {/* SETTINGS GROUP 4: MƏLUMATLARIN EHTİYAT NÜSXƏSİ */}
+      {/* SECTION B: MƏLUMATLAR VƏ EHTİYAT NÜSXƏ */}
       <div className="space-y-1.5">
         <h3 className="px-1 text-[11px] font-extrabold uppercase tracking-wider text-slate-400">
-          Məlumatların Ehtiyat Nüsxəsi
+          Məlumatlar və ehtiyat nüsxə
         </h3>
         <div className="rounded-2xl border border-white/5 bg-[#101524] overflow-hidden divide-y divide-white/5">
           <button
@@ -398,13 +388,13 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                 <Download className="h-4 w-4" />
               </div>
               <div>
-                <p className="text-xs font-semibold text-white">Yedəkləmə (JSON İxrac)</p>
-                <p className="text-[10px] text-slate-400">Bütün xatırlatmaları cihaza yüklə</p>
+                <p className="text-xs font-semibold text-white">Ehtiyat nüsxə yarat</p>
+                <p className="text-[10px] text-slate-400">Xatırlatmalarını fayl şəklində yadda saxla.</p>
               </div>
             </div>
             {backupSuccess ? (
               <span className="text-[11px] font-bold text-emerald-400 flex items-center gap-1">
-                <Check className="h-3 w-3" /> Yükləndi
+                <Check className="h-3 w-3" /> Yadda saxlanıldı
               </span>
             ) : (
               <ChevronRight className="h-4 w-4 text-slate-500" />
@@ -417,8 +407,8 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                 <Upload className="h-4 w-4" />
               </div>
               <div>
-                <p className="text-xs font-semibold text-white">Bərpa et (JSON İdxal)</p>
-                <p className="text-[10px] text-slate-400">Əvvəlki ehtiyat nüsxəni yüklə</p>
+                <p className="text-xs font-semibold text-white">Bərpa et</p>
+                <p className="text-[10px] text-slate-400">Əvvəl saxladığın ehtiyat nüsxəni geri yüklə.</p>
               </div>
             </div>
             <input type="file" accept=".json" onChange={handleImportFile} className="hidden" />
@@ -427,13 +417,35 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
         </div>
       </div>
 
-      {/* SETTINGS GROUP 5: SİSTEM VƏ ONBOARDING TƏKRAR */}
+      {/* SECTION C: MƏLUMATLARIN SAXLANMASI */}
       <div className="space-y-1.5">
         <h3 className="px-1 text-[11px] font-extrabold uppercase tracking-wider text-slate-400">
-          Sistem və Təcrübə
+          Məlumatların saxlanması
         </h3>
-        <div className="rounded-2xl border border-white/5 bg-[#101524] overflow-hidden divide-y divide-white/5">
-          {onReplayOnboarding && (
+        <div className="rounded-2xl border border-white/5 bg-[#101524] p-3.5">
+          <div className="flex items-start gap-3">
+            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-violet-500/15 text-violet-400 shrink-0 mt-0.5">
+              <ShieldCheck className="h-4 w-4" />
+            </div>
+            <div className="space-y-1">
+              <p className="text-xs font-semibold text-white">
+                Xatırlatmaların və şəxsi məlumatların bu cihazda saxlanılır.
+              </p>
+              <p className="text-[11px] text-slate-400 leading-relaxed">
+                Məlumatların icazən olmadan avtomatik paylaşılmır.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* SECTION D: İLK TANIŞLIQ EKRANLARI */}
+      {onReplayOnboarding && (
+        <div className="space-y-1.5">
+          <h3 className="px-1 text-[11px] font-extrabold uppercase tracking-wider text-slate-400">
+            İlk tanışlıq ekranları
+          </h3>
+          <div className="rounded-2xl border border-white/5 bg-[#101524] overflow-hidden">
             <button
               onClick={onReplayOnboarding}
               className="flex w-full items-center justify-between p-3.5 hover:bg-slate-800/40 text-left transition-colors"
@@ -443,40 +455,37 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                   <RotateCcw className="h-4 w-4" />
                 </div>
                 <div>
-                  <p className="text-xs font-semibold text-white">Onboarding-i yenidən göstər</p>
-                  <p className="text-[10px] text-slate-400">Giriş və tanışlıq ekranlarını təkrarla</p>
+                  <p className="text-xs font-semibold text-white">İlk tanışlıq ekranlarını yenidən göstər</p>
+                  <p className="text-[10px] text-slate-400">Giriş və tanışlıq addımlarını yenidən gör.</p>
                 </div>
               </div>
               <ChevronRight className="h-4 w-4 text-slate-500" />
             </button>
-          )}
+          </div>
+        </div>
+      )}
 
-          <div className="p-3.5 space-y-2.5">
-            <div className="flex items-center justify-between text-xs">
-              <span className="text-slate-400 flex items-center gap-1.5">
-                <Database className="h-3.5 w-3.5 text-violet-400" /> Yaddaş Provayderi
-              </span>
-              <span className="font-mono text-[11px] text-violet-300 font-bold">{storageProviderName}</span>
+      {/* SECTION E: TƏTBİQ HAQQINDA */}
+      <div className="space-y-1.5">
+        <h3 className="px-1 text-[11px] font-extrabold uppercase tracking-wider text-slate-400">
+          Tətbiq haqqında
+        </h3>
+        <div className="rounded-2xl border border-white/5 bg-[#101524] p-3.5 space-y-2.5">
+          <div className="flex items-start gap-3">
+            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-slate-800 text-slate-300 shrink-0 mt-0.5">
+              <Info className="h-4 w-4 text-violet-400" />
             </div>
+            <div>
+              <p className="text-xs font-bold text-white">Unutma AI</p>
+              <p className="text-[11px] text-slate-400 leading-relaxed mt-0.5">
+                Azərbaycan dilində süni intellekt dəstəkli səsli xatırlatma və şəxsi yaddaş köməkçisi.
+              </p>
+            </div>
+          </div>
 
-            <div className="flex items-center justify-between text-xs">
-              <span className="text-slate-400 flex items-center gap-1.5">
-                <Bell className="h-3.5 w-3.5 text-indigo-400" /> Bildiriş Provayderi
-              </span>
-              <span className="font-mono text-[11px] text-indigo-300 font-bold">{notificationProviderName}</span>
-            </div>
-
-            <div className="flex items-center justify-between text-xs">
-              <span className="text-slate-400 flex items-center gap-1.5">
-                <Server className="h-3.5 w-3.5 text-pink-400" /> AI Modeli və Məxfilik
-              </span>
-              <span className="text-[11px] font-semibold text-emerald-400">Lokal Saxlama & Proxy</span>
-            </div>
-
-            <div className="flex items-center justify-between text-xs pt-1 border-t border-white/5">
-              <span className="text-slate-400">Versiya</span>
-              <span className="font-semibold text-slate-300">2.5.0 (Personalized Onboarding)</span>
-            </div>
+          <div className="flex items-center justify-between text-xs pt-2.5 border-t border-white/5">
+            <span className="text-slate-400">Versiya</span>
+            <span className="font-semibold text-slate-300">2.5.0</span>
           </div>
         </div>
       </div>

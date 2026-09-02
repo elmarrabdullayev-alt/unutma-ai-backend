@@ -39,9 +39,9 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
   };
 
   return (
-    <div className="w-full max-w-md min-h-screen bg-[#090D16] flex flex-col justify-center relative overflow-hidden safe-top safe-bottom">
+    <div className="w-full max-w-md min-h-[100dvh] bg-[#090D16] flex flex-col relative overflow-y-auto overflow-x-hidden safe-top safe-bottom">
       {/* Step Transition Wrapper */}
-      <div className="w-full flex-1 flex flex-col justify-center animate-fade-in transition-all duration-300">
+      <div className="w-full flex-1 flex flex-col animate-fade-in transition-all duration-300 min-h-0">
         {currentStep === 'welcome' && (
           <WelcomeStep onNext={() => setCurrentStep('name')} />
         )}

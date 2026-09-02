@@ -1,0 +1,180 @@
+/* Hourglass Focus Timer Animation Styles */
+
+@keyframes sand-stream-flow {
+  0% {
+    stroke-dashoffset: 0;
+    opacity: 0.85;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    stroke-dashoffset: -24;
+    opacity: 0.85;
+  }
+}
+
+@keyframes sand-grain-drop-1 {
+  0% {
+    transform: translateY(0px) scale(1);
+    opacity: 0;
+  }
+  15% {
+    opacity: 1;
+  }
+  85% {
+    opacity: 0.95;
+  }
+  100% {
+    transform: translateY(var(--drop-distance, 92px)) scale(0.75);
+    opacity: 0;
+  }
+}
+
+@keyframes sand-grain-drop-2 {
+  0% {
+    transform: translateY(0px) scale(0.9);
+    opacity: 0;
+  }
+  20% {
+    opacity: 1;
+  }
+  80% {
+    opacity: 0.9;
+  }
+  100% {
+    transform: translateY(var(--drop-distance, 92px)) scale(0.65);
+    opacity: 0;
+  }
+}
+
+@keyframes sand-grain-drop-3 {
+  0% {
+    transform: translateY(0px) scale(1.1);
+    opacity: 0;
+  }
+  15% {
+    opacity: 0.95;
+  }
+  85% {
+    opacity: 0.85;
+  }
+  100% {
+    transform: translateY(var(--drop-distance, 92px)) scale(0.8);
+    opacity: 0;
+  }
+}
+
+@keyframes sand-grain-drop-4 {
+  0% {
+    transform: translateY(0px) scale(0.95);
+    opacity: 0;
+  }
+  20% {
+    opacity: 1;
+  }
+  80% {
+    opacity: 0.9;
+  }
+  100% {
+    transform: translateY(var(--drop-distance, 92px)) scale(0.7);
+    opacity: 0;
+  }
+}
+
+@keyframes sand-splash-ripple {
+  0% {
+    transform: scale(0.75);
+    opacity: 0.4;
+  }
+  50% {
+    transform: scale(1.25);
+    opacity: 0.95;
+  }
+  100% {
+    transform: scale(0.75);
+    opacity: 0.4;
+  }
+}
+
+@keyframes ambient-glow-breathe {
+  0% {
+    opacity: 0.45;
+    transform: scale(0.96);
+  }
+  50% {
+    opacity: 0.8;
+    transform: scale(1.04);
+  }
+  100% {
+    opacity: 0.45;
+    transform: scale(0.96);
+  }
+}
+
+@keyframes completion-glow-pulse {
+  0% {
+    opacity: 0.5;
+    transform: scale(0.95);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.08);
+  }
+  100% {
+    opacity: 0.75;
+    transform: scale(1);
+  }
+}
+
+/* Active running animation classes */
+.hourglass-stream-active {
+  animation: sand-stream-flow 0.7s linear infinite;
+}
+
+.hourglass-grain-1 {
+  animation: sand-grain-drop-1 0.7s cubic-bezier(0.4, 0, 0.9, 0.7) infinite;
+}
+
+.hourglass-grain-2 {
+  animation: sand-grain-drop-2 0.8s cubic-bezier(0.4, 0, 0.9, 0.7) infinite 0.22s;
+}
+
+.hourglass-grain-3 {
+  animation: sand-grain-drop-3 0.75s cubic-bezier(0.4, 0, 0.9, 0.7) infinite 0.45s;
+}
+
+.hourglass-grain-4 {
+  animation: sand-grain-drop-4 0.85s cubic-bezier(0.4, 0, 0.9, 0.7) infinite 0.33s;
+}
+
+.hourglass-splash {
+  animation: sand-splash-ripple 1.5s ease-in-out infinite;
+}
+
+.hourglass-ambient-glow {
+  animation: ambient-glow-breathe 4s ease-in-out infinite;
+}
+
+.hourglass-completed-glow {
+  animation: completion-glow-pulse 1.8s ease-out forwards;
+}
+
+/* Paused state stops movement */
+.hourglass-paused * {
+  animation-play-state: paused !important;
+}
+
+/* Reduced motion preference support */
+@media (prefers-reduced-motion: reduce) {
+  .hourglass-stream-active,
+  .hourglass-grain-1,
+  .hourglass-grain-2,
+  .hourglass-grain-3,
+  .hourglass-grain-4,
+  .hourglass-splash,
+  .hourglass-ambient-glow,
+  .hourglass-completed-glow {
+    animation: none !important;
+  }
+}

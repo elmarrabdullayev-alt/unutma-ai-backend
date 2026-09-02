@@ -16,6 +16,7 @@ interface CalendarScreenProps {
   onDelete: (id: string) => void;
   onEdit: (reminder: Reminder) => void;
   onSnooze: (id: string, minutes: number) => void;
+  onFocus?: (reminder: Reminder) => void;
   onOpenVoice: () => void;
   onOpenManualAdd: () => void;
 }
@@ -33,6 +34,7 @@ export const CalendarScreen: React.FC<CalendarScreenProps> = ({
   onDelete,
   onEdit,
   onSnooze,
+  onFocus,
   onOpenVoice,
 }) => {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
@@ -167,6 +169,7 @@ export const CalendarScreen: React.FC<CalendarScreenProps> = ({
               onDelete={onDelete}
               onEdit={onEdit}
               onSnooze={onSnooze}
+              onFocus={onFocus}
             />
           ))
         ) : (

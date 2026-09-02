@@ -5,8 +5,9 @@ import {
   CheckCircle2,
   CalendarDays,
   Sparkles,
+  Flame,
 } from 'lucide-react';
-import { Reminder, UserProfile } from '../types';
+import { Reminder, UserProfile, FocusSession } from '../types';
 import { MobileReminderCard } from './MobileReminderCard';
 import {
   getGreetingAz,
@@ -26,6 +27,8 @@ interface HomeScreenProps {
   onSnooze: (id: string, minutes: number) => void;
   onOpenVoice: () => void;
   onOpenManualAdd: () => void;
+  onOpenFocus?: (reminder?: Reminder) => void;
+  activeFocusSession?: FocusSession | null;
   notificationPermission: NotificationPermission;
   onRequestNotificationPermission: () => void;
 }
@@ -40,6 +43,8 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   onSnooze,
   onOpenVoice,
   onOpenManualAdd,
+  onOpenFocus,
+  activeFocusSession,
   notificationPermission,
   onRequestNotificationPermission,
 }) => {
@@ -76,7 +81,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   const totalActiveCount = reminders.filter((r) => !r.isCompleted).length;
 
   return (
-    <div className="w-full px-4 pt-2 pb-6 space-y-5">
+    <div className="w-full px-4 pt-2 pb-6 space-y-4">
       {/* Native App Top Header (Lightweight, No web hero cards) */}
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
@@ -129,6 +134,56 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
         </div>
       </div>
 
+      {/* Focus Mode Entry / Active Session Banner */}
+      {activeFocusSession ? (
+        <div
+          onClick={() => onOpenFocus?.()}
+          className="flex items-center justify-between p-3.5 rounded-2xl bg-gradient-to-r from-violet-950/60 via-indigo-950/50 to-violet-950/60 border border-violet-500/30 shadow-lg cursor-pointer active:scale-[0.99] transition-all"
+        >
+          <div className="flex items-center gap-3 min-w-0 flex-1">
+            <div className="h-9 w-9 rounded-xl bg-violet-600 flex items-center justify-center text-white shadow-md shrink-0">
+              <Flame className="h-4 w-4 animate-pulse" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10px] font-extrabold uppercase tracking-wider text-violet-300">
+                  Fokus Aktivdir
+                </span>
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-ping" />
+              </div>
+              <p className="text-xs font-bold text-white truncate">
+                {activeFocusSession.taskTitle}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-1 text-xs font-bold text-violet-300 pl-2">
+            <span>Aç</span>
+            <span className="text-sm">›</span>
+          </div>
+        </div>
+      ) : (
+        <div
+          onClick={() => onOpenFocus?.()}
+          className="flex items-center justify-between p-3.5 rounded-2xl bg-[#111726] border border-white/5 hover:border-violet-500/20 shadow-sm cursor-pointer active:scale-[0.99] transition-all group"
+        >
+          <div className="flex items-center gap-3 min-w-0 flex-1">
+            <div className="h-9 w-9 rounded-xl bg-violet-500/15 border border-violet-500/25 flex items-center justify-center text-violet-400 shrink-0 group-hover:scale-105 transition-transform">
+              <Flame className="h-4 w-4 text-violet-400" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <h3 className="text-xs font-black text-white tracking-tight">Fokuslan</h3>
+              <p className="text-[11px] text-slate-400 truncate">
+                Bir iş seç və diqqətini yalnız ona ver.
+              </p>
+            </div>
+          </div>
+          <div className="h-7 px-2.5 rounded-lg bg-white/5 group-hover:bg-violet-600/20 text-slate-300 group-hover:text-violet-300 text-[11px] font-bold flex items-center gap-1 transition-colors">
+            <span>Başla</span>
+            <span>›</span>
+          </div>
+        </div>
+      )}
+
       {/* iOS-Style Segmented Tab (Aktiv / Bitmiş) */}
       <div className="flex bg-[#101522] p-1 rounded-2xl border border-white/5 shadow-inner">
         <button
@@ -179,6 +234,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
                     onDelete={onDelete}
                     onEdit={onEdit}
                     onSnooze={onSnooze}
+                    onFocus={onOpenFocus}
                   />
                 ))}
               </div>
@@ -208,6 +264,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
                     onDelete={onDelete}
                     onEdit={onEdit}
                     onSnooze={onSnooze}
+                    onFocus={onOpenFocus}
                   />
                 ))}
               </div>
@@ -236,6 +293,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
                     onDelete={onDelete}
                     onEdit={onEdit}
                     onSnooze={onSnooze}
+                    onFocus={onOpenFocus}
                   />
                 ))}
               </div>
@@ -271,6 +329,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
                 onDelete={onDelete}
                 onEdit={onEdit}
                 onSnooze={onSnooze}
+                onFocus={onOpenFocus}
               />
             ))
           ) : (

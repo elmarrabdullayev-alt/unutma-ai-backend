@@ -58,7 +58,7 @@ export const GenderStep: React.FC<GenderStepProps> = ({
   };
 
   return (
-    <div className="relative flex flex-col justify-between h-full min-h-[80vh] px-6 py-8 select-none">
+    <div className="relative flex flex-col justify-between flex-1 px-6 py-6 min-h-0 bg-[#090D16] select-none">
       {/* Background ambient glow */}
       <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-violet-600/10 rounded-full blur-3xl pointer-events-none" />
 
@@ -141,7 +141,7 @@ export const GenderStep: React.FC<GenderStepProps> = ({
       </div>
 
       {/* CTA Button */}
-      <div className="pt-6">
+      <div className="pt-6 pb-2 mt-auto">
         <button
           type="button"
           onClick={handleContinue}

@@ -7,7 +7,7 @@ interface WelcomeStepProps {
 
 export const WelcomeStep: React.FC<WelcomeStepProps> = ({ onNext }) => {
   return (
-    <div className="relative flex flex-col justify-between h-full min-h-[80vh] px-6 py-8 select-none">
+    <div className="relative flex flex-col justify-between flex-1 px-6 py-6 min-h-0 bg-[#090D16] select-none">
       {/* Background ambient glow effect */}
       <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-violet-600/15 rounded-full blur-3xl pointer-events-none" />
 
@@ -88,7 +88,7 @@ export const WelcomeStep: React.FC<WelcomeStepProps> = ({ onNext }) => {
       </div>
 
       {/* Primary Action Button */}
-      <div className="pt-2">
+      <div className="pt-6 pb-2 mt-auto">
         <button
           onClick={onNext}
           className="w-full h-14 rounded-2xl bg-gradient-to-r from-violet-600 via-indigo-600 to-violet-600 bg-size-200 text-white font-bold text-base shadow-[0_4px_25px_rgba(124,58,237,0.4)] flex items-center justify-center gap-2 hover:brightness-110 active:scale-[0.98] transition-all duration-200"
