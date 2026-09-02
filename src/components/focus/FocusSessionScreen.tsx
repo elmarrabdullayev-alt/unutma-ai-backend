@@ -18,7 +18,7 @@ import { FocusSession, FocusAudioSettings, FocusAudioPreset } from '../../types'
 import { focusService } from '../../services/focusService';
 import { focusAudioService, FOCUS_AUDIO_OPTIONS } from '../../services/focusAudioService';
 import { FocusAudioBottomSheet } from './FocusAudioBottomSheet';
-import { HourglassFocusTimer } from './HourglassFocusTimer';
+import { Hourglass3D } from './Hourglass3D';
 
 interface FocusSessionScreenProps {
   session: FocusSession;
@@ -89,6 +89,15 @@ export const FocusSessionScreen: React.FC<FocusSessionScreenProps> = ({
   // Format Time Display
   const totalPlannedSeconds = session.plannedMinutes * 60;
   const remainingSeconds = Math.ceil(remainingMs / 1000);
+  const clampedSeconds = Math.max(0, remainingSeconds);
+  const minutes = Math.floor(clampedSeconds / 60);
+  const seconds = clampedSeconds % 60;
+  const timeFormatted = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+
+  const progress =
+    totalPlannedSeconds > 0
+      ? Math.max(0, Math.min(1, 1 - remainingSeconds / totalPlannedSeconds))
+      : 0;
 
   const startTimeStr = new Date(session.startedAt).toLocaleTimeString('az-AZ', {
     hour: '2-digit',
@@ -125,7 +134,7 @@ export const FocusSessionScreen: React.FC<FocusSessionScreenProps> = ({
 
   return (
     <div className="flex flex-col h-full bg-gradient-to-b from-[#0D1322] via-[#090D16] to-[#070A12] text-white p-4 sm:p-5 justify-between relative select-none rounded-[28px] sm:rounded-[32px] border border-violet-500/20 shadow-[0_0_50px_rgba(139,92,246,0.12)] overflow-hidden">
-      {/* Top Header */}
+      {/* 1. TOP HEADER */}
       <div className="flex items-center justify-between gap-2 z-10">
         {/* Top Left: Focus Brand & Time Span */}
         <div className="flex items-center gap-2.5">
@@ -190,24 +199,52 @@ export const FocusSessionScreen: React.FC<FocusSessionScreenProps> = ({
         </div>
       </div>
 
-      {/* Center Section: Dominant Animated Hourglass */}
-      <div className="flex flex-col items-center justify-center my-auto py-2 z-10">
-        <HourglassFocusTimer
-          totalSeconds={totalPlannedSeconds}
-          remainingSeconds={remainingSeconds}
+      {/* 2. TASK PILL */}
+      {session.taskTitle && (
+        <div className="flex justify-center my-1 z-10">
+          <div className="max-w-[70%] px-3.5 py-1 rounded-full bg-[#121826]/90 border border-violet-500/20 text-center shadow-lg shadow-violet-950/40 backdrop-blur-md flex items-center justify-center gap-2">
+            <span className="flex items-center gap-0.5 text-violet-400 text-[10px] font-mono select-none tracking-tighter">
+              ▮▮▮
+            </span>
+            <p className="text-xs font-bold text-slate-200 truncate">
+              {session.taskTitle}
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* 3. CENTER: ANIMATED 3D HOURGLASS & COUNTDOWN */}
+      <div className="flex flex-col items-center justify-center my-auto py-1 z-10 w-full">
+        <Hourglass3D
+          progress={progress}
           isPaused={session.status !== 'running'}
-          taskTitle={session.taskTitle}
         />
 
-        {/* Motivational Guidance Line */}
-        <p className="text-xs text-slate-400 mt-2.5 text-center max-w-[270px] leading-relaxed">
+        {/* Large Digital Countdown Display & Label */}
+        <div className="flex flex-col items-center justify-center text-center mt-2">
+          <div className="text-4xl sm:text-5xl font-black tracking-tight text-white font-mono drop-shadow-[0_4px_12px_rgba(0,0,0,0.5)]">
+            {timeFormatted}
+          </div>
+          <div className="text-[10px] sm:text-[11px] font-bold text-violet-300 mt-1.5 uppercase tracking-[0.25em] flex items-center justify-center gap-1.5">
+            {session.status !== 'running' ? (
+              <span className="text-amber-400 font-extrabold">• FASİLƏDƏ •</span>
+            ) : remainingSeconds <= 0 ? (
+              <span className="text-violet-400 font-extrabold">• TAMAMLANDI •</span>
+            ) : (
+              <span>• QALAN VAXT •</span>
+            )}
+          </div>
+        </div>
+
+        {/* 4. MOTIVATION TEXT */}
+        <p className="text-xs text-slate-400 mt-2 text-center max-w-[270px] leading-relaxed line-clamp-2">
           {session.status === 'running'
             ? 'Diqqətini cəmlə və diqqətini yayındıran amillərdən uzaq dur.'
             : 'Fokus donduruldu. Hazır olduqda davam et.'}
         </p>
       </div>
 
-      {/* Primary Session Controls: 3 Equal Rounded Actions */}
+      {/* 5. CONTROLS (3 Equal Action Buttons) */}
       <div className="grid grid-cols-3 gap-2.5 sm:gap-3 pt-2 z-10">
         {/* Pause / Resume Button */}
         <button

@@ -38,12 +38,14 @@ export default function App() {
   const [showSplash, setShowSplash] = useState(true);
   const [showOnboarding, setShowOnboarding] = useState(false);
 
-  const [notificationPermission, setNotificationPermission] = useState<NotificationPermission>(() =>
-    notificationService.getPermission()
-  );
+  const [notificationPermission, setNotificationPermission] = useState<NotificationPermission>('default');
 
   // Initialize services and subscriptions
   useEffect(() => {
+    notificationService.getPermission().then((perm) => {
+      setNotificationPermission(perm);
+    });
+
     // Initialize profile service (loads from Capacitor Preferences / localStorage)
     userProfileService.init().then((profile) => {
       setUserProfile(profile);
@@ -63,8 +65,8 @@ export default function App() {
     });
 
     // Initialize focusService
-    focusService.init().then((session) => {
-      setActiveFocusSession(session);
+    focusService.init().then(() => {
+      setActiveFocusSession(focusService.getActiveSession());
     });
 
     const unsubFocus = focusService.subscribe((session) => {

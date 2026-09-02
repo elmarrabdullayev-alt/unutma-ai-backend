@@ -20,7 +20,10 @@
     "@capacitor/local-notifications": "^8.3.1",
     "@capacitor/preferences": "^8.0.1",
     "@google/genai": "^2.4.0",
+    "@react-three/drei": "^10.7.8",
+    "@react-three/fiber": "^9.7.0",
     "@tailwindcss/vite": "^4.1.14",
+    "@types/three": "^0.185.4",
     "@vitejs/plugin-react": "^5.0.4",
     "capacitor-voice-recorder": "^7.0.6",
     "dotenv": "^17.2.3",
@@ -29,6 +32,7 @@
     "motion": "^12.23.24",
     "react": "^19.0.1",
     "react-dom": "^19.0.1",
+    "three": "^0.185.1",
     "vite": "^6.2.3"
   },
   "devDependencies": {

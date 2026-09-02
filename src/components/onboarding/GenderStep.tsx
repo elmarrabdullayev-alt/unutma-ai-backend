@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ArrowRight, Check, User, Heart, HelpCircle, Shield } from 'lucide-react';
+import { ArrowRight, Check, User, Heart, HelpCircle, Shield, LucideIcon } from 'lucide-react';
 import { UserGender } from '../../types';
 
 interface GenderStepProps {
@@ -12,7 +12,7 @@ interface GenderOption {
   id: UserGender;
   label: string;
   sublabel: string;
-  icon: React.ElementType;
+  icon: LucideIcon;
 }
 
 const GENDER_OPTIONS: GenderOption[] = [

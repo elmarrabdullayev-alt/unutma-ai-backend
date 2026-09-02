@@ -258,7 +258,7 @@ export const VoiceInputModal: React.FC<VoiceInputModalProps> = ({
       playSuccessSound();
       setParsedResult({
         summary: data.summary,
-        reminders: data.reminders,
+        reminders: generatedReminders,
       });
 
       // Pass directly to parent

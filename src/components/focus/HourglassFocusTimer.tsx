@@ -6,13 +6,14 @@ export interface HourglassFocusTimerProps {
   remainingSeconds: number;
   isPaused: boolean;
   taskTitle?: string;
+  visualOnly?: boolean;
 }
 
 export const HourglassFocusTimer: React.FC<HourglassFocusTimerProps> = ({
   totalSeconds,
   remainingSeconds,
   isPaused,
-  taskTitle,
+  visualOnly = false,
 }) => {
   // 1. Calculate Sand Progress (0 to 1)
   const progress = useMemo(() => {
@@ -56,20 +57,10 @@ export const HourglassFocusTimer: React.FC<HourglassFocusTimerProps> = ({
 
   return (
     <div
-      className="flex flex-col items-center justify-center w-full select-none"
+      className="hourglass-container select-none"
       role="timer"
       aria-label={ariaLabelText}
     >
-      {/* Task Title Pill (Above Hourglass) */}
-      {taskTitle && (
-        <div className="max-w-[280px] sm:max-w-xs px-4 py-1.5 rounded-full bg-[#121826]/90 border border-violet-500/20 text-center mb-3 shadow-lg shadow-violet-950/40 backdrop-blur-md flex items-center justify-center gap-2">
-          <span className="flex h-2 w-2 rounded-full bg-violet-400"></span>
-          <p className="text-xs font-bold text-slate-200 truncate">
-            {taskTitle}
-          </p>
-        </div>
-      )}
-
       {/* Main Hourglass SVG Container */}
       <div
         className={`relative flex items-center justify-center ${
@@ -85,16 +76,16 @@ export const HourglassFocusTimer: React.FC<HourglassFocusTimerProps> = ({
         <div
           className={`absolute inset-0 m-auto w-52 h-64 rounded-full bg-violet-600/20 blur-3xl pointer-events-none transition-opacity duration-700 ${
             isCompleted
-              ? 'hourglass-completed-glow bg-violet-500/40'
+              ? 'hourglass-completed bg-violet-500/40'
               : isPaused
               ? 'opacity-20'
-              : 'hourglass-ambient-glow'
+              : 'hourglass-glow'
           }`}
         />
 
         <svg
           viewBox="0 0 240 310"
-          className="w-[220px] sm:w-[250px] max-w-full h-auto filter drop-shadow-[0_12px_24px_rgba(0,0,0,0.6)] overflow-visible"
+          className="hourglass-svg"
         >
           <defs>
             {/* Hourglass Upper & Lower Chamber Clip Paths */}
@@ -169,6 +160,7 @@ export const HourglassFocusTimer: React.FC<HourglassFocusTimerProps> = ({
 
           {/* LAYER A: Glass Inner Background Tint */}
           <path
+            className="hourglass-glass"
             d="M 52,38 
                C 52,38 56,82 78,116 
                C 90,134 108,149 114,153 
@@ -193,7 +185,7 @@ export const HourglassFocusTimer: React.FC<HourglassFocusTimerProps> = ({
                     L 40,160 
                     Z`}
                 fill="url(#sandGradientTop)"
-                className="transition-all duration-300 ease-out"
+                className="hourglass-upper-sand"
               />
             )}
 
@@ -220,7 +212,7 @@ export const HourglassFocusTimer: React.FC<HourglassFocusTimerProps> = ({
                     L 200,274 
                     Z`}
                 fill="url(#sandGradientBottom)"
-                className="transition-all duration-300 ease-out"
+                className="hourglass-lower-sand"
               />
             )}
 
@@ -251,7 +243,7 @@ export const HourglassFocusTimer: React.FC<HourglassFocusTimerProps> = ({
                 strokeWidth="2.5"
                 strokeLinecap="round"
                 strokeDasharray="4 2.5"
-                className="hourglass-stream-active"
+                className="hourglass-stream"
                 filter="url(#violetGlow)"
               />
 
@@ -261,34 +253,35 @@ export const HourglassFocusTimer: React.FC<HourglassFocusTimerProps> = ({
                 cy="153"
                 r="1.2"
                 fill="#FFFFFF"
-                className="hourglass-grain-1"
+                className="hourglass-grain hourglass-grain-1"
               />
               <circle
                 cx="119.3"
                 cy="154"
                 r="1.1"
                 fill="#EDE9FE"
-                className="hourglass-grain-2"
+                className="hourglass-grain hourglass-grain-2"
               />
               <circle
                 cx="120.7"
                 cy="153.5"
                 r="1.3"
                 fill="#DDD6FE"
-                className="hourglass-grain-3"
+                className="hourglass-grain hourglass-grain-3"
               />
               <circle
                 cx="120"
                 cy="155"
                 r="1"
                 fill="#FFFFFF"
-                className="hourglass-grain-4"
+                className="hourglass-grain hourglass-grain-4"
               />
             </g>
           )}
 
           {/* LAYER E: Outer Glass Silhouette & Highlights */}
           <path
+            className="hourglass-glass"
             d="M 52,38 
                C 52,38 56,82 78,116 
                C 90,134 108,149 114,153 
@@ -405,22 +398,25 @@ export const HourglassFocusTimer: React.FC<HourglassFocusTimerProps> = ({
         </svg>
       </div>
 
-      {/* Large Digital Countdown Display & Label */}
-      <div className="flex flex-col items-center justify-center text-center mt-3">
-        <div className="text-4xl sm:text-5xl font-black tracking-tight text-white font-mono drop-shadow-[0_4px_12px_rgba(0,0,0,0.5)]">
-          {timeFormatted}
+      {/* Large Digital Countdown Display & Label (Only if not visualOnly) */}
+      {!visualOnly && (
+        <div className="flex flex-col items-center justify-center text-center mt-3">
+          <div className="text-4xl sm:text-5xl font-black tracking-tight text-white font-mono drop-shadow-[0_4px_12px_rgba(0,0,0,0.5)]">
+            {timeFormatted}
+          </div>
+          <div className="text-[10px] sm:text-[11px] font-bold text-violet-300 mt-1.5 uppercase tracking-[0.25em] flex items-center justify-center gap-1.5">
+            {isPaused ? (
+              <span className="text-amber-400 font-extrabold">• FASİLƏDƏ •</span>
+            ) : isCompleted ? (
+              <span className="text-violet-400 font-extrabold">• TAMAMLANDI •</span>
+            ) : (
+              <span>• QALAN VAXT •</span>
+            )}
+          </div>
         </div>
-        <div className="text-[10px] sm:text-[11px] font-bold text-violet-300 mt-1.5 uppercase tracking-[0.25em] flex items-center justify-center gap-1.5">
-          {isPaused ? (
-            <span className="text-amber-400 font-extrabold">• FASİLƏDƏ •</span>
-          ) : isCompleted ? (
-            <span className="text-violet-400 font-extrabold">• TAMAMLANDI •</span>
-          ) : (
-            <span>• QALAN VAXT •</span>
-          )}
-        </div>
-      </div>
+      )}
     </div>
   );
 };
+
 
