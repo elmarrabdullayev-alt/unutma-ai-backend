@@ -5,10 +5,14 @@ import {
   AIActionType,
   ReminderCategory,
   ReminderRecurrence,
+  DailyPlanProposal,
+  RoutineProposal,
 } from '../types';
 import { reminderService } from './reminderService';
 import { apiClient } from './apiClient';
 import { formatDateAz, formatTimeOnly } from '../utils/dateUtils';
+import { dailyPlannerService } from './dailyPlannerService';
+import { routineService } from './routineService';
 
 export interface RouteOptions {
   executeDirectly?: boolean;
@@ -100,7 +104,12 @@ export class IntelligentRouter {
       let affectedReminders: Reminder[] | undefined;
       let executionResult: { success: boolean; message: string; affectedReminders?: Reminder[] } | undefined;
 
-      if (options.executeDirectly && localEval.payload.action !== 'general_chat') {
+      if (
+        options.executeDirectly &&
+        localEval.payload.action !== 'general_chat' &&
+        localEval.payload.action !== 'plan_day' &&
+        localEval.payload.action !== 'create_routine'
+      ) {
         const execution = reminderService.executeAIAction(localEval.payload);
         executionResult = execution;
         if (execution.affectedReminders) {
@@ -201,7 +210,47 @@ export class IntelligentRouter {
       return { handledLocally: true, action: res.payload.action, ...res };
     }
 
-    // G. REMINDER CREATION & RECURRENCE (e.g. "Sabah saat 10-da Anara zəng etməyi xatırlat", "Hər 3 gündən bir...")
+    // G. DAILY PLANNER (e.g. "Bu gün saat 2-də görüşüm var, hesabatı bitirməliyəm...", "Günümü planla")
+    if (dailyPlannerService.isDailyPlanningIntent(prompt)) {
+      const localProposal = dailyPlannerService.parseLocally(prompt, currentReminders);
+      if (localProposal && localProposal.tasks.length >= 2) {
+        const resolved = dailyPlannerService.detectAndResolveConflicts(localProposal, currentReminders);
+        return {
+          handledLocally: true,
+          action: 'plan_day',
+          payload: {
+            action: 'plan_day',
+            dailyPlanProposal: resolved,
+            responseMessage: 'Bugünkü planın hazırlandı. Zəhmət olmasa təsdiq edin.',
+            needsConfirmation: true,
+          },
+          confidence: 0.94,
+          reason: 'Daily plan parsed and structured locally without premature creation.',
+        };
+      }
+    }
+
+    // H. ROUTINE BUILDER / RECURRING ROUTINES (e.g. "Hər səhər 7-də oyanım, 10 dəqiqə idman edim və 8-də evdən çıxım", "Səhər rutini")
+    if (routineService.isRoutineIntent(prompt)) {
+      const routineProposal = routineService.parseRoutinePrompt(prompt);
+      if (routineProposal && routineProposal.steps.length >= 2) {
+        return {
+          handledLocally: true,
+          action: 'create_routine',
+          payload: {
+            action: 'create_routine',
+            routineProposal,
+            responseMessage: `"${routineProposal.title}" üçün cədvəl tərtib edildi. Zəhmət olmasa təsdiq edin.`,
+            responseSpeech: `${routineProposal.title} hazırlandı. Cədvəli nəzərdən keçirin.`,
+            needsConfirmation: true,
+          },
+          confidence: 0.95,
+          reason: 'Routine parsed and structured locally without premature creation.',
+        };
+      }
+    }
+
+    // I. REMINDER CREATION & RECURRENCE (e.g. "Sabah saat 10-da Anara zəng etməyi xatırlat", "Hər 3 gündən bir...")
     const parsedReminders = this.parseDeterministicReminders(prompt);
     if (parsedReminders.length > 0) {
       const isMulti = parsedReminders.length > 1;
@@ -742,7 +791,35 @@ export class IntelligentRouter {
       if (response.success && response.actionPayload) {
         let affectedReminders: Reminder[] | undefined;
 
-        if (executeDirectly && response.actionPayload.action !== 'general_chat') {
+        if (response.actionPayload.action === 'plan_day') {
+          response.actionPayload.needsConfirmation = true;
+          if (!response.actionPayload.dailyPlanProposal && response.actionPayload.remindersToCreate) {
+            const todayYMD = new Date().toISOString().slice(0, 10);
+            const tasks = response.actionPayload.remindersToCreate.map((d, idx) => ({
+              id: `plan-task-${Date.now()}-${idx}`,
+              title: d.title,
+              dueDateTime: d.dueDateTime,
+              timeString: formatTimeOnly(d.dueDateTime) || '10:00',
+              priority: d.priority || 'medium',
+              category: d.category || 'other',
+              isFixedTime: !d.inferredTime,
+              isFocusReady: /(hesabat|kod|analiz|dərs|məqalə)/i.test(d.title),
+              durationMinutes: 45,
+            }));
+            const proposal: DailyPlanProposal = {
+              id: `plan-${Date.now()}`,
+              rawInput: cleanPrompt,
+              createdAt: new Date().toISOString(),
+              targetDate: todayYMD,
+              tasks,
+              summaryNote: response.actionPayload.responseMessage,
+            };
+            response.actionPayload.dailyPlanProposal = dailyPlannerService.detectAndResolveConflicts(
+              proposal,
+              currentReminders
+            );
+          }
+        } else if (executeDirectly && response.actionPayload.action !== 'general_chat') {
           const execResult = reminderService.executeAIAction(response.actionPayload);
           if (execResult.affectedReminders) {
             affectedReminders = execResult.affectedReminders;

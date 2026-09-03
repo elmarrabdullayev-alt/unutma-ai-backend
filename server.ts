@@ -25,15 +25,27 @@ app.use((req, res, next) => {
   next();
 });
 
-// Initialize Gemini SDK with User-Agent telemetry
-const ai = new GoogleGenAI({
-  apiKey: process.env.GEMINI_API_KEY || "",
-  httpOptions: {
-    headers: {
-      "User-Agent": "aistudio-build",
-    },
-  },
-});
+// Initialize Gemini SDK lazily with User-Agent telemetry
+let aiInstance: GoogleGenAI | null = null;
+function getAI(): GoogleGenAI {
+  if (!aiInstance) {
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      throw new Error(
+        "GEMINI_API_KEY mühit dəyişəni təyin edilməyib. Zəhmət olmasa Settings menyusunda GEMINI_API_KEY əlavə edin."
+      );
+    }
+    aiInstance = new GoogleGenAI({
+      apiKey,
+      httpOptions: {
+        headers: {
+          "User-Agent": "aistudio-build",
+        },
+      },
+    });
+  }
+  return aiInstance;
+}
 
 // Public health check endpoints
 app.get("/health", (req, res) => {
@@ -108,7 +120,7 @@ function getRetryDelay(attemptIndex: number, suggestedRetryAfterMs?: number): nu
 // TEXT AI CONFIGURATION (1 PRIMARY, 1 FALLBACK, MAX 1 RETRY, 10-15s BUDGET)
 // =========================================================================
 const TEXT_AI_MODELS = [
-  "gemini-3.7-flash", // Primary model
+  "gemini-3.8-flash", // Primary model
   "gemini-2.5-flash", // Fallback model
 ];
 const MAX_TEXT_AI_BUDGET_MS = 14000; // 14s budget
@@ -134,7 +146,7 @@ async function generateTextAIWithBudget(configParams: {
 
       console.log(`[${tag}] model: ${model} (attempt ${attempt}/${MAX_RETRIES_PER_TEXT_MODEL + 1}, elapsed ${elapsed}ms)`);
       try {
-        const response = await ai.models.generateContent({
+        const response = await getAI().models.generateContent({
           model,
           contents: configParams.contents,
           config: configParams.config,
@@ -359,7 +371,22 @@ SƏNİN MƏQSƏDİN:
    - Məsələn: "Həkimlə bağlı nə xatırlatmam var?", "Anar haqqında planlar".
    - targetQuery açar sözünü və responseMessage-də nəticəni təqdim et.
 
-8. 'general_chat':
+8. 'plan_day':
+   - Məsələn: "Bu gün saat 2-də görüşüm var, hesabatı bitirməliyəm, marketə getməliyəm və 30 dəqiqə idman etmək istəyirəm", "Günümü planla", "Bu günümü təşkil et".
+   - İstifadəçinin gün ərzindəki bütün tapşırıqlarını optimal və balanslı cədvələ sal:
+     * Dəqiq saat deyilən hadisələri həmin vaxta (məs: saat 2-də görüş -> 14:00) qoy.
+     * Fokus/iş tapşırıqlarını səhərə (09:30), alış-veriş/market işlərini günorta-sonrasına (17:30), idman/istirahəti axşama (19:00) təyin et.
+     * remindersToCreate massivində hər tapşırığı dəqiq dueDateTime və başlıqla təqdim et.
+     * responseMessage-də "Günün üçün optimal plan hazırlandı. Zəhmət olmasa təsdiq edin." bildir.
+
+9. 'create_routine':
+   - Məsələn: "Hər səhər 7-də oyanım, 10 dəqiqə idman edim və 8-də evdən çıxım", "Axşam rutini qur", "Gündüz rejimi yarat".
+   - Gündəlik təkrarlanan rutinləri addım-addım tərtib et:
+     * routineProposal obyektində type ('morning', 'afternoon', 'evening', 'custom'), title, startTime, daysOfWeek və addımlar (steps) massivini təqdim et.
+     * Hər addım üçün: title, time, duration (dəqiqələrlə), notificationEnabled (boolean) təyin et.
+     * responseMessage-də "Rutininiz üçün cədvəl tərtib edildi. Zəhmət olmasa təsdiq edin." bildir.
+
+10. 'general_chat':
    - Ümumi söhbət və ya köməkçi sualları üçün.`;
 
     console.log('[AI-ACTION] Text AI generation started (1 primary + 1 fallback, 10-15s budget)');
@@ -383,6 +410,8 @@ SƏNİN MƏQSƏDİN:
                 "search_reminders",
                 "get_daily_schedule",
                 "get_weekly_schedule",
+                "plan_day",
+                "create_routine",
                 "general_chat",
               ],
               description: "İcra ediləcək fəaliyyət növü",
@@ -438,6 +467,34 @@ SƏNİN MƏQSƏDİN:
                 required: ["title", "dueDateTime", "category", "recurrence", "priority"],
               },
             },
+            routineProposal: {
+              type: Type.OBJECT,
+              properties: {
+                type: {
+                  type: Type.STRING,
+                  enum: ["morning", "afternoon", "evening", "custom"],
+                },
+                title: { type: Type.STRING },
+                startTime: { type: Type.STRING },
+                daysOfWeek: {
+                  type: Type.ARRAY,
+                  items: { type: Type.NUMBER },
+                },
+                steps: {
+                  type: Type.ARRAY,
+                  items: {
+                    type: Type.OBJECT,
+                    properties: {
+                      title: { type: Type.STRING },
+                      time: { type: Type.STRING },
+                      duration: { type: Type.NUMBER },
+                      notificationEnabled: { type: Type.BOOLEAN },
+                    },
+                    required: ["title", "notificationEnabled"],
+                  },
+                },
+              },
+            },
           },
           required: ["action", "responseMessage"],
         },
@@ -456,6 +513,16 @@ SƏNİN MƏQSƏDİN:
         targetQuery: parsed.targetQuery,
         delayMinutes: parsed.delayMinutes,
         updateFields: parsed.updateFields,
+        routineProposal: parsed.routineProposal
+          ? {
+              id: `prop-${Date.now()}`,
+              type: parsed.routineProposal.type || 'morning',
+              title: parsed.routineProposal.title || 'Rutin',
+              startTime: parsed.routineProposal.startTime || '08:00',
+              daysOfWeek: parsed.routineProposal.daysOfWeek || [1, 2, 3, 4, 5, 6, 0],
+              steps: parsed.routineProposal.steps || [],
+            }
+          : undefined,
         remindersToCreate: (parsed.remindersToCreate || []).map((r: any, idx: number) => ({
           id: `extracted-${Date.now()}-${idx}`,
           title: r.title,
@@ -482,8 +549,9 @@ SƏNİN MƏQSƏDİN:
 
 // Supported Gemini multimodal models for audio transcription
 const AUDIO_TRANSCRIPTION_MODELS = [
+  "gemini-3.5-transcribe",
+  "gemini-3.8-flash",
   "gemini-2.5-flash",
-  "gemini-3.7-flash",
 ];
 
 const MAX_TRANSCRIPTION_BUDGET_MS = 15000; // Strict 15s overall budget for fallback transcription
@@ -548,7 +616,7 @@ app.post("/api/transcribe-audio", async (req, res) => {
         console.log(`[TRANSCRIBE] attempt: ${model} (attempt ${attempt}/${MAX_RETRIES_PER_MODEL + 1})`);
         try {
           console.log("[TRANSCRIBE] model request started");
-          const response = await ai.models.generateContent({
+          const response = await getAI().models.generateContent({
             model,
             contents: {
               parts: [
@@ -652,8 +720,8 @@ ${JSON.stringify(reminders || [], null, 2)}
 
 İstifadəçinin sualına Azərbaycan dilində aydın, mehriban və lakonik cavab ver.`;
 
-    const response = await ai.models.generateContent({
-      model: "gemini-3.6-flash",
+    const response = await getAI().models.generateContent({
+      model: "gemini-3.8-flash",
       contents: `İstifadəçinin sualı: "${question}"`,
       config: {
         systemInstruction,

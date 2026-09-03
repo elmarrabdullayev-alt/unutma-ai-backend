@@ -13,11 +13,18 @@ import { ActiveAlarmBanner } from './components/ActiveAlarmBanner';
 import { AnimatedSplash } from './components/AnimatedSplash';
 import { OnboardingFlow } from './components/onboarding/OnboardingFlow';
 import { FocusModal } from './components/focus/FocusModal';
+import { DailyPlanModal } from './components/planner/DailyPlanModal';
+import { RoutineSessionModal } from './components/routine/RoutineSessionModal';
+import { RoutineReviewModal } from './components/routine/RoutineReviewModal';
+import { RoutineEditorModal } from './components/routine/RoutineEditorModal';
+import { ProgressDashboard } from './components/progress/ProgressDashboard';
 import { reminderService } from './services/reminderService';
 import { notificationService } from './services/notificationService';
 import { userProfileService } from './services/userProfileService';
 import { focusService } from './services/focusService';
-import { FocusSession } from './types';
+import { routineService } from './services/routineService';
+import { progressService } from './services/progressService';
+import { FocusSession, DailyPlanProposal, Routine, RoutineProposal, RoutineType } from './types';
 
 export default function App() {
   const [reminders, setReminders] = useState<Reminder[]>(() => reminderService.getAll());
@@ -26,6 +33,18 @@ export default function App() {
   const [isVoiceFullScreenOpen, setIsVoiceFullScreenOpen] = useState(false);
   const [isManualModalOpen, setIsManualModalOpen] = useState(false);
   const [isFocusModalOpen, setIsFocusModalOpen] = useState(false);
+  const [isDailyPlanModalOpen, setIsDailyPlanModalOpen] = useState(false);
+  const [dailyPlanInitialProposal, setDailyPlanInitialProposal] = useState<DailyPlanProposal | null>(null);
+
+  // Routine Builder states
+  const [activeRoutineSession, setActiveRoutineSession] = useState<Routine | null>(null);
+  const [routineProposalForReview, setRoutineProposalForReview] = useState<RoutineProposal | null>(null);
+  const [editingRoutine, setEditingRoutine] = useState<Routine | null>(null);
+  const [editorInitialProposal, setEditorInitialProposal] = useState<RoutineProposal | null>(null);
+  const [editorInitialType, setEditorInitialType] = useState<RoutineType | undefined>(undefined);
+  const [isRoutineEditorOpen, setIsRoutineEditorOpen] = useState(false);
+  const [isProgressDashboardOpen, setIsProgressDashboardOpen] = useState(false);
+
   const [focusInitialReminder, setFocusInitialReminder] = useState<Reminder | null>(null);
   const [activeFocusSession, setActiveFocusSession] = useState<FocusSession | null>(() =>
     focusService.getActiveSession()
@@ -73,8 +92,26 @@ export default function App() {
       setActiveFocusSession(session);
     });
 
+    // Initialize routineService and progressService
+    routineService.init();
+    progressService.init();
+
     // Listen for notification tap / action deep links
     const unsubAction = notificationService.onNotificationAction((reminderId, actionId) => {
+      // Check if notification belongs to a routine step (e.g. routine-rt-123-step-1)
+      if (reminderId.startsWith('routine-')) {
+        const parts = reminderId.split('-');
+        // Format is routine-{routineId}-{stepId}
+        const routineId = parts.length >= 2 ? parts[1] : '';
+        const matched = routineService.getById(routineId) || routineService.getAll()[0];
+        if (matched) {
+          setCurrentTab('home');
+          setActiveRoutineSession(matched);
+          setActiveAlarmReminder(null);
+        }
+        return;
+      }
+
       if (actionId === 'complete') {
         reminderService.toggleComplete(reminderId);
         setActiveAlarmReminder(null);
@@ -235,6 +272,18 @@ export default function App() {
                 onOpenVoice={() => setIsVoiceFullScreenOpen(true)}
                 onOpenManualAdd={() => setIsManualModalOpen(true)}
                 onOpenFocus={handleOpenFocus}
+                onOpenPlanner={() => {
+                  setDailyPlanInitialProposal(null);
+                  setIsDailyPlanModalOpen(true);
+                }}
+                onOpenProgress={() => setIsProgressDashboardOpen(true)}
+                onOpenRoutineSession={(routine) => setActiveRoutineSession(routine)}
+                onOpenCreateRoutine={(initialType) => {
+                  setEditingRoutine(null);
+                  setEditorInitialProposal(null);
+                  setEditorInitialType(initialType);
+                  setIsRoutineEditorOpen(true);
+                }}
                 activeFocusSession={activeFocusSession}
                 notificationPermission={notificationPermission}
                 onRequestNotificationPermission={handleRequestNotification}
@@ -258,6 +307,16 @@ export default function App() {
               <AiAssistantScreen
                 reminders={reminders}
                 onOpenVoice={() => setIsVoiceFullScreenOpen(true)}
+                onOpenDailyPlanner={(proposal) => {
+                  setDailyPlanInitialProposal(proposal || null);
+                  setIsDailyPlanModalOpen(true);
+                }}
+                onOpenRoutineReview={(proposal) => {
+                  setRoutineProposalForReview(proposal);
+                }}
+                onRemindersCreated={(newReminders) => {
+                  setToastMessage(`${newReminders.length} xatırlatma əlavə edildi.`);
+                }}
               />
             )}
 
@@ -268,6 +327,7 @@ export default function App() {
                 onRequestNotificationPermission={handleRequestNotification}
                 onImportReminders={handleImportReminders}
                 onReplayOnboarding={handleReplayOnboarding}
+                onOpenProgress={() => setIsProgressDashboardOpen(true)}
               />
             )}
           </main>
@@ -284,6 +344,15 @@ export default function App() {
             isOpen={isVoiceFullScreenOpen}
             onClose={() => setIsVoiceFullScreenOpen(false)}
             onRemindersCreated={handleRemindersCreated}
+            onOpenDailyPlanner={(proposal) => {
+              setIsVoiceFullScreenOpen(false);
+              setDailyPlanInitialProposal(proposal);
+              setIsDailyPlanModalOpen(true);
+            }}
+            onOpenRoutineReview={(proposal) => {
+              setIsVoiceFullScreenOpen(false);
+              setRoutineProposalForReview(proposal);
+            }}
           />
 
           {/* Edit Reminder Modal */}
@@ -301,6 +370,24 @@ export default function App() {
             onRemindersCreated={handleRemindersCreated}
           />
 
+          {/* Daily Planner Modal */}
+          <DailyPlanModal
+            isOpen={isDailyPlanModalOpen}
+            onClose={() => {
+              setIsDailyPlanModalOpen(false);
+              setDailyPlanInitialProposal(null);
+            }}
+            initialProposal={dailyPlanInitialProposal}
+            existingReminders={reminders}
+            onPlanConfirmed={(created) => {
+              setToastMessage(`Plan təsdiqləndi! ${created.length} xatırlatma əlavə edildi.`);
+            }}
+            onOpenFocus={(taskTitle) => {
+              const matched = reminderService.getAll().find((r) => r.title === taskTitle);
+              handleOpenFocus(matched || undefined);
+            }}
+          />
+
           {/* Focus Mode Modal */}
           <FocusModal
             isOpen={isFocusModalOpen}
@@ -311,6 +398,83 @@ export default function App() {
             reminders={reminders}
             initialReminder={focusInitialReminder}
             onToggleCompleteReminder={handleToggleComplete}
+          />
+
+          {/* Routine Session Checklist Modal */}
+          <RoutineSessionModal
+            isOpen={!!activeRoutineSession}
+            routine={activeRoutineSession}
+            onClose={() => setActiveRoutineSession(null)}
+            onEditRoutine={(r) => {
+              setActiveRoutineSession(null);
+              setEditingRoutine(r);
+              setEditorInitialProposal(null);
+              setIsRoutineEditorOpen(true);
+            }}
+          />
+
+          {/* Routine Review Proposal Modal */}
+          <RoutineReviewModal
+            isOpen={!!routineProposalForReview}
+            proposal={routineProposalForReview}
+            onClose={() => setRoutineProposalForReview(null)}
+            onConfirm={(savedRoutine) => {
+              setRoutineProposalForReview(null);
+              setToastMessage(`"${savedRoutine.title}" rutini yaradıldı!`);
+              setTimeout(() => setToastMessage(null), 3000);
+            }}
+            onEdit={(prop) => {
+              setRoutineProposalForReview(null);
+              setEditingRoutine(null);
+              setEditorInitialProposal(prop);
+              setIsRoutineEditorOpen(true);
+            }}
+          />
+
+          {/* Routine Editor Modal (Manual / Edit) */}
+          <RoutineEditorModal
+            isOpen={isRoutineEditorOpen}
+            editingRoutine={editingRoutine}
+            initialProposal={editorInitialProposal}
+            initialType={editorInitialType}
+            onClose={() => {
+              setIsRoutineEditorOpen(false);
+              setEditingRoutine(null);
+              setEditorInitialProposal(null);
+            }}
+            onSave={(saved) => {
+              setIsRoutineEditorOpen(false);
+              setEditingRoutine(null);
+              setEditorInitialProposal(null);
+              setToastMessage(`"${saved.title}" rutini yadda saxlanıldı!`);
+              setTimeout(() => setToastMessage(null), 3000);
+            }}
+            onDelete={(id) => {
+              routineService.deleteRoutine(id);
+              setIsRoutineEditorOpen(false);
+              setEditingRoutine(null);
+              setEditorInitialProposal(null);
+              setToastMessage('Rutin silindi.');
+              setTimeout(() => setToastMessage(null), 3000);
+            }}
+          />
+
+          {/* Premium Streak + Progress Dashboard */}
+          <ProgressDashboard
+            isOpen={isProgressDashboardOpen}
+            onClose={() => setIsProgressDashboardOpen(false)}
+            onOpenFocus={() => {
+              setIsProgressDashboardOpen(false);
+              handleOpenFocus();
+            }}
+            onOpenRoutines={() => {
+              setIsProgressDashboardOpen(false);
+              setCurrentTab('home');
+            }}
+            onOpenManualAdd={() => {
+              setIsProgressDashboardOpen(false);
+              setIsManualModalOpen(true);
+            }}
           />
         </div>
       )}

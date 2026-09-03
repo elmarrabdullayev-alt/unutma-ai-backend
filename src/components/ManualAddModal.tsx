@@ -84,11 +84,11 @@ export const ManualAddModal: React.FC<ManualAddModalProps> = ({
           <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-violet-500/15 text-violet-400 border border-violet-500/30">
             <Plus className="h-4 w-4" />
           </div>
-          <h3 className="font-bold text-base text-white">Yazılı Xatırlatma Əlavə Et</h3>
+          <h3 className="font-bold text-base text-white">Xatırlatma yarat</h3>
         </div>
 
         <p className="text-xs text-slate-400 mb-4">
-          Təbii dildə yazın. AI tarixi, saatı və kateqoriyanı avtomatik müəyyən edəcək.
+          Cümləni yazın. Tarix və vaxt avtomatik müəyyən ediləcək.
         </p>
 
         <form onSubmit={handleAiParse} className="space-y-4">
@@ -99,7 +99,7 @@ export const ManualAddModal: React.FC<ManualAddModalProps> = ({
               required
               value={naturalText}
               onChange={(e) => setNaturalText(e.target.value)}
-              placeholder="Məsələn: Cümə axşamı saat 16:30-da maşını texniki baxışa apar və 18:00-da uşağı bağçadan götür..."
+              placeholder="Məsələn: Sabah saat 16:30-da görüş və 18:00-da market..."
               className="w-full resize-none rounded-2xl border border-white/5 bg-slate-800/40 p-3.5 text-xs text-slate-100 placeholder-slate-500 focus:border-violet-500/60 focus:outline-none transition-colors"
             />
           </div>
@@ -114,17 +114,17 @@ export const ManualAddModal: React.FC<ManualAddModalProps> = ({
             id="submit-manual-parse-btn"
             type="submit"
             disabled={isAiProcessing || !naturalText.trim()}
-            className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-tr from-violet-600 to-indigo-600 py-2.5 text-xs font-bold text-white hover:brightness-110 disabled:opacity-40 transition-all shadow-md shadow-violet-500/20 active:scale-98 border border-white/10"
+            className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-tr from-violet-600 to-indigo-600 py-3 text-xs font-bold text-white hover:brightness-110 disabled:opacity-40 transition-all shadow-md shadow-violet-500/20 active:scale-98 border border-white/10"
           >
             {isAiProcessing ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin" />
-                AI Analiz Edir...
+                Yadda saxlanılır...
               </>
             ) : (
               <>
                 <Sparkles className="h-4 w-4" />
-                AI ilə Yaradın
+                Yadda saxla
               </>
             )}
           </button>

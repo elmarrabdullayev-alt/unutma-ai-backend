@@ -176,14 +176,14 @@ export const CalendarScreen: React.FC<CalendarScreenProps> = ({
           <div className="rounded-2xl border border-white/5 bg-[#101524] p-8 text-center">
             <Clock className="h-7 w-7 text-slate-500 mx-auto mb-2" />
             <p className="text-xs font-semibold text-slate-300">
-              Bu gün üçün xatırlatma yoxdur
+              Bu tarixdə xatırlatma yoxdur
             </p>
             <button
               onClick={onOpenVoice}
-              className="mt-3 inline-flex items-center gap-1.5 rounded-xl bg-violet-600/25 border border-violet-500/30 px-3 py-1.5 text-xs font-bold text-violet-300 hover:bg-violet-600/40"
+              className="mt-3 inline-flex items-center gap-1.5 rounded-xl bg-violet-600/25 border border-violet-500/30 px-3 py-1.5 text-xs font-bold text-violet-300 hover:bg-violet-600/40 active:scale-95 transition-all"
             >
               <Sparkles className="h-3.5 w-3.5" />
-              Səslə əlavə et
+              Xatırlatma əlavə et
             </button>
           </div>
         )}

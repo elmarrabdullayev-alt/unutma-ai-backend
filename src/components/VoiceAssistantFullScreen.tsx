@@ -14,7 +14,7 @@ import {
   Volume2,
   AlertCircle,
 } from 'lucide-react';
-import { Reminder, ReminderCategory, ReminderRecurrence, ReminderPriority } from '../types';
+import { Reminder, ReminderCategory, ReminderRecurrence, ReminderPriority, DailyPlanProposal, RoutineProposal } from '../types';
 import { CATEGORIES } from '../utils/categoryMeta';
 import { playMicStartSound, playSuccessSound, speakText } from '../utils/soundUtils';
 import { formatTimeOnly, formatDateAz } from '../utils/dateUtils';
@@ -27,6 +27,8 @@ interface VoiceAssistantFullScreenProps {
   isOpen: boolean;
   onClose: () => void;
   onRemindersCreated: (reminders: Reminder[], summary: string) => void;
+  onOpenDailyPlanner?: (proposal: DailyPlanProposal) => void;
+  onOpenRoutineReview?: (proposal: RoutineProposal) => void;
 }
 
 interface EditableExtractedReminder {
@@ -45,6 +47,8 @@ export const VoiceAssistantFullScreen: React.FC<VoiceAssistantFullScreenProps> =
   isOpen,
   onClose,
   onRemindersCreated,
+  onOpenDailyPlanner,
+  onOpenRoutineReview,
 }) => {
   const [isListening, setIsListening] = useState(false);
   const [transcript, setTranscript] = useState('');
@@ -206,6 +210,28 @@ export const VoiceAssistantFullScreen: React.FC<VoiceAssistantFullScreenProps> =
       console.log(`[ROUTER-UI] Instant local execution for "${textToAnalyze}" (${evaluation.action})`);
       const payload = evaluation.payload;
 
+      if (payload.action === 'plan_day' && payload.dailyPlanProposal) {
+        playSuccessSound();
+        speakText('Bugünkü planın hazırlandı. Cədvəli nəzərdən keçirib təsdiq edə bilərsiniz.');
+        setIsProcessing(false);
+        if (onOpenDailyPlanner) {
+          onClose();
+          onOpenDailyPlanner(payload.dailyPlanProposal);
+          return;
+        }
+      }
+
+      if (payload.action === 'create_routine' && payload.routineProposal) {
+        playSuccessSound();
+        speakText('Rutininiz üçün cədvəl tərtib edildi. Zəhmət olmasa təsdiq edin.');
+        setIsProcessing(false);
+        if (onOpenRoutineReview) {
+          onClose();
+          onOpenRoutineReview(payload.routineProposal);
+          return;
+        }
+      }
+
       if (
         payload.action === 'get_daily_schedule' ||
         payload.action === 'get_weekly_schedule' ||
@@ -269,6 +295,28 @@ export const VoiceAssistantFullScreen: React.FC<VoiceAssistantFullScreenProps> =
       });
 
       const payload = routeResult.actionPayload;
+
+      if (payload.action === 'plan_day' && payload.dailyPlanProposal) {
+        playSuccessSound();
+        speakText('Bugünkü planın hazırlandı. Cədvəli nəzərdən keçirib təsdiq edə bilərsiniz.');
+        setIsProcessing(false);
+        if (onOpenDailyPlanner) {
+          onClose();
+          onOpenDailyPlanner(payload.dailyPlanProposal);
+          return;
+        }
+      }
+
+      if (payload.action === 'create_routine' && payload.routineProposal) {
+        playSuccessSound();
+        speakText('Rutininiz üçün cədvəl tərtib edildi. Zəhmət olmasa təsdiq edin.');
+        setIsProcessing(false);
+        if (onOpenRoutineReview) {
+          onClose();
+          onOpenRoutineReview(payload.routineProposal);
+          return;
+        }
+      }
 
       if (
         payload.action === 'get_daily_schedule' ||
@@ -415,16 +463,16 @@ export const VoiceAssistantFullScreen: React.FC<VoiceAssistantFullScreenProps> =
             <div className="text-center pt-4">
               <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full border border-violet-500/30 bg-violet-500/10 text-xs font-semibold text-violet-300 mb-3 shadow-sm">
                 <span className={`h-2 w-2 rounded-full ${isListening ? 'bg-rose-400 animate-ping' : 'bg-slate-500'}`} />
-                <span>{isListening ? `Dinləyirəm... (${formatSeconds(recordingSeconds)})` : isProcessing ? 'AI Emal Edir...' : 'Mikrofon dayandırılıb'}</span>
+                <span>{isListening ? `Dinləyirəm... (${formatSeconds(recordingSeconds)})` : isProcessing ? 'Analiz edilir...' : 'Mikrofon dayandırılıb'}</span>
               </div>
 
               <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">
-                {isListening ? 'Dinləyirəm...' : 'Səslə idarə et'}
+                {isListening ? 'Dinləyirəm...' : 'Nəyi yadda saxlayaq?'}
               </h2>
 
               <p className="text-xs text-slate-400 mt-1 max-w-[280px] mx-auto">
                 {isListening
-                  ? 'Planlarınızı və ya xatırlatmalarınızı söyləyin, bitirdikdə mikrofona toxunun.'
+                  ? 'Planlarınızı və ya xatırlatmalarınızı söyləyin.'
                   : 'Danışmağa başlamaq üçün mikrofona toxunun.'}
               </p>
 
@@ -562,11 +610,11 @@ export const VoiceAssistantFullScreen: React.FC<VoiceAssistantFullScreenProps> =
                 </div>
 
                 <h2 className="text-xl font-extrabold tracking-tight text-white">
-                  {parsedReminders.length} xatırlatma tapdım
+                  Bunu yadda saxlayaq?
                 </h2>
 
                 <p className="text-xs text-slate-400 mt-0.5 px-2">
-                  {parsedSummary || 'Xatırlatmaları nəzərdən keçirin, lazım olduqda düzəliş edin:'}
+                  {parsedSummary || 'Xatırlatmanı nəzərdən keçirin, lazım olduqda düzəliş edin:'}
                 </p>
               </div>
 
@@ -711,7 +759,7 @@ export const VoiceAssistantFullScreen: React.FC<VoiceAssistantFullScreenProps> =
                 className="flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-tr from-violet-600 to-indigo-600 py-3.5 text-sm font-bold text-white shadow-xl shadow-violet-500/30 border border-white/10 hover:brightness-110 active:scale-98 transition-all"
               >
                 <Check className="h-4 w-4 stroke-[2.5]" />
-                <span>Hamısını Təsdiq Et ({parsedReminders.length})</span>
+                <span>Yadda saxla ({parsedReminders.length})</span>
               </button>
 
               <button

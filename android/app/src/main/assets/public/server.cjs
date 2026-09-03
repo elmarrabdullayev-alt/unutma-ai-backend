@@ -43,14 +43,26 @@ app.use((req, res, next) => {
   }
   next();
 });
-var ai = new import_genai.GoogleGenAI({
-  apiKey: process.env.GEMINI_API_KEY || "",
-  httpOptions: {
-    headers: {
-      "User-Agent": "aistudio-build"
+var aiInstance = null;
+function getAI() {
+  if (!aiInstance) {
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      throw new Error(
+        "GEMINI_API_KEY m\xFChit d\u0259yi\u015F\u0259ni t\u0259yin edilm\u0259yib. Z\u0259hm\u0259t olmasa Settings menyusunda GEMINI_API_KEY \u0259lav\u0259 edin."
+      );
     }
+    aiInstance = new import_genai.GoogleGenAI({
+      apiKey,
+      httpOptions: {
+        headers: {
+          "User-Agent": "aistudio-build"
+        }
+      }
+    });
   }
-});
+  return aiInstance;
+}
 app.get("/health", (req, res) => {
   res.json({ status: "ok", service: "unutma-ai-api" });
 });
@@ -96,7 +108,7 @@ function getRetryDelay(attemptIndex, suggestedRetryAfterMs) {
   return attemptIndex === 1 ? 2e3 : 5e3;
 }
 var TEXT_AI_MODELS = [
-  "gemini-3.7-flash",
+  "gemini-3.8-flash",
   // Primary model
   "gemini-2.5-flash"
   // Fallback model
@@ -117,7 +129,7 @@ async function generateTextAIWithBudget(configParams) {
       }
       console.log(`[${tag}] model: ${model} (attempt ${attempt}/${MAX_RETRIES_PER_TEXT_MODEL + 1}, elapsed ${elapsed}ms)`);
       try {
-        const response = await ai.models.generateContent({
+        const response = await getAI().models.generateContent({
           model,
           contents: configParams.contents,
           config: configParams.config
@@ -440,8 +452,9 @@ S\u018FN\u0130N M\u018FQS\u018FD\u0130N:
   }
 });
 var AUDIO_TRANSCRIPTION_MODELS = [
-  "gemini-2.5-flash",
-  "gemini-3.7-flash"
+  "gemini-3.5-transcribe",
+  "gemini-3.8-flash",
+  "gemini-2.5-flash"
 ];
 var MAX_TRANSCRIPTION_BUDGET_MS = 15e3;
 app.post("/api/transcribe-audio", async (req, res) => {
@@ -487,7 +500,7 @@ app.post("/api/transcribe-audio", async (req, res) => {
         console.log(`[TRANSCRIBE] attempt: ${model} (attempt ${attempt}/${MAX_RETRIES_PER_MODEL + 1})`);
         try {
           console.log("[TRANSCRIBE] model request started");
-          const response = await ai.models.generateContent({
+          const response = await getAI().models.generateContent({
             model,
             contents: {
               parts: [
@@ -570,8 +583,8 @@ Haz\u0131rk\u0131 cari vaxt: ${userNowFormatted} (ISO: ${now.toISOString()}).
 ${JSON.stringify(reminders || [], null, 2)}
 
 \u0130stifad\u0259\xE7inin sual\u0131na Az\u0259rbaycan dilind\u0259 ayd\u0131n, mehriban v\u0259 lakonik cavab ver.`;
-    const response = await ai.models.generateContent({
-      model: "gemini-3.6-flash",
+    const response = await getAI().models.generateContent({
+      model: "gemini-3.8-flash",
       contents: `\u0130stifad\u0259\xE7inin sual\u0131: "${question}"`,
       config: {
         systemInstruction,

@@ -72,6 +72,90 @@ export interface ParsedReminderResult {
   clarificationPrompt?: string;
 }
 
+// Daily Planner Types
+export interface PlanTask {
+  id: string;
+  title: string;
+  dueDateTime: string; // ISO format
+  timeString: string; // e.g. "09:30", "14:00"
+  durationMinutes?: number;
+  priority: ReminderPriority;
+  category: ReminderCategory;
+  isFixedTime: boolean;
+  isFocusReady?: boolean;
+  hasConflict?: boolean;
+  conflictReason?: string;
+  suggestedAlternativeTime?: string;
+  suggestedAlternativeDueDateTime?: string;
+}
+
+export interface DailyPlanProposal {
+  id: string;
+  rawInput: string;
+  createdAt: string;
+  targetDate: string; // YYYY-MM-DD
+  tasks: PlanTask[];
+  summaryNote?: string;
+}
+
+// Routine Builder Types
+export type RoutineType = 'morning' | 'afternoon' | 'evening' | 'custom';
+
+export interface RoutineStep {
+  id: string;
+  title: string;
+  time?: string; // e.g. "07:10"
+  duration?: number; // duration in minutes
+  notificationEnabled: boolean;
+  completed?: boolean;
+}
+
+export interface Routine {
+  id: string;
+  type: RoutineType;
+  title: string;
+  icon?: string;
+  daysOfWeek: number[]; // 0 = Sun, 1 = Mon, ..., 6 = Sat
+  startTime: string; // e.g. "07:00"
+  steps: RoutineStep[];
+  createdAt: string;
+  updatedAt: string;
+  isActive: boolean;
+}
+
+export interface RoutineProposal {
+  id: string;
+  type: RoutineType;
+  title: string;
+  icon?: string;
+  daysOfWeek: number[];
+  startTime: string;
+  steps: Array<{
+    title: string;
+    time?: string;
+    duration?: number;
+    notificationEnabled: boolean;
+  }>;
+  rawPrompt?: string;
+}
+
+export interface RoutineStreakData {
+  currentStreak: number;
+  bestStreak: number;
+  totalCompletions: number;
+  lastCompletedDate?: string; // YYYY-MM-DD
+}
+
+export interface RoutineHistoryEntry {
+  id: string;
+  routineId: string;
+  routineTitle: string;
+  completedAt: string;
+  date: string; // YYYY-MM-DD
+  stepsCompleted: number;
+  totalSteps: number;
+}
+
 // AI Structured Action Layer
 export type AIActionType =
   | 'create_reminder'
@@ -82,12 +166,16 @@ export type AIActionType =
   | 'search_reminders'
   | 'get_daily_schedule'
   | 'get_weekly_schedule'
+  | 'plan_day'
+  | 'create_routine'
   | 'clarification_needed'
   | 'general_chat';
 
 export interface AIActionPayload {
   action: AIActionType;
   remindersToCreate?: ExtractedReminderDraft[];
+  dailyPlanProposal?: DailyPlanProposal;
+  routineProposal?: RoutineProposal;
   targetReminderId?: string;
   targetQuery?: string;
   updateFields?: Partial<Reminder>;
@@ -170,4 +258,74 @@ export interface FocusHistoryItem {
 export interface FocusTodayStats {
   count: number;
   totalMinutes: number;
+}
+
+// Progress Dashboard Types
+export type WeekDayShortAz = 'B.e' | 'Ç.a' | 'Ç.' | 'C.a' | 'C.' | 'Ş.' | 'B.';
+
+export interface DayProgressItem {
+  dayName: WeekDayShortAz;
+  dayFull: string;
+  dateStr: string; // YYYY-MM-DD
+  isToday: boolean;
+  isFuture: boolean;
+  percent: number; // 0 - 100
+  tasksCompleted: number;
+  focusMinutes: number;
+  routinesCompleted: number;
+}
+
+export interface RoutineStreakItem {
+  routineId: string;
+  title: string;
+  type: RoutineType;
+  icon?: string;
+  currentStreak: number;
+  bestStreak: number;
+  thisWeekRate: number; // 0 - 100%
+  completedDaysThisWeek: number;
+  scheduledDaysThisWeek: number;
+}
+
+export interface ProgressDashboardData {
+  streakSummary: {
+    currentStreak: number;
+    bestStreak: number;
+  };
+  todaySummary: {
+    completedTasks: number;
+    focusMinutes: number;
+    completedRoutines: number;
+  };
+  weeklyProgress: {
+    overallPercent: number | null; // null if no data exists
+    days: DayProgressItem[];
+  };
+  weeklyMetrics: {
+    completedTasks: number;
+    tasksDiffPercent: number | null; // e.g. +12 or -5 or null if no comparison data
+    focusMinutes: number;
+    focusDiffPercent: number | null;
+    completedRoutines: number;
+    routinesDiffPercent: number | null;
+  };
+  routineStreaks: RoutineStreakItem[];
+  focusStats: {
+    todayMinutes: number;
+    thisWeekMinutes: number;
+    sessionCount: number;
+    avgDurationMinutes: number;
+  };
+  taskStats: {
+    todayCompleted: number;
+    thisWeekCompleted: number;
+    overdueCount: number;
+  };
+  personalBests: {
+    longestFocusMinutes: number | null;
+    bestRoutineStreak: number | null;
+    maxTasksInOneDay: number | null;
+  };
+  hasAnyHistory: boolean;
+  milestoneToCelebrate: number | null;
 }

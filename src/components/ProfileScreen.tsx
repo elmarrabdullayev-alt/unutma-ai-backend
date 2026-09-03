@@ -16,6 +16,7 @@ import {
   Heart,
   ShieldCheck,
   Info,
+  TrendingUp,
 } from 'lucide-react';
 import { Reminder, UserProfile, UserGender } from '../types';
 import { userProfileService } from '../services/userProfileService';
@@ -26,6 +27,7 @@ interface ProfileScreenProps {
   onRequestNotificationPermission: () => void;
   onImportReminders: (reminders: Reminder[]) => void;
   onReplayOnboarding?: () => void;
+  onOpenProgress?: () => void;
 }
 
 const GENDER_LABELS: Record<UserGender, string> = {
@@ -46,6 +48,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
   onRequestNotificationPermission,
   onImportReminders,
   onReplayOnboarding,
+  onOpenProgress,
 }) => {
   const [profile, setProfile] = useState<UserProfile | null>(() => userProfileService.getProfile());
   const [soundEffects, setSoundEffects] = useState(true);
@@ -284,6 +287,34 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
         </div>
       </div>
 
+      {/* SECTION: İRƏLİLƏYİŞİM */}
+      {onOpenProgress && (
+        <div className="space-y-1.5">
+          <h3 className="px-1 text-[11px] font-extrabold uppercase tracking-wider text-slate-400">
+            İrəliləyişim
+          </h3>
+          <div className="rounded-2xl border border-white/5 bg-[#101524] overflow-hidden">
+            <button
+              onClick={onOpenProgress}
+              className="flex w-full items-center justify-between p-3.5 hover:bg-slate-800/40 text-left transition-colors group"
+            >
+              <div className="flex items-center gap-3">
+                <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-violet-500/15 text-violet-400 group-hover:scale-105 transition-transform">
+                  <TrendingUp className="h-4 w-4" />
+                </div>
+                <div>
+                  <p className="text-xs font-semibold text-white">İrəliləyişim</p>
+                  <p className="text-[10px] text-slate-400">
+                    Ardıcıl günlər, rutin və fokus nəticələrin.
+                  </p>
+                </div>
+              </div>
+              <ChevronRight className="h-4 w-4 text-slate-500 group-hover:text-violet-400 transition-colors" />
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* SECTION A: BİLDİRİŞLƏR */}
       <div className="space-y-1.5">
         <div className="px-1">
@@ -353,7 +384,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                 <Smartphone className="h-4 w-4" />
               </div>
               <div>
-                <p className="text-xs font-semibold text-white">Toxunma hissi (Titrəmə)</p>
+                <p className="text-xs font-semibold text-white">Titrəmə</p>
                 <p className="text-[10px] text-slate-400">Düymə toxunuşlarında geri bildiriş</p>
               </div>
             </div>
@@ -439,11 +470,11 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
         </div>
       </div>
 
-      {/* SECTION D: İLK TANIŞLIQ EKRANLARI */}
+      {/* SECTION D: İLK TANIŞLIQ */}
       {onReplayOnboarding && (
         <div className="space-y-1.5">
           <h3 className="px-1 text-[11px] font-extrabold uppercase tracking-wider text-slate-400">
-            İlk tanışlıq ekranları
+            İlk tanışlıq
           </h3>
           <div className="rounded-2xl border border-white/5 bg-[#101524] overflow-hidden">
             <button
@@ -455,7 +486,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                   <RotateCcw className="h-4 w-4" />
                 </div>
                 <div>
-                  <p className="text-xs font-semibold text-white">İlk tanışlıq ekranlarını yenidən göstər</p>
+                  <p className="text-xs font-semibold text-white">İlk tanışlığı yenidən göstər</p>
                   <p className="text-[10px] text-slate-400">Giriş və tanışlıq addımlarını yenidən gör.</p>
                 </div>
               </div>

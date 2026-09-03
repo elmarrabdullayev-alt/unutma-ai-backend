@@ -13,6 +13,48 @@ function getAudioContext(): AudioContext {
   return audioCtx;
 }
 
+// Trigger light mobile haptic feedback if supported
+export function triggerHaptic(type: 'light' | 'medium' | 'success' = 'light') {
+  try {
+    if (typeof window !== 'undefined' && 'vibrate' in navigator) {
+      if (type === 'light') {
+        navigator.vibrate(14);
+      } else if (type === 'medium') {
+        navigator.vibrate(28);
+      } else if (type === 'success') {
+        navigator.vibrate([15, 60, 25]);
+      }
+    }
+  } catch {
+    // Haptics not available
+  }
+}
+
+// Crisp soft tick for completing steps
+export function playStepTickSound() {
+  try {
+    const ctx = getAudioContext();
+    const now = ctx.currentTime;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(800, now);
+    osc.frequency.exponentialRampToValueAtTime(1200, now + 0.05);
+
+    gain.gain.setValueAtTime(0.08, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+
+    osc.start(now);
+    osc.stop(now + 0.08);
+  } catch (err) {
+    // ignore
+  }
+}
+
 // Gentle pleasant reminder chime
 export function playReminderAlarmSound() {
   try {

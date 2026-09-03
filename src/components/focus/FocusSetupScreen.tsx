@@ -15,11 +15,19 @@ import {
   Zap,
   Trees,
   ChevronRight,
+  Orbit,
+  Activity,
 } from 'lucide-react';
 import { Reminder, FocusTodayStats, FocusAudioPreset, FocusAudioSettings } from '../../types';
 import { formatTimeOnly } from '../../utils/dateUtils';
 import { focusAudioService, FOCUS_AUDIO_OPTIONS } from '../../services/focusAudioService';
 import { FocusAudioBottomSheet } from './FocusAudioBottomSheet';
+import {
+  focusVisualPreferences,
+  FocusVisualTheme,
+  FOCUS_VISUAL_OPTIONS,
+} from '../../services/focusVisualPreferences';
+import { FocusVisualBottomSheet } from './FocusVisualBottomSheet';
 
 interface FocusSetupScreenProps {
   reminders: Reminder[];
@@ -58,13 +66,24 @@ export const FocusSetupScreen: React.FC<FocusSetupScreenProps> = ({
     focusAudioService.getSettings()
   );
   const [isAudioModalOpen, setIsAudioModalOpen] = useState<boolean>(false);
+  const [visualTheme, setVisualTheme] = useState<FocusVisualTheme>(() =>
+    focusVisualPreferences.getTheme()
+  );
+  const [isVisualModalOpen, setIsVisualModalOpen] = useState<boolean>(false);
   const [errorText, setErrorText] = useState<string>('');
 
   useEffect(() => {
-    const unsub = focusAudioService.subscribe((settings) => {
+    focusVisualPreferences.init().then((t) => setVisualTheme(t));
+    const unsubAudio = focusAudioService.subscribe((settings) => {
       setAudioSettings(settings);
     });
-    return unsub;
+    const unsubVisual = focusVisualPreferences.subscribe((theme) => {
+      setVisualTheme(theme);
+    });
+    return () => {
+      unsubAudio();
+      unsubVisual();
+    };
   }, []);
 
   const activeReminders = reminders.filter((r) => !r.isCompleted);
@@ -72,6 +91,23 @@ export const FocusSetupScreen: React.FC<FocusSetupScreenProps> = ({
   const selectedAudioOption =
     FOCUS_AUDIO_OPTIONS.find((opt) => opt.id === audioSettings.preset) ||
     FOCUS_AUDIO_OPTIONS[0];
+
+  const selectedVisualOption =
+    FOCUS_VISUAL_OPTIONS.find((opt) => opt.id === visualTheme) ||
+    FOCUS_VISUAL_OPTIONS[0];
+
+  const renderVisualIcon = (themeId: FocusVisualTheme) => {
+    switch (themeId) {
+      case 'memory-ring':
+        return <Orbit className="h-4 w-4 text-violet-400" />;
+      case 'energy-core':
+        return <Zap className="h-4 w-4 text-fuchsia-400" />;
+      case 'sound-wave':
+        return <Activity className="h-4 w-4 text-indigo-400" />;
+      default:
+        return <Orbit className="h-4 w-4 text-violet-400" />;
+    }
+  };
 
   const renderAudioIcon = (iconName: string) => {
     switch (iconName) {
@@ -389,6 +425,49 @@ export const FocusSetupScreen: React.FC<FocusSetupScreenProps> = ({
         </button>
       </div>
 
+      {/* SECTION 4: FOCUS VISUAL THEME SELECTOR */}
+      <div className="space-y-2 mb-6">
+        <div>
+          <h4 className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400">
+            Fokus görünüşü
+          </h4>
+          <p className="text-xs text-slate-400 mt-0.5">
+            Sessiya zamanı göstəriləcək animasiya üslubunu seç.
+          </p>
+        </div>
+
+        {/* Selected Visual Trigger Card */}
+        <button
+          type="button"
+          onClick={() => setIsVisualModalOpen(true)}
+          className="w-full flex items-center justify-between p-3.5 rounded-2xl bg-[#121826] border border-white/5 hover:border-violet-500/30 transition-all text-left group"
+        >
+          <div className="flex items-center gap-3 min-w-0 flex-1">
+            <div className="h-10 w-10 rounded-xl bg-violet-500/15 border border-violet-500/20 flex items-center justify-center shrink-0">
+              {renderVisualIcon(visualTheme)}
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-1.5">
+                <p className="text-xs font-bold text-white group-hover:text-violet-300 transition-colors">
+                  {selectedVisualOption.title}
+                </p>
+                <span className="px-1.5 py-0.5 rounded-md bg-violet-500/20 text-[10px] font-bold text-violet-300">
+                  Animasiya
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-400 truncate mt-0.5">
+                {selectedVisualOption.subtitle}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-1 text-slate-400 group-hover:text-violet-400 transition-colors text-xs font-bold pl-2">
+            <span>Dəyiş</span>
+            <ChevronRight className="h-4 w-4" />
+          </div>
+        </button>
+      </div>
+
       {errorText && (
         <p className="text-xs text-rose-400 font-semibold mb-4 text-center animate-fade-in">
           {errorText}
@@ -403,7 +482,7 @@ export const FocusSetupScreen: React.FC<FocusSetupScreenProps> = ({
           className="w-full h-12 rounded-2xl bg-gradient-to-r from-violet-600 via-indigo-600 to-violet-600 text-white font-extrabold text-sm shadow-lg shadow-violet-600/30 active:scale-[0.98] hover:brightness-110 transition-all flex items-center justify-center gap-2"
         >
           <Flame className="h-4 w-4" />
-          Fokuslanmağa başla ({selectedMinutes} dəq)
+          Fokuslan ({selectedMinutes} dəq)
         </button>
       </div>
 
@@ -416,6 +495,16 @@ export const FocusSetupScreen: React.FC<FocusSetupScreenProps> = ({
         onChangeVolume={(v) => focusAudioService.setVolume(v)}
         onToggleAutoPlay={(a) => focusAudioService.setAutoPlay(a)}
         onClose={() => setIsAudioModalOpen(false)}
+      />
+
+      {/* Focus Visual Theme Bottom Sheet */}
+      <FocusVisualBottomSheet
+        isOpen={isVisualModalOpen}
+        selectedTheme={visualTheme}
+        onSelectTheme={(t) => {
+          focusVisualPreferences.setTheme(t);
+        }}
+        onClose={() => setIsVisualModalOpen(false)}
       />
     </div>
   );

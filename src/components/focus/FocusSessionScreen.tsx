@@ -13,12 +13,19 @@ import {
   Waves,
   Zap,
   Trees,
+  Orbit,
+  Activity,
 } from 'lucide-react';
 import { FocusSession, FocusAudioSettings, FocusAudioPreset } from '../../types';
 import { focusService } from '../../services/focusService';
 import { focusAudioService, FOCUS_AUDIO_OPTIONS } from '../../services/focusAudioService';
 import { FocusAudioBottomSheet } from './FocusAudioBottomSheet';
-import { Hourglass3D } from './Hourglass3D';
+import {
+  focusVisualPreferences,
+  FocusVisualTheme,
+} from '../../services/focusVisualPreferences';
+import { FocusVisualRenderer } from './FocusVisualRenderer';
+import { FocusVisualBottomSheet } from './FocusVisualBottomSheet';
 
 interface FocusSessionScreenProps {
   session: FocusSession;
@@ -42,13 +49,24 @@ export const FocusSessionScreen: React.FC<FocusSessionScreenProps> = ({
     focusAudioService.isAudioPlaying()
   );
   const [isAudioSheetOpen, setIsAudioSheetOpen] = useState<boolean>(false);
+  const [visualTheme, setVisualTheme] = useState<FocusVisualTheme>(() =>
+    focusVisualPreferences.getTheme()
+  );
+  const [isVisualSheetOpen, setIsVisualSheetOpen] = useState<boolean>(false);
 
   useEffect(() => {
-    const unsub = focusAudioService.subscribe((settings, playing) => {
+    focusVisualPreferences.init().then((t) => setVisualTheme(t));
+    const unsubAudio = focusAudioService.subscribe((settings, playing) => {
       setAudioSettings(settings);
       setIsAudioPlaying(playing);
     });
-    return unsub;
+    const unsubVisual = focusVisualPreferences.subscribe((theme) => {
+      setVisualTheme(theme);
+    });
+    return () => {
+      unsubAudio();
+      unsubVisual();
+    };
   }, []);
 
   // High-precision ticker based on timestamps
@@ -151,42 +169,54 @@ export const FocusSessionScreen: React.FC<FocusSessionScreenProps> = ({
           </div>
         </div>
 
-        {/* Top Right: Audio Pill & Status Badge */}
-        <div className="flex items-center gap-2">
-          {/* Audio Quick Pill */}
+        {/* Top Right: Discreet Secondary Audio/Visual buttons & Status */}
+        <div className="flex items-center gap-1.5">
+          {/* Visual Theme Quick Button */}
+          <button
+            type="button"
+            onClick={() => setIsVisualSheetOpen(true)}
+            className="flex h-8 w-8 items-center justify-center rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-slate-400 hover:text-slate-200 transition-colors"
+            title="Görünüş"
+          >
+            {visualTheme === 'memory-ring' ? (
+              <Orbit className="h-3.5 w-3.5 text-violet-400" />
+            ) : visualTheme === 'energy-core' ? (
+              <Zap className="h-3.5 w-3.5 text-fuchsia-400" />
+            ) : (
+              <Activity className="h-3.5 w-3.5 text-indigo-400" />
+            )}
+          </button>
+
+          {/* Audio Quick Button */}
           <button
             type="button"
             onClick={() => setIsAudioSheetOpen(true)}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full bg-[#121826]/90 border border-white/10 hover:border-violet-500/40 text-[11px] font-bold text-slate-300 transition-all active:scale-95 shadow-sm"
-            title="Fon səsini dəyişdir"
+            className="flex h-8 w-8 items-center justify-center rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-slate-400 hover:text-slate-200 transition-colors relative"
+            title="Səs"
           >
             {isAudioPlaying ? (
               <Volume2 className="h-3.5 w-3.5 text-violet-400" />
             ) : (
               renderAudioIcon(selectedAudioOption.iconName)
             )}
-            <span className="text-[10px] hidden xs:inline sm:inline max-w-[65px] truncate">
-              {selectedAudioOption.name}
-            </span>
             {isAudioPlaying && (
-              <span className="flex h-1.5 w-1.5 relative">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-violet-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-violet-500"></span>
+              <span className="absolute top-1.5 right-1.5 flex h-1.5 w-1.5">
+                <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-violet-400"></span>
               </span>
             )}
           </button>
 
           {/* Status Badge */}
           <div
-            className={`px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wider border flex items-center gap-1.5 ${
+            className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border flex items-center gap-1.5 ${
               session.status === 'running'
-                ? 'bg-[#2BE58C]/10 border-[#2BE58C]/30 text-[#2BE58C]'
+                ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
                 : 'bg-amber-500/10 border-amber-500/30 text-amber-400'
             }`}
           >
             {session.status === 'running' ? (
               <>
-                <span className="h-1.5 w-1.5 rounded-full bg-[#2BE58C] shadow-[0_0_8px_#2BE58C] animate-pulse"></span>
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400"></span>
                 <span>Aktiv</span>
               </>
             ) : (
@@ -202,20 +232,18 @@ export const FocusSessionScreen: React.FC<FocusSessionScreenProps> = ({
       {/* 2. TASK PILL */}
       {session.taskTitle && (
         <div className="flex justify-center my-1 z-10">
-          <div className="max-w-[70%] px-3.5 py-1 rounded-full bg-[#121826]/90 border border-violet-500/20 text-center shadow-lg shadow-violet-950/40 backdrop-blur-md flex items-center justify-center gap-2">
-            <span className="flex items-center gap-0.5 text-violet-400 text-[10px] font-mono select-none tracking-tighter">
-              ▮▮▮
-            </span>
-            <p className="text-xs font-bold text-slate-200 truncate">
+          <div className="max-w-[85%] px-4 py-1.5 rounded-full bg-white/5 border border-white/10 text-center backdrop-blur-md">
+            <p className="text-xs font-semibold text-slate-200 truncate">
               {session.taskTitle}
             </p>
           </div>
         </div>
       )}
 
-      {/* 3. CENTER: ANIMATED 3D HOURGLASS & COUNTDOWN */}
+      {/* 3. CENTER: ANIMATED FOCUS VISUAL & COUNTDOWN */}
       <div className="flex flex-col items-center justify-center my-auto py-1 z-10 w-full">
-        <Hourglass3D
+        <FocusVisualRenderer
+          theme={visualTheme}
           progress={progress}
           isPaused={session.status !== 'running'}
         />
@@ -338,6 +366,16 @@ export const FocusSessionScreen: React.FC<FocusSessionScreenProps> = ({
         onChangeVolume={(v) => focusAudioService.setVolume(v)}
         onToggleAutoPlay={(a) => focusAudioService.setAutoPlay(a)}
         onClose={() => setIsAudioSheetOpen(false)}
+      />
+
+      {/* Focus Visual Theme Bottom Sheet */}
+      <FocusVisualBottomSheet
+        isOpen={isVisualSheetOpen}
+        selectedTheme={visualTheme}
+        onSelectTheme={(t) => {
+          focusVisualPreferences.setTheme(t);
+        }}
+        onClose={() => setIsVisualSheetOpen(false)}
       />
     </div>
   );

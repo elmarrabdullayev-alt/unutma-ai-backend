@@ -71,7 +71,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
             </button>
           </div>
 
-          {/* TAB 3: AI Assistant */}
+          {/* TAB 3: AI köməkçi */}
           <button
             id="nav-tab-ai"
             onClick={() => onTabChange('ai')}
@@ -82,7 +82,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
             <div className={`p-1 rounded-xl transition-all ${currentTab === 'ai' ? 'bg-violet-500/15' : ''}`}>
               <Bot className="h-5 w-5" />
             </div>
-            <span className="text-[10px] tracking-tight mt-0.5">AI</span>
+            <span className="text-[10px] tracking-tight mt-0.5 whitespace-nowrap">AI köməkçi</span>
           </button>
 
           {/* TAB 4: Profil */}

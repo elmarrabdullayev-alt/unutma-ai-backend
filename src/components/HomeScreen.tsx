@@ -6,9 +6,12 @@ import {
   CalendarDays,
   Sparkles,
   Flame,
+  TrendingUp,
 } from 'lucide-react';
-import { Reminder, UserProfile, FocusSession } from '../types';
+import { Reminder, UserProfile, FocusSession, Routine, RoutineType } from '../types';
 import { MobileReminderCard } from './MobileReminderCard';
+import { RoutineHomeSection } from './routine/RoutineHomeSection';
+import { routineService } from '../services/routineService';
 import {
   getGreetingAz,
   getFormattedTodayAz,
@@ -28,6 +31,10 @@ interface HomeScreenProps {
   onOpenVoice: () => void;
   onOpenManualAdd: () => void;
   onOpenFocus?: (reminder?: Reminder) => void;
+  onOpenPlanner?: () => void;
+  onOpenProgress?: () => void;
+  onOpenRoutineSession?: (routine: Routine) => void;
+  onOpenCreateRoutine?: (initialType?: RoutineType) => void;
   activeFocusSession?: FocusSession | null;
   notificationPermission: NotificationPermission;
   onRequestNotificationPermission: () => void;
@@ -44,6 +51,10 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   onOpenVoice,
   onOpenManualAdd,
   onOpenFocus,
+  onOpenPlanner,
+  onOpenProgress,
+  onOpenRoutineSession,
+  onOpenCreateRoutine,
   activeFocusSession,
   notificationPermission,
   onRequestNotificationPermission,
@@ -134,6 +145,30 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
         </div>
       </div>
 
+      {/* Home Card: "Günümü planla" */}
+      <div
+        onClick={() => onOpenPlanner?.()}
+        className="flex items-center justify-between p-3.5 rounded-2xl bg-gradient-to-r from-violet-950/40 via-[#131A2D] to-indigo-950/40 border border-violet-500/25 hover:border-violet-500/40 shadow-md cursor-pointer active:scale-[0.99] transition-all group"
+      >
+        <div className="flex items-center gap-3 min-w-0 flex-1">
+          <div className="h-9 w-9 rounded-xl bg-gradient-to-tr from-violet-600 to-indigo-600 flex items-center justify-center text-white shadow-md shrink-0 group-hover:scale-105 transition-transform">
+            <Sparkles className="h-4 w-4 text-violet-100" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-1.5">
+              <h3 className="text-xs font-black text-white tracking-tight">Günümü planla</h3>
+            </div>
+            <p className="text-[11px] text-slate-400 truncate mt-0.5">
+              İşlərini de, optimal cədvəlini quraq.
+            </p>
+          </div>
+        </div>
+        <div className="h-7 px-2.5 rounded-lg bg-violet-500/15 group-hover:bg-violet-600 text-violet-300 group-hover:text-white text-[11px] font-bold flex items-center gap-1 transition-all shrink-0">
+          <span>Başla</span>
+          <span className="text-sm">›</span>
+        </div>
+      </div>
+
       {/* Focus Mode Entry / Active Session Banner */}
       {activeFocusSession ? (
         <div
@@ -183,6 +218,42 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
           </div>
         </div>
       )}
+
+      {/* Routine Section: Rutinlərim */}
+      <RoutineHomeSection
+        onOpenRoutineSession={(routine) => onOpenRoutineSession?.(routine)}
+        onOpenCreateRoutine={(initialType) => onOpenCreateRoutine?.(initialType)}
+      />
+
+      {/* Progress Dashboard Entry Card: İrəliləyişin */}
+      <div
+        onClick={() => onOpenProgress?.()}
+        className="flex items-center justify-between p-3.5 rounded-2xl bg-gradient-to-r from-[#121829] via-[#0F1424] to-[#121626] border border-violet-500/20 hover:border-violet-500/35 shadow-md cursor-pointer active:scale-[0.99] transition-all group"
+      >
+        <div className="flex items-center gap-3 min-w-0 flex-1">
+          <div className="h-9 w-9 rounded-xl bg-gradient-to-tr from-violet-600/30 to-indigo-600/30 border border-violet-500/30 flex items-center justify-center text-violet-300 shadow-sm shrink-0 group-hover:scale-105 transition-transform">
+            <TrendingUp className="h-4 w-4 text-violet-300" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-1.5">
+              <h3 className="text-xs font-black text-white tracking-tight">İrəliləyişin</h3>
+              {routineService.getStreakData().currentStreak > 0 && (
+                <span className="flex items-center gap-0.5 px-1.5 py-0.2 rounded-full bg-amber-500/15 border border-amber-500/25 text-[9px] font-black text-amber-300">
+                  <Flame className="h-2.5 w-2.5" />
+                  <span>{routineService.getStreakData().currentStreak} gün</span>
+                </span>
+              )}
+            </div>
+            <p className="text-[11px] text-slate-400 truncate mt-0.5">
+              Bu həftə necə irəlilədiyinə bax.
+            </p>
+          </div>
+        </div>
+        <div className="h-7 px-2.5 rounded-lg bg-violet-500/15 group-hover:bg-violet-600 text-violet-300 group-hover:text-white text-[11px] font-bold flex items-center gap-1 transition-all shrink-0">
+          <span>Bax</span>
+          <span className="text-sm">›</span>
+        </div>
+      </div>
 
       {/* iOS-Style Segmented Tab (Aktiv / Bitmiş) */}
       <div className="flex bg-[#101522] p-1 rounded-2xl border border-white/5 shadow-inner">

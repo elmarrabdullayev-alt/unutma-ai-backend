@@ -12,35 +12,48 @@ import {
   Clock,
   Calendar,
   Trash2,
+  Flame,
+  AlertTriangle,
+  Check,
+  SlidersHorizontal,
+  Bell,
 } from 'lucide-react';
-import { Reminder, AIActionPayload, AssistantMessage } from '../types';
-import { speakText } from '../utils/soundUtils';
+import { Reminder, AIActionPayload, AssistantMessage, DailyPlanProposal, RoutineProposal } from '../types';
+import { speakText, playSuccessSound } from '../utils/soundUtils';
 import { reminderService } from '../services/reminderService';
 import { formatDateAz, formatTimeOnly } from '../utils/dateUtils';
 import { apiClient } from '../services/apiClient';
 import { intelligentRouter } from '../services/intelligentRouter';
+import { dailyPlannerService } from '../services/dailyPlannerService';
+import { routineService } from '../services/routineService';
 
 interface AiAssistantScreenProps {
   reminders: Reminder[];
   onOpenVoice: () => void;
+  onOpenDailyPlanner?: (proposal?: DailyPlanProposal) => void;
+  onOpenRoutineReview?: (proposal: RoutineProposal) => void;
+  onRemindersCreated?: (reminders: Reminder[]) => void;
 }
 
 const SUGGESTED_CHIPS = [
-  'Sabah nə planım var?',
-  'Bu gün nə etməliyəm?',
-  'Bu həftə hansı günüm daha boşdur?',
-  'Sabah saat 15:00-a görüş əlavə et',
+  'Sabahkı planımı göstər',
+  'Bugünkü rutinlərimi yoxla',
+  'Fokus rejiminə başla',
+  'Ən vacib tapşırığım hansıdır?',
 ];
 
 export const AiAssistantScreen: React.FC<AiAssistantScreenProps> = ({
   reminders,
   onOpenVoice,
+  onOpenDailyPlanner,
+  onOpenRoutineReview,
+  onRemindersCreated,
 }) => {
   const [messages, setMessages] = useState<AssistantMessage[]>([
     {
       id: 'init-1',
       role: 'assistant',
-      text: 'Salam! Mən sənin Unutma AI şəxsi köməkçinəm. Cədvəlin haqqında soruşa, yeni xatırlatmalar yarada, vaxtlarını dəyişə və ya ləğv edə bilərsən.',
+      text: 'Salam! Mən sənin AI köməkçinəm. Günün haqqında soruşa, plan qura və ya tapşırıqlarını idarə edə bilərsən.',
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     },
   ]);
@@ -51,6 +64,39 @@ export const AiAssistantScreen: React.FC<AiAssistantScreenProps> = ({
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+
+  const handleConfirmPlanInChat = (messageId: string, proposal: DailyPlanProposal) => {
+    playSuccessSound();
+    const created = dailyPlannerService.confirmPlan(proposal);
+    setMessages((prev) =>
+      prev.map((m) => {
+        if (m.id === messageId) {
+          return {
+            ...m,
+            executed: true,
+            text: `Təbriklər! Bugünkü plan təsdiqləndi və ${created.length} xatırlatma təqviminizə əlavə edildi.`,
+          };
+        }
+        return m;
+      })
+    );
+    onRemindersCreated?.(created);
+  };
+
+  const handleCancelPlanInChat = (messageId: string) => {
+    setMessages((prev) =>
+      prev.map((m) => {
+        if (m.id === messageId) {
+          return {
+            ...m,
+            executed: true,
+            text: 'Plan ləğv edildi. İstədiyiniz vaxt yenidən plan tərtib edə bilərsiniz.',
+          };
+        }
+        return m;
+      })
+    );
+  };
 
   const handleSendMessage = async (userText: string) => {
     const textToSend = userText.trim();
@@ -74,6 +120,32 @@ export const AiAssistantScreen: React.FC<AiAssistantScreenProps> = ({
       console.log(`[AI-CHAT-ROUTER] Local fast path for "${textToSend}"`);
       const payload = evaluation.payload;
       let actionResultMessage = '';
+
+      if (payload.action === 'plan_day') {
+        const assistantMsg: AssistantMessage = {
+          id: `msg-${Date.now()}-assistant`,
+          role: 'assistant',
+          text: payload.responseMessage || 'Bugünkü planın hazırlandı. Zəhmət olmasa təsdiq edin.',
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          actionPayload: payload,
+          executed: false,
+        };
+        setMessages((prev) => [...prev, assistantMsg]);
+        return;
+      }
+
+      if (payload.action === 'create_routine') {
+        const assistantMsg: AssistantMessage = {
+          id: `msg-${Date.now()}-assistant`,
+          role: 'assistant',
+          text: payload.responseMessage || 'Rutininiz üçün cədvəl tərtib edildi. Zəhmət olmasa təsdiq edin.',
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          actionPayload: payload,
+          executed: false,
+        };
+        setMessages((prev) => [...prev, assistantMsg]);
+        return;
+      }
 
       if (
         payload.action === 'create_reminder' ||
@@ -121,13 +193,15 @@ export const AiAssistantScreen: React.FC<AiAssistantScreenProps> = ({
         actionResultMessage = routeResult.executionResult.message;
       }
 
+      const isUnconfirmed = payload.action === 'plan_day' || payload.action === 'create_routine';
+
       const assistantMsg: AssistantMessage = {
         id: `msg-${Date.now()}-assistant`,
         role: 'assistant',
         text: actionResultMessage || payload.responseMessage,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         actionPayload: payload,
-        executed: true,
+        executed: !isUnconfirmed,
       };
 
       setMessages((prev) => [...prev, assistantMsg]);
@@ -143,6 +217,44 @@ export const AiAssistantScreen: React.FC<AiAssistantScreenProps> = ({
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleConfirmRoutineInChat = (msgId: string, proposal: RoutineProposal) => {
+    routineService.createRoutine({
+      type: proposal.type,
+      title: proposal.title,
+      icon: proposal.icon,
+      daysOfWeek: proposal.daysOfWeek,
+      startTime: proposal.startTime,
+      steps: proposal.steps,
+    });
+    playSuccessSound();
+
+    setMessages((prev) =>
+      prev.map((m) =>
+        m.id === msgId
+          ? {
+              ...m,
+              executed: true,
+              text: `"${proposal.title}" təsdiqləndi və rutinlərinizə əlavə edildi! Cədvəl üzrə addımlar xatırladılacaq.`,
+            }
+          : m
+      )
+    );
+  };
+
+  const handleCancelRoutineInChat = (msgId: string) => {
+    setMessages((prev) =>
+      prev.map((m) =>
+        m.id === msgId
+          ? {
+              ...m,
+              executed: true,
+              text: 'Rutin təklifi ləğv edildi.',
+            }
+          : m
+      )
+    );
   };
 
   const handleClearChat = () => {
@@ -165,8 +277,8 @@ export const AiAssistantScreen: React.FC<AiAssistantScreenProps> = ({
             <Sparkles className="h-4 w-4" />
           </div>
           <div>
-            <h1 className="text-base font-extrabold text-white">Unutma AI</h1>
-            <p className="text-[10px] font-medium text-emerald-400">Aktiv İntellekt • Şəxsi Köməkçi</p>
+            <h1 className="text-base font-extrabold text-white">AI köməkçi</h1>
+            <p className="text-[10px] font-medium text-slate-400">Sual ver və ya gününü planla</p>
           </div>
         </div>
 
@@ -205,6 +317,170 @@ export const AiAssistantScreen: React.FC<AiAssistantScreenProps> = ({
               >
                 <p className="whitespace-pre-wrap">{msg.text}</p>
 
+                {/* AI DAILY PLANNER PROPOSAL CARD */}
+                {payload?.action === 'plan_day' && payload.dailyPlanProposal && !msg.executed && (
+                  <div className="mt-3 pt-3 border-t border-violet-500/20 space-y-2.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-black text-white tracking-tight flex items-center gap-1.5">
+                        <Sparkles className="h-3.5 w-3.5 text-violet-400" />
+                        Bugünkü planın
+                      </span>
+                      <span className="text-[10px] text-violet-300/80 font-semibold">
+                        {payload.dailyPlanProposal.tasks.length} tapşırıq
+                      </span>
+                    </div>
+
+                    {/* Task List */}
+                    <div className="space-y-1.5">
+                      {payload.dailyPlanProposal.tasks.map((task) => (
+                        <div
+                          key={task.id}
+                          className={`p-2 rounded-xl border text-[11px] ${
+                            task.hasConflict
+                              ? 'bg-amber-950/30 border-amber-500/40'
+                              : 'bg-[#151D30] border-white/5'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between gap-1.5">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <span className="font-extrabold text-violet-300 text-xs shrink-0">
+                                {task.timeString}
+                              </span>
+                              <span className="font-semibold text-white truncate max-w-[150px]">
+                                {task.title}
+                              </span>
+                            </div>
+
+                            <div className="flex items-center gap-1 shrink-0">
+                              {task.isFocusReady && (
+                                <span className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded bg-violet-500/20 text-violet-300 text-[9px] font-bold">
+                                  <Flame className="h-2.5 w-2.5 text-amber-400" />
+                                  Fokus
+                                </span>
+                              )}
+                              {task.durationMinutes && (
+                                <span className="text-[10px] text-slate-400">
+                                  {task.durationMinutes}d
+                                </span>
+                              )}
+                              <span
+                                className={`px-1 py-0.2 rounded text-[9px] font-bold ${
+                                  task.priority === 'high'
+                                    ? 'text-rose-400 bg-rose-500/10'
+                                    : task.priority === 'medium'
+                                    ? 'text-amber-400 bg-amber-500/10'
+                                    : 'text-slate-400 bg-slate-500/10'
+                                }`}
+                              >
+                                {task.priority === 'high' ? 'Y' : task.priority === 'medium' ? 'O' : 'A'}
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Conflict Alert */}
+                          {task.hasConflict && (
+                            <div className="mt-1.5 pt-1.5 border-t border-amber-500/20 text-[10px] text-amber-300 flex items-center gap-1">
+                              <AlertTriangle className="h-3 w-3 text-amber-400 shrink-0" />
+                              <span>Bu saatda artıq planın var</span>
+                              {task.suggestedAlternativeTime && (
+                                <span className="text-violet-300 font-bold ml-auto">
+                                  Təklif: {task.suggestedAlternativeTime}
+                                </span>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Actions: "Təsdiq et", "Dəyiş", "Ləğv et" */}
+                    <div className="pt-1 flex items-center gap-1.5">
+                      <button
+                        onClick={() => handleCancelPlanInChat(msg.id)}
+                        className="flex-1 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 text-[10px] font-bold transition-all active:scale-95"
+                      >
+                        Ləğv et
+                      </button>
+                      <button
+                        onClick={() => onOpenDailyPlanner?.(payload.dailyPlanProposal)}
+                        className="flex-1 py-2 rounded-xl bg-[#1C253B] hover:bg-[#25304E] text-violet-300 text-[10px] font-bold border border-violet-500/20 transition-all active:scale-95"
+                      >
+                        Dəyiş
+                      </button>
+                      <button
+                        onClick={() => handleConfirmPlanInChat(msg.id, payload.dailyPlanProposal!)}
+                        className="flex-[1.4] py-2 rounded-xl bg-violet-600 hover:bg-violet-500 text-white text-[10px] font-black shadow-md flex items-center justify-center gap-1 transition-all active:scale-95"
+                      >
+                        <Check className="h-3 w-3" />
+                        <span>Təsdiq et</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* AI ROUTINE PROPOSAL CARD */}
+                {payload?.action === 'create_routine' && payload.routineProposal && !msg.executed && (
+                  <div className="mt-3 pt-3 border-t border-violet-500/20 space-y-2.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-black text-white tracking-tight flex items-center gap-1.5">
+                        <Sparkles className="h-3.5 w-3.5 text-violet-400" />
+                        Rutinin
+                      </span>
+                      <span className="text-[10px] text-violet-300/80 font-semibold">
+                        {payload.routineProposal.title} • {payload.routineProposal.startTime}
+                      </span>
+                    </div>
+
+                    {/* Ordered Steps Preview */}
+                    <div className="space-y-1.5">
+                      {payload.routineProposal.steps.map((step, sIdx) => (
+                        <div
+                          key={sIdx}
+                          className="flex items-center justify-between p-2 rounded-xl bg-[#151D30] border border-white/5 text-[11px]"
+                        >
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span className="h-4 w-4 rounded-full bg-violet-600/30 text-violet-300 text-[10px] font-bold flex items-center justify-center shrink-0">
+                              {sIdx + 1}
+                            </span>
+                            <span className="font-semibold text-white truncate max-w-[160px]">
+                              {step.title}
+                            </span>
+                          </div>
+
+                          <div className="flex items-center gap-1.5 shrink-0 text-[10px] text-slate-400">
+                            {step.time && <span className="text-violet-300 font-bold">{step.time}</span>}
+                            {step.duration && <span>• {step.duration}d</span>}
+                            {step.notificationEnabled && <Bell className="h-2.5 w-2.5 text-violet-400" />}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Actions: "Ləğv et", "Dəyiş", "Təsdiq et" */}
+                    <div className="pt-1 flex items-center gap-1.5">
+                      <button
+                        onClick={() => handleCancelRoutineInChat(msg.id)}
+                        className="flex-1 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 text-[10px] font-bold transition-all active:scale-95"
+                      >
+                        Ləğv et
+                      </button>
+                      <button
+                        onClick={() => onOpenRoutineReview?.(payload.routineProposal!)}
+                        className="flex-1 py-2 rounded-xl bg-[#1C253B] hover:bg-[#25304E] text-violet-300 text-[10px] font-bold border border-violet-500/20 transition-all active:scale-95"
+                      >
+                        Dəyiş
+                      </button>
+                      <button
+                        onClick={() => handleConfirmRoutineInChat(msg.id, payload.routineProposal!)}
+                        className="flex-[1.4] py-2 rounded-xl bg-violet-600 hover:bg-violet-500 text-white text-[10px] font-black shadow-md flex items-center justify-center gap-1 transition-all active:scale-95"
+                      >
+                        <Check className="h-3 w-3" />
+                        <span>Təsdiq et</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
+
                 {/* Interactive Action Confirmation Badge */}
                 {payload && payload.action && payload.action !== 'general_chat' && (
                   <div className="mt-2.5 pt-2 border-t border-white/10 flex items-center gap-1.5 text-[10px] font-semibold text-emerald-400">
@@ -212,6 +488,7 @@ export const AiAssistantScreen: React.FC<AiAssistantScreenProps> = ({
                     <span>
                       {payload.action === 'create_reminder' && 'Xatırlatma təqvimə əlavə edildi'}
                       {payload.action === 'create_multiple_reminders' && 'Xatırlatmalar təqvimə əlavə edildi'}
+                      {payload.action === 'create_routine' && 'Rutin cədvəli tərtib edildi'}
                       {payload.action === 'update_reminder' && 'Cədvəl yeniləndi'}
                       {payload.action === 'delete_reminder' && 'Xatırlatma ləğv edildi'}
                       {payload.action === 'complete_reminder' && 'Status: Tamamlandı'}
