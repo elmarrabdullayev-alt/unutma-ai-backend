@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Sparkles,
   Calendar,
@@ -60,6 +60,18 @@ export const DailyPlanModal: React.FC<DailyPlanModalProps> = ({
   const [isInlineEditMode, setIsInlineEditMode] = useState(false);
   const [focusSuggestionNotice, setFocusSuggestionNotice] = useState<string | null>(null);
 
+  const stopListening = useCallback(async () => {
+    setIsListening(false);
+    try {
+      const finalTxt = await speechManager.stopListening();
+      if (finalTxt) {
+        setInputText((prev) => (prev ? `${prev} ${finalTxt}` : finalTxt));
+      }
+    } catch (e) {
+      console.warn('[DailyPlanModal] Failed to stop speech listening:', e);
+    }
+  }, []);
+
   useEffect(() => {
     if (isOpen) {
       if (initialProposal && initialProposal.tasks.length > 0) {
@@ -73,11 +85,17 @@ export const DailyPlanModal: React.FC<DailyPlanModalProps> = ({
       setIsInlineEditMode(false);
       setFocusSuggestionNotice(null);
     } else {
-      stopListening();
+      if (isListening) {
+        stopListening();
+      }
     }
-  }, [isOpen, initialProposal]);
+  }, [isOpen, initialProposal, isListening, stopListening]);
 
-  if (!isOpen) return null;
+  useEffect(() => {
+    return () => {
+      speechManager.stopListening().catch(() => {});
+    };
+  }, []);
 
   // Voice recording toggle for input
   const toggleListening = async () => {
@@ -106,16 +124,6 @@ export const DailyPlanModal: React.FC<DailyPlanModalProps> = ({
         setIsListening(false);
       }
     }
-  };
-
-  const stopListening = async () => {
-    setIsListening(false);
-    try {
-      const finalTxt = await speechManager.stopListening();
-      if (finalTxt) {
-        setInputText((prev) => (prev ? `${prev} ${finalTxt}` : finalTxt));
-      }
-    } catch (e) {}
   };
 
   // Generate plan from text input
@@ -228,6 +236,8 @@ export const DailyPlanModal: React.FC<DailyPlanModalProps> = ({
     onPlanConfirmed(created);
     onClose();
   };
+
+  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-black/75 backdrop-blur-md animate-fade-in safe-bottom">
