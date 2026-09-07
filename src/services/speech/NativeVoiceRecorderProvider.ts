@@ -3,6 +3,10 @@ import { VoiceRecorder } from 'capacitor-voice-recorder';
 import { SpeechCallbacks, SpeechRecognitionProvider } from './SpeechRecognitionProvider';
 import { apiClient } from '../apiClient';
 
+/**
+ * NativeVoiceRecorderProvider bridges to the native VoiceRecorder plugin.
+ * On iOS, this connects to VoiceRecorderPlugin (AVAudioRecorder via CapApp-SPM).
+ */
 export class NativeVoiceRecorderProvider implements SpeechRecognitionProvider {
   public readonly name = 'NativeVoiceRecorderProvider';
   private isRecording = false;
@@ -13,27 +17,73 @@ export class NativeVoiceRecorderProvider implements SpeechRecognitionProvider {
   private currentAudioLevel = 0;
 
   public isAvailable(): boolean {
-    return Capacitor.isNativePlatform() && typeof VoiceRecorder !== 'undefined';
+    if (!Capacitor.isNativePlatform()) {
+      return false;
+    }
+    return Capacitor.isPluginAvailable('VoiceRecorder');
+  }
+
+  /**
+   * Diagnostic capability check for native recorder support.
+   */
+  public async checkCapability(): Promise<{ available: boolean; hasPermission: boolean; reason?: string }> {
+    const available = this.isAvailable();
+    const platform = Capacitor.getPlatform();
+    const platformLabel = platform === 'ios' ? 'iOS' : 'Android';
+
+    console.log(`[VOICE][${platformLabel}] recorder plugin available: ${available}`);
+    console.log(
+      `[VOICE][${platformLabel}] recorder implementation: ${
+        available ? (platform === 'ios' ? 'Native AVAudioRecorder (VoiceRecorder)' : 'Native MediaRecorder') : 'Unavailable'
+      }`
+    );
+
+    if (!available) {
+      return {
+        available: false,
+        hasPermission: false,
+        reason: 'VoiceRecorder plugin is not implemented/registered on native bridge',
+      };
+    }
+
+    try {
+      const hasPerm = await VoiceRecorder.hasAudioRecordingPermission();
+      return { available: true, hasPermission: !!hasPerm?.value };
+    } catch (err: any) {
+      console.warn(`[VOICE][${platformLabel}] permission check warning:`, err?.message || err);
+      return { available: false, hasPermission: false, reason: err?.message || String(err) };
+    }
   }
 
   public async start(callbacks: SpeechCallbacks): Promise<void> {
     this.callbacks = callbacks;
     this.activeStopPromise = null;
+    const platform = Capacitor.getPlatform();
 
     if (this.isRecording) {
       console.warn('[NATIVE VOICE] Already recording, ignoring start request');
       return;
     }
 
+    if (!this.isAvailable()) {
+      if (platform === 'ios') {
+        console.log('[VOICE][iOS] recorder start success/failure: failure');
+      }
+      const err = new Error('RECORDER_NOT_AVAILABLE');
+      const localized = this.localizeError(err);
+      if (callbacks.onError) callbacks.onError(new Error(localized));
+      throw new Error(localized);
+    }
+
     try {
       // 1. Permission check and request
       const hasPerm = await VoiceRecorder.hasAudioRecordingPermission();
-      console.log('[NATIVE VOICE] permission status:', hasPerm.value);
+      console.log('[NATIVE VOICE] permission status:', hasPerm?.value);
 
-      if (!hasPerm.value) {
+      if (!hasPerm?.value) {
         const reqPerm = await VoiceRecorder.requestAudioRecordingPermission();
-        console.log('[NATIVE VOICE] permission requested result:', reqPerm.value);
-        if (!reqPerm.value) {
+        console.log('[NATIVE VOICE] permission requested result:', reqPerm?.value);
+        if (!reqPerm?.value) {
           const err = new Error('Mikrofon icazəsi verilməyib. Zəhmət olmasa tənzimləmələrdən mikrofon icazəsi verin.');
           console.error('[NATIVE VOICE] error: Permission denied');
           if (callbacks.onError) callbacks.onError(err);
@@ -44,7 +94,7 @@ export class NativeVoiceRecorderProvider implements SpeechRecognitionProvider {
       // 2. Check current status in case previous recording was dangling
       try {
         const status = await VoiceRecorder.getCurrentStatus();
-        if (status.status === 'RECORDING') {
+        if (status?.status === 'RECORDING') {
           console.warn('[NATIVE VOICE] Previous recording was dangling, stopping it first');
           await VoiceRecorder.stopRecording();
         }
@@ -54,11 +104,14 @@ export class NativeVoiceRecorderProvider implements SpeechRecognitionProvider {
 
       // 3. Start native recording
       const startResult = await VoiceRecorder.startRecording();
-      if (!startResult.value) {
+      if (!startResult?.value) {
         throw new Error('Native səs yazma başladıla bilmədi.');
       }
 
       this.isRecording = true;
+      if (platform === 'ios') {
+        console.log('[VOICE][iOS] recorder start success/failure: success');
+      }
       console.log('[NATIVE VOICE] recording started');
 
       // 4. Simulate audio level pulsation for UI waveform
@@ -66,6 +119,9 @@ export class NativeVoiceRecorderProvider implements SpeechRecognitionProvider {
     } catch (err: any) {
       this.isRecording = false;
       this.stopAudioLevelSimulation();
+      if (platform === 'ios') {
+        console.log('[VOICE][iOS] recorder start success/failure: failure');
+      }
       console.error('[NATIVE VOICE] error:', err?.message || err);
       const localizedError = this.localizeError(err);
       if (callbacks.onError) callbacks.onError(new Error(localizedError));
@@ -176,19 +232,37 @@ export class NativeVoiceRecorderProvider implements SpeechRecognitionProvider {
   }
 
   private localizeError(err: any): string {
-    const msg = String(err?.message || '');
-    if (msg.includes('Permission') || msg.includes('icazə')) {
+    const rawMsg = String(err?.message || err || '');
+    console.warn('[NATIVE VOICE] technical error:', rawMsg);
+
+    if (
+      rawMsg.includes('not implemented') ||
+      rawMsg.includes('RECORDER_NOT_AVAILABLE') ||
+      rawMsg.includes('not registered') ||
+      rawMsg.includes('CANNOT_RECORD_ON_THIS_PHONE')
+    ) {
+      return 'Səs qeydiyyatı funksiyası bu cihazda əlçatan deyil. Zəhmət olmasa tənzimləmələrdən mikrofon icazəsini yoxlayın və ya mətndən istifadə edin.';
+    }
+    if (
+      rawMsg.includes('Permission') ||
+      rawMsg.includes('icazə') ||
+      rawMsg.includes('MISSING_PERMISSION') ||
+      rawMsg.includes('denied')
+    ) {
       return 'Mikrofon icazəsi verilməyib. Zəhmət olmasa tənzimləmələrdən mikrofon icazəsi verin.';
     }
-    if (msg.includes('RECORDING_ALREADY') || msg.includes('already recording')) {
+    if (rawMsg.includes('RECORDING_ALREADY') || rawMsg.includes('already recording')) {
       return 'Səs qeydiyyatı artıq aktivdir.';
     }
-    if (msg.includes('CANNOT_RECORD_ON_EMULATOR') || msg.includes('emulator')) {
+    if (rawMsg.includes('CANNOT_RECORD_ON_EMULATOR') || rawMsg.includes('emulator')) {
       return 'Emulyatorda mikrofon dəstəklənmir. Zəhmət olmasa fiziki cihazda yoxlayın.';
     }
-    if (msg.includes('AI server') || msg.includes('transkripsiya') || msg.includes('bağlantı')) {
-      return msg;
+    if (rawMsg.includes('EMPTY_RECORDING')) {
+      return 'Səs yazısı boşdur. Zəhmət olmasa daha aydın danışın.';
     }
-    return msg || 'Səs qeydiyyatı zamanı xəta baş verdi.';
+    if (rawMsg.includes('AI server') || rawMsg.includes('transkripsiya') || rawMsg.includes('bağlantı')) {
+      return rawMsg;
+    }
+    return 'Səs qeydiyyatı zamanı xəta baş verdi. Zəhmət olmasa yenidən cəhd edin və ya mətndən istifadə edin.';
   }
 }

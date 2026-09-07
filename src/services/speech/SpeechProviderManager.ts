@@ -43,28 +43,40 @@ export class SpeechProviderManager {
   private async startListeningIOS(callbacks: SpeechCallbacks): Promise<void> {
     console.log('[VOICE][iOS] platform detected');
 
-    // 1. Initial microphone permission check via VoiceRecorder
+    // Diagnostic capability detection for iOS voice recorder
+    const recorderAvailable = this.nativeVoiceRecorderProvider.isAvailable();
+    console.log(`[VOICE][iOS] recorder plugin available: ${recorderAvailable}`);
+    console.log(
+      `[VOICE][iOS] recorder implementation: ${
+        recorderAvailable ? 'Native AVAudioRecorder (VoiceRecorder)' : 'Unavailable'
+      }`
+    );
+
     let micPermGranted = false;
-    try {
-      const micStatus = await VoiceRecorder.hasAudioRecordingPermission();
-      micPermGranted = !!micStatus?.value;
-    } catch (e) {
-      micPermGranted = false;
+    if (recorderAvailable) {
+      try {
+        const micStatus = await VoiceRecorder.hasAudioRecordingPermission();
+        micPermGranted = !!micStatus?.value;
+      } catch (e: any) {
+        console.warn('[VOICE][iOS] mic permission probe warning:', e?.message || e);
+        micPermGranted = false;
+      }
     }
 
-    // 2. Check native speech recognition availability
+    // Check native speech recognition availability
     let nativeSTTAvailable = false;
     if (this.nativeSTTProvider.isAvailable()) {
       try {
         const avail = await SpeechRecognition.available();
         nativeSTTAvailable = !!avail?.available;
-      } catch (e) {
+      } catch (e: any) {
+        console.warn('[VOICE][iOS] SpeechRecognition availability check failed:', e?.message || e);
         nativeSTTAvailable = false;
       }
     }
     console.log(`[VOICE][iOS] native speech available: ${nativeSTTAvailable}`);
 
-    // 3. Primary on iOS: NativeSpeechRecognitionProvider (az-AZ)
+    // 1. Primary on iOS: NativeSpeechRecognitionProvider (az-AZ)
     if (nativeSTTAvailable) {
       try {
         let speechPerm = 'prompt';
@@ -86,7 +98,7 @@ export class SpeechProviderManager {
         }
 
         // Request microphone permission if not granted
-        if (!micPermGranted) {
+        if (!micPermGranted && recorderAvailable) {
           try {
             const reqMic = await VoiceRecorder.requestAudioRecordingPermission();
             micPermGranted = !!reqMic?.value;
@@ -98,10 +110,10 @@ export class SpeechProviderManager {
         console.log(`[VOICE][iOS] microphone permission: ${micPermGranted ? 'granted' : 'denied'}`);
         console.log(`[VOICE][iOS] speech permission: ${speechPerm}`);
 
-        if (speechPerm === 'granted' && micPermGranted) {
+        if (speechPerm === 'granted') {
           this.activeProvider = this.nativeSTTProvider;
+          console.log('[VOICE][iOS] fallback provider selected: NativeSpeechRecognitionProvider');
           await this.nativeSTTProvider.start(callbacks);
-          console.log('[VOICE][iOS] provider selected: NativeSpeechRecognitionProvider');
           return;
         } else {
           console.warn('[VOICE][iOS] Permissions not fully granted for native speech, activating fallback');
@@ -110,49 +122,50 @@ export class SpeechProviderManager {
         console.warn('[VOICE][iOS] NativeSpeechRecognitionProvider attempt failed:', sttErr?.message || sttErr);
         this.activeProvider = null;
       }
-    } else {
+    }
+
+    // 2. Fallback on iOS: Native Voice Recorder (VoiceRecorderPlugin -> AVAudioRecorder -> /api/transcribe-audio -> intelligentRouter)
+    console.log('[VOICE][iOS] fallback activated: NativeVoiceRecorderProvider');
+
+    if (recorderAvailable) {
+      // Platform-safe capability detection: verify microphone permission before selecting provider
       if (!micPermGranted) {
         try {
           const reqMic = await VoiceRecorder.requestAudioRecordingPermission();
           micPermGranted = !!reqMic?.value;
-        } catch (e) {
+        } catch (e: any) {
+          console.warn('[VOICE][iOS] mic permission request error:', e?.message || e);
           micPermGranted = false;
         }
       }
       console.log(`[VOICE][iOS] microphone permission: ${micPermGranted ? 'granted' : 'denied'}`);
-      console.log('[VOICE][iOS] speech permission: not_available');
-    }
 
-    // 4. Fallback on iOS: Native Voice Recorder (capacitor-voice-recorder + /api/transcribe-audio)
-    console.log('[VOICE][iOS] fallback activated: NativeVoiceRecorderProvider');
-    if (this.nativeVoiceRecorderProvider.isAvailable()) {
+      if (!micPermGranted) {
+        const permErr = new Error('Mikrofon icazəsi verilməyib. Zəhmət olmasa tənzimləmələrdən mikrofon icazəsi verin.');
+        if (callbacks.onError) callbacks.onError(permErr);
+        throw permErr;
+      }
+
+      // Only select provider after verifying implementation & permission
+      this.activeProvider = this.nativeVoiceRecorderProvider;
+      console.log('[VOICE][iOS] fallback provider selected: NativeVoiceRecorderProvider');
+
       try {
-        this.activeProvider = this.nativeVoiceRecorderProvider;
-        console.log('[VOICE][iOS] provider selected: NativeVoiceRecorderProvider');
         await this.nativeVoiceRecorderProvider.start(callbacks);
         return;
       } catch (recErr: any) {
-        console.warn('[VOICE][iOS] NativeVoiceRecorderProvider failed:', recErr?.message || recErr);
+        console.warn('[VOICE][iOS] NativeVoiceRecorderProvider start failed:', recErr?.message || recErr);
         this.activeProvider = null;
         throw recErr;
       }
+    } else {
+      console.error('[VOICE][iOS] recorder implementation is not available on this iOS device/build');
+      const unavailableErr = new Error(
+        'Səs qeydiyyatı funksiyası bu cihazda əlçatan deyil. Zəhmət olmasa tənzimləmələrdən mikrofon icazəsini yoxlayın və ya mətndən istifadə edin.'
+      );
+      if (callbacks.onError) callbacks.onError(unavailableErr);
+      throw unavailableErr;
     }
-
-    // 5. Last resort fallback: GeminiAudioFallbackProvider
-    if (this.geminiProvider.isAvailable()) {
-      try {
-        this.activeProvider = this.geminiProvider;
-        console.log('[VOICE][iOS] provider selected: GeminiAudioFallbackProvider');
-        await this.geminiProvider.start(callbacks);
-        return;
-      } catch (gemErr: any) {
-        console.warn('[VOICE][iOS] GeminiAudioFallbackProvider failed:', gemErr?.message || gemErr);
-        this.activeProvider = null;
-        throw gemErr;
-      }
-    }
-
-    throw new Error('Mikrofon/səs qəbulu vasitəsi bu cihazda dəstəklənmir.');
   }
 
   public async startListening(callbacks: SpeechCallbacks): Promise<void> {

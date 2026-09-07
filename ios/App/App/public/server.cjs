@@ -307,13 +307,36 @@ Haz\u0131rk\u0131 cari vaxt: ${userNowFormatted} (ISO: ${now.toISOString()}).
 ${JSON.stringify(reminders || [], null, 2)}
 
 S\u018FN\u0130N M\u018FQS\u018FD\u0130N:
-\u0130stifad\u0259\xE7inin Az\u0259rbaycan dilind\u0259ki ist\u0259nil\u0259n \u0259mrini, sual\u0131n\u0131 v\u0259 ya tap\u015F\u0131r\u0131\u011F\u0131n\u0131 analiz edib D\u018FQ\u0130Q STRUKTURLA\u015EDIRILMI\u015E F\u018FAL\u0130YY\u018FT (action) generasiya etm\u0259kdir:
+\u0130stifad\u0259\xE7inin Az\u0259rbaycan dilind\u0259ki ist\u0259nil\u0259n \u0259mrini, sual\u0131n\u0131 v\u0259 ya tap\u015F\u0131r\u0131\u011F\u0131n\u0131 analiz edib D\u018FQ\u0130Q STRUKTURLA\u015EDIRILMI\u015E F\u018FAL\u0130YY\u018FT (action) generasiya etm\u0259kdir.
 
-1. 'create_reminder' / 'create_multiple_reminders':
-   - M\u0259s\u0259l\u0259n: "Sabah saat 15:00-a g\xF6r\xFC\u015F \u0259lav\u0259 et" v\u0259 ya "Sabah saat 10-da Anara z\u0259ng et v\u0259 2-d\u0259 ma\u015F\u0131n\u0131 apar".
+Q\u018FT\u0130 V\u018F M\u018FCBUR\u0130 T\u018FHL\xDCK\u018FS\u0130ZL\u0130K QAYDALARI:
+1. 'create_reminder' / 'create_multiple_reminders' YALNIZ v\u0259 YALNIZ istifad\u0259\xE7i a\xE7\u0131q \u015F\u0259kild\u0259 yaratma v\u0259 ya xat\u0131rlatma feili i\u015Fl\u0259tdikd\u0259 ('xat\u0131rlat', '\u0259lav\u0259 et', 'yarat', 'qeyd et', 'planla\u015Fd\u0131r', 'yad\u0131ma sal') se\xE7il\u0259 bil\u0259r.
+2. T\u0259qvim v\u0259 ya zaman s\xF6zl\u0259ri t\u0259kc\u0259 (m\u0259s: "sabah", "bu g\xFCn", "ax\u015Fam", "h\u0259ft\u0259") he\xE7 vaxt xat\u0131rlatma yarad\u0131lmas\u0131 anlam\u0131na g\u0259lmir!
+3. \u0130stifad\u0259\xE7i m\xF6vcud c\u0259dv\u0259li, plan\u0131, i\u015Fl\u0259ri, xat\u0131rlatmalar\u0131 soru\u015Fursa v\u0259 ya "g\xF6st\u0259r" deyirs\u0259:
+   - M\u0259s\u0259l\u0259n: "Sabahk\u0131 plan\u0131m\u0131 g\xF6st\u0259r", "Bug\xFCnk\xFC plan\u0131m\u0131 g\xF6st\u0259r", "Sabah n\u0259 var?", "Bu g\xFCn n\u0259 i\u015Fim var?", "Xat\u0131rlatmalar\u0131m\u0131 g\xF6st\u0259r", "G\xF6r\xFC\u015Fl\u0259rimi g\xF6st\u0259r":
+   - BU Q\u018FT\u0130YY\u018FN V\u018F HE\xC7 VAXT 'create_reminder' OLA B\u0130LM\u018FZ!
+   - Bu H\u018FM\u0130\u015E\u018F 'get_daily_schedule' (v\u0259 ya 'get_weekly_schedule', 'search_reminders') olmal\u0131d\u0131r!
+   - 'g\xF6st\u0259r' feili H\u018FM\u0130\u015E\u018F M\u018FLUMAT \u018FLD\u018F ETM\u018FK (retrieval/query) niyy\u0259tidir!
+
+F\u018FAL\u0130YY\u018FTL\u018FR:
+
+1. 'get_daily_schedule':
+   - M\u0259s\u0259l\u0259n: "Sabahk\u0131 plan\u0131m\u0131 g\xF6st\u0259r", "Bug\xFCnk\xFC plan\u0131m\u0131 g\xF6st\u0259r", "Bu g\xFCn n\u0259 plan\u0131m var?", "Sabah n\u0259 etm\u0259liy\u0259m?", "Birig\xFCn n\u0259 var?", "Sabah n\u0259yim var?".
+   - responseMessage-d\u0259 m\xF6vcud xat\u0131rlatmalardan istifad\u0259 ed\u0259r\u0259k saatlar\u0131 il\u0259 ayd\u0131n v\u0259 s\u0259liq\u0259li cavab ver. \u018Fg\u0259r plan yoxdursa "H\u0259min g\xFCn \xFC\xE7\xFCn he\xE7 bir plan\u0131n\u0131z yoxdur, rahat istirah\u0259t ed\u0259 bil\u0259rsiniz" de.
+
+2. 'get_weekly_schedule':
+   - M\u0259s\u0259l\u0259n: "Bu h\u0259ft\u0259 hans\u0131 g\xFCn\xFCm daha bo\u015Fdur?", "H\u0259ft\u0259lik c\u0259dv\u0259limi g\xF6st\u0259r", "Bu h\u0259ft\u0259 planlar\u0131m".
+   - H\u0259ft\u0259 g\xFCnl\u0259rini xat\u0131rlatmalar\u0131n s\u0131xl\u0131\u011F\u0131na g\xF6r\u0259 analiz et v\u0259 \u0259n bo\u015F g\xFCnl\u0259ri qeyd ed\u0259r\u0259k cavab ver.
+
+3. 'search_reminders':
+   - M\u0259s\u0259l\u0259n: "H\u0259kiml\u0259 ba\u011Fl\u0131 n\u0259 xat\u0131rlatmam var?", "Anar haqq\u0131nda planlar", "G\xF6r\xFC\u015Fl\u0259rimi g\xF6st\u0259r", "Xat\u0131rlatmalar\u0131m\u0131 g\xF6st\u0259r".
+   - targetQuery a\xE7ar s\xF6z\xFCn\xFC v\u0259 responseMessage-d\u0259 n\u0259tic\u0259ni t\u0259qdim et.
+
+4. 'create_reminder' / 'create_multiple_reminders':
+   - M\u0259s\u0259l\u0259n: "Sabah saat 15:00-a g\xF6r\xFC\u015F \u0259lav\u0259 et", "Ax\u015Fam saat 8-d\u0259 d\u0259rman i\xE7m\u0259yi xat\u0131rlat", "Sabah saat 10-da Anara z\u0259ng et v\u0259 2-d\u0259 ma\u015F\u0131n\u0131 apar".
    - remindersToCreate massivind\u0259 d\u0259qiq ISO dueDateTime il\u0259 xat\u0131rlatmalar\u0131 t\u0259rtib et.
 
-2. 'update_reminder':
+5. 'update_reminder':
    - M\u0259s\u0259l\u0259n: "Sabahk\u0131 Anarla g\xF6r\xFC\u015F\xFCm\xFC 1 saat gecikdir", "D\u0259rman xat\u0131rlatmas\u0131n\u0131 saat 21:00-a d\u0259yi\u015F".
    - targetReminderId-ni m\xF6vcud siyah\u0131dan tap v\u0259 ya delayMinutes: 60 / updateFields t\u0259yin et.
 
@@ -468,11 +491,26 @@ S\u018FN\u0130N M\u018FQS\u018FD\u0130N:
     });
     console.log("[AI-ACTION] Text AI response received");
     const parsed = JSON.parse(aiResponse.text || "{}");
+    let action = parsed.action || "general_chat";
+    let responseMessage = parsed.responseMessage || "Sor\u011Funuz cavabland\u0131r\u0131ld\u0131.";
+    let remindersToCreate = parsed.remindersToCreate;
+    const promptNorm = String(userPrompt).toLowerCase();
+    const isQueryPhrase = /(göstər|goster|nə var|ne var|nəyim var|neyim var|nə işim var|ne isim var|nə planım var|ne planim var|planımı|planimi|cədvəl|cedvel|siyahı|siyahi)/i.test(promptNorm);
+    const hasCreateVerb = /(xatırlat|xatirlat|əlavə et|elave et|əlavə elə|yarat|qeyd et|planlaşdır|yadıma sal|yadına sal)/i.test(promptNorm);
+    if ((action === "create_reminder" || action === "create_multiple_reminders") && isQueryPhrase && !hasCreateVerb) {
+      console.warn(`[AI-ACTION] Guard triggered: Query phrase "${userPrompt}" misclassified by LLM as "${action}". Overriding to schedule inquiry.`);
+      remindersToCreate = void 0;
+      if (/həftə|hefte/i.test(promptNorm)) {
+        action = "get_weekly_schedule";
+      } else {
+        action = "get_daily_schedule";
+      }
+    }
     return res.json({
       success: true,
       actionPayload: {
-        action: parsed.action || "general_chat",
-        responseMessage: parsed.responseMessage || "Sor\u011Funuz cavabland\u0131r\u0131ld\u0131.",
+        action,
+        responseMessage,
         targetReminderId: parsed.targetReminderId,
         targetQuery: parsed.targetQuery,
         delayMinutes: parsed.delayMinutes,
@@ -485,7 +523,7 @@ S\u018FN\u0130N M\u018FQS\u018FD\u0130N:
           daysOfWeek: parsed.routineProposal.daysOfWeek || [1, 2, 3, 4, 5, 6, 0],
           steps: parsed.routineProposal.steps || []
         } : void 0,
-        remindersToCreate: (parsed.remindersToCreate || []).map((r, idx) => ({
+        remindersToCreate: (remindersToCreate || []).map((r, idx) => ({
           id: `extracted-${Date.now()}-${idx}`,
           title: r.title,
           description: r.description || "",
