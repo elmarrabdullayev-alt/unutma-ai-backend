@@ -184,7 +184,13 @@ export const AssistantChatModal: React.FC<AssistantChatModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in"
+      style={{
+        paddingTop: 'max(env(safe-area-inset-top, 0px), 16px)',
+        paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 16px)',
+      }}
+    >
       <div
         id="assistant-chat-modal"
         className="relative flex h-[85vh] max-h-[640px] w-full max-w-lg flex-col rounded-3xl border border-white/10 bg-gradient-to-b from-[#111827] to-[#0F172A] p-5 shadow-2xl text-slate-50 overflow-hidden"
@@ -211,7 +217,8 @@ export const AssistantChatModal: React.FC<AssistantChatModalProps> = ({
                 stopSpeaking();
                 onClose();
               }}
-              className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-800/80 text-slate-400 hover:bg-slate-700 hover:text-white transition-colors"
+              aria-label="Bağla"
+              className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full bg-slate-800/80 text-slate-400 hover:bg-slate-700 hover:text-white transition-colors active:scale-95 shrink-0"
             >
               <X className="h-4 w-4" />
             </button>

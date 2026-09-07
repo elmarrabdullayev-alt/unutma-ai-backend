@@ -279,7 +279,13 @@ export const VoiceInputModal: React.FC<VoiceInputModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in"
+      style={{
+        paddingTop: 'max(env(safe-area-inset-top, 0px), 16px)',
+        paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 16px)',
+      }}
+    >
       <div
         id="voice-input-modal"
         className="relative w-full max-w-lg rounded-3xl border border-white/10 bg-gradient-to-b from-[#111827] to-[#0F172A] p-6 shadow-2xl text-slate-50 overflow-hidden"
@@ -294,7 +300,8 @@ export const VoiceInputModal: React.FC<VoiceInputModalProps> = ({
             stopAllListening();
             onClose();
           }}
-          className="absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-full bg-slate-800/80 text-slate-400 hover:bg-slate-700 hover:text-white transition-colors"
+          aria-label="Bağla"
+          className="absolute right-3.5 top-3.5 flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full bg-slate-800/80 text-slate-400 hover:bg-slate-700 hover:text-white transition-colors active:scale-95 shrink-0"
         >
           <X className="h-4 w-4" />
         </button>

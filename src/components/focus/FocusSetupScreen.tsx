@@ -159,7 +159,12 @@ export const FocusSetupScreen: React.FC<FocusSetupScreenProps> = ({
   };
 
   return (
-    <div className="flex flex-col h-full bg-[#090D16] text-white p-5 overflow-y-auto select-none relative">
+    <div
+      className="flex flex-col h-full bg-[#090D16] text-white px-5 pb-5 overflow-y-auto select-none relative"
+      style={{
+        paddingTop: 'max(env(safe-area-inset-top, 0px), 20px)',
+      }}
+    >
       {/* Top Header */}
       <div className="flex items-start justify-between mb-6">
         <div>
@@ -174,7 +179,8 @@ export const FocusSetupScreen: React.FC<FocusSetupScreenProps> = ({
         </div>
         <button
           onClick={onClose}
-          className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition-colors"
+          aria-label="Bağla"
+          className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-xl bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition-colors active:scale-95 shrink-0"
         >
           <X className="h-4 w-4" />
         </button>

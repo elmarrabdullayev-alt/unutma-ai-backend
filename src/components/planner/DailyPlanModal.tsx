@@ -240,7 +240,13 @@ export const DailyPlanModal: React.FC<DailyPlanModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-black/75 backdrop-blur-md animate-fade-in safe-bottom">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-black/75 backdrop-blur-md animate-fade-in"
+      style={{
+        paddingTop: 'max(env(safe-area-inset-top, 0px), 12px)',
+        paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 12px)',
+      }}
+    >
       <div className="w-full max-w-md bg-[#0D1322] border border-violet-500/30 rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh]">
         {/* Header */}
         <div className="p-4 border-b border-white/5 bg-[#12182B] flex items-center justify-between shrink-0">
@@ -262,7 +268,8 @@ export const DailyPlanModal: React.FC<DailyPlanModalProps> = ({
 
           <button
             onClick={onClose}
-            className="h-8 w-8 rounded-full bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white flex items-center justify-center transition-colors"
+            aria-label="Bağla"
+            className="h-11 w-11 -mr-1.5 rounded-full bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white flex items-center justify-center transition-colors active:scale-95 shrink-0"
           >
             <X className="h-4 w-4" />
           </button>

@@ -81,13 +81,15 @@ export class NativeSpeechRecognitionProvider implements SpeechRecognitionProvide
       this.startAudioLevelSimulation();
 
       // Start recognition in background promise
-      SpeechRecognition.start({
+      const startPromise = SpeechRecognition.start({
         language: 'az-AZ',
         maxResults: 5,
         prompt: 'Danışın...',
         popup: false,
         partialResults: true,
-      })
+      });
+
+      startPromise
         .then((result) => {
           if (result && Array.isArray(result.matches) && result.matches.length > 0) {
             const finalMatch = (result.matches[0] || '').trim();
@@ -103,9 +105,16 @@ export class NativeSpeechRecognitionProvider implements SpeechRecognitionProvide
         .catch((startErr) => {
           console.warn('[NATIVE STT] start execution error:', startErr);
         });
+
+      // On iOS, await startPromise so that any engine/locale startup failure bubbles up
+      // immediately to SpeechProviderManager to activate the NativeVoiceRecorderProvider fallback.
+      if (Capacitor.getPlatform() === 'ios') {
+        await startPromise;
+      }
     } catch (startErr: any) {
       this.isListening = false;
       this.stopAudioLevelSimulation();
+      await this.cleanupListeners();
       console.error('[NATIVE STT] failed:', startErr);
       throw startErr;
     }

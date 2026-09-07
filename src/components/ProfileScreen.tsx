@@ -523,7 +523,13 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
 
       {/* EDIT PROFILE MODAL */}
       {isEditModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in"
+          style={{
+            paddingTop: 'max(env(safe-area-inset-top, 0px), 16px)',
+            paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 16px)',
+          }}
+        >
           <div className="w-full max-w-sm rounded-3xl bg-[#0F1424] border border-white/10 p-5 shadow-2xl space-y-4">
             <div className="flex items-center justify-between border-b border-white/5 pb-3">
               <h3 className="text-base font-bold text-white flex items-center gap-2">
@@ -532,7 +538,8 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
               </h3>
               <button
                 onClick={() => setIsEditModalOpen(false)}
-                className="flex h-8 w-8 items-center justify-center rounded-xl bg-white/5 text-slate-400 hover:text-white"
+                aria-label="Bağla"
+                className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-xl bg-white/5 text-slate-400 hover:text-white active:scale-95 transition-all shrink-0"
               >
                 <X className="h-4 w-4" />
               </button>

@@ -430,9 +430,15 @@ export const VoiceAssistantFullScreen: React.FC<VoiceAssistantFullScreenProps> =
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-[#080C15] text-slate-50 animate-fade-in safe-top safe-bottom overflow-y-auto">
+    <div
+      className="fixed inset-0 z-50 flex flex-col bg-[#080C15] text-slate-50 animate-fade-in overflow-y-auto"
+      style={{
+        paddingTop: 'max(env(safe-area-inset-top, 0px), 12px)',
+        paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 16px)',
+      }}
+    >
       {/* Top Header Bar */}
-      <div className="flex items-center justify-between px-5 pt-3 pb-2 z-20">
+      <div className="flex items-center justify-between px-5 pt-1 pb-2 z-20">
         <div className="flex items-center gap-2">
           <div className="flex h-7 w-7 items-center justify-center rounded-xl bg-violet-500/15 border border-violet-500/30 text-violet-300">
             <Sparkles className="h-3.5 w-3.5" />
@@ -448,7 +454,8 @@ export const VoiceAssistantFullScreen: React.FC<VoiceAssistantFullScreenProps> =
             stopListeningProcess();
             onClose();
           }}
-          className="flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-slate-300 hover:text-white active:scale-95 transition-all"
+          aria-label="Bağla"
+          className="flex h-11 w-11 items-center justify-center rounded-full bg-white/10 text-slate-300 hover:text-white active:scale-95 transition-all shrink-0"
         >
           <X className="h-4 w-4" />
         </button>

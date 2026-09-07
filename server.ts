@@ -341,13 +341,36 @@ Hazırkı cari vaxt: ${userNowFormatted} (ISO: ${now.toISOString()}).
 ${JSON.stringify(reminders || [], null, 2)}
 
 SƏNİN MƏQSƏDİN:
-İstifadəçinin Azərbaycan dilindəki istənilən əmrini, sualını və ya tapşırığını analiz edib DƏQİQ STRUKTURLAŞDIRILMIŞ FƏALİYYƏT (action) generasiya etməkdir:
+İstifadəçinin Azərbaycan dilindəki istənilən əmrini, sualını və ya tapşırığını analiz edib DƏQİQ STRUKTURLAŞDIRILMIŞ FƏALİYYƏT (action) generasiya etməkdir.
 
-1. 'create_reminder' / 'create_multiple_reminders':
-   - Məsələn: "Sabah saat 15:00-a görüş əlavə et" və ya "Sabah saat 10-da Anara zəng et və 2-də maşını apar".
+QƏTİ VƏ MƏCBURİ TƏHLÜKƏSİZLİK QAYDALARI:
+1. 'create_reminder' / 'create_multiple_reminders' YALNIZ və YALNIZ istifadəçi açıq şəkildə yaratma və ya xatırlatma feili işlətdikdə ('xatırlat', 'əlavə et', 'yarat', 'qeyd et', 'planlaşdır', 'yadıma sal') seçilə bilər.
+2. Təqvim və ya zaman sözləri təkcə (məs: "sabah", "bu gün", "axşam", "həftə") heç vaxt xatırlatma yaradılması anlamına gəlmir!
+3. İstifadəçi mövcud cədvəli, planı, işləri, xatırlatmaları soruşursa və ya "göstər" deyirsə:
+   - Məsələn: "Sabahkı planımı göstər", "Bugünkü planımı göstər", "Sabah nə var?", "Bu gün nə işim var?", "Xatırlatmalarımı göstər", "Görüşlərimi göstər":
+   - BU QƏTİYYƏN VƏ HEÇ VAXT 'create_reminder' OLA BİLMƏZ!
+   - Bu HƏMİŞƏ 'get_daily_schedule' (və ya 'get_weekly_schedule', 'search_reminders') olmalıdır!
+   - 'göstər' feili HƏMİŞƏ MƏLUMAT ƏLDƏ ETMƏK (retrieval/query) niyyətidir!
+
+FƏALİYYƏTLƏR:
+
+1. 'get_daily_schedule':
+   - Məsələn: "Sabahkı planımı göstər", "Bugünkü planımı göstər", "Bu gün nə planım var?", "Sabah nə etməliyəm?", "Birigün nə var?", "Sabah nəyim var?".
+   - responseMessage-də mövcud xatırlatmalardan istifadə edərək saatları ilə aydın və səliqəli cavab ver. Əgər plan yoxdursa "Həmin gün üçün heç bir planınız yoxdur, rahat istirahət edə bilərsiniz" de.
+
+2. 'get_weekly_schedule':
+   - Məsələn: "Bu həftə hansı günüm daha boşdur?", "Həftəlik cədvəlimi göstər", "Bu həftə planlarım".
+   - Həftə günlərini xatırlatmaların sıxlığına görə analiz et və ən boş günləri qeyd edərək cavab ver.
+
+3. 'search_reminders':
+   - Məsələn: "Həkimlə bağlı nə xatırlatmam var?", "Anar haqqında planlar", "Görüşlərimi göstər", "Xatırlatmalarımı göstər".
+   - targetQuery açar sözünü və responseMessage-də nəticəni təqdim et.
+
+4. 'create_reminder' / 'create_multiple_reminders':
+   - Məsələn: "Sabah saat 15:00-a görüş əlavə et", "Axşam saat 8-də dərman içməyi xatırlat", "Sabah saat 10-da Anara zəng et və 2-də maşını apar".
    - remindersToCreate massivində dəqiq ISO dueDateTime ilə xatırlatmaları tərtib et.
 
-2. 'update_reminder':
+5. 'update_reminder':
    - Məsələn: "Sabahkı Anarla görüşümü 1 saat gecikdir", "Dərman xatırlatmasını saat 21:00-a dəyiş".
    - targetReminderId-ni mövcud siyahıdan tap və ya delayMinutes: 60 / updateFields təyin et.
 

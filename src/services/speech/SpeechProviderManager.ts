@@ -1,4 +1,6 @@
 import { Capacitor } from '@capacitor/core';
+import { SpeechRecognition } from '@capacitor-community/speech-recognition';
+import { VoiceRecorder } from 'capacitor-voice-recorder';
 import { SpeechCallbacks, SpeechRecognitionProvider } from './SpeechRecognitionProvider';
 import { NativeSpeechRecognitionProvider } from './NativeSpeechRecognitionProvider';
 import { NativeVoiceRecorderProvider } from './NativeVoiceRecorderProvider';
@@ -16,10 +18,155 @@ export class SpeechProviderManager {
     return this.activeProvider ? this.activeProvider.name : 'None';
   }
 
+  /**
+   * Returns true on iOS whenever at least one of these is available:
+   * - native speech recognition
+   * - native voice recorder fallback
+   */
+  public isSupported(): boolean {
+    const platform = Capacitor.getPlatform();
+    if (platform === 'ios') {
+      const hasSpeech = this.nativeSTTProvider.isAvailable();
+      const hasRecorder = this.nativeVoiceRecorderProvider.isAvailable();
+      return hasSpeech || hasRecorder;
+    }
+    if (platform === 'android') {
+      return (
+        this.nativeSTTProvider.isAvailable() ||
+        this.nativeVoiceRecorderProvider.isAvailable() ||
+        this.geminiProvider.isAvailable()
+      );
+    }
+    return this.webProvider.isAvailable() || this.geminiProvider.isAvailable();
+  }
+
+  private async startListeningIOS(callbacks: SpeechCallbacks): Promise<void> {
+    console.log('[VOICE][iOS] platform detected');
+
+    // 1. Initial microphone permission check via VoiceRecorder
+    let micPermGranted = false;
+    try {
+      const micStatus = await VoiceRecorder.hasAudioRecordingPermission();
+      micPermGranted = !!micStatus?.value;
+    } catch (e) {
+      micPermGranted = false;
+    }
+
+    // 2. Check native speech recognition availability
+    let nativeSTTAvailable = false;
+    if (this.nativeSTTProvider.isAvailable()) {
+      try {
+        const avail = await SpeechRecognition.available();
+        nativeSTTAvailable = !!avail?.available;
+      } catch (e) {
+        nativeSTTAvailable = false;
+      }
+    }
+    console.log(`[VOICE][iOS] native speech available: ${nativeSTTAvailable}`);
+
+    // 3. Primary on iOS: NativeSpeechRecognitionProvider (az-AZ)
+    if (nativeSTTAvailable) {
+      try {
+        let speechPerm = 'prompt';
+        try {
+          const permStatus = await SpeechRecognition.checkPermissions();
+          speechPerm = permStatus?.speechRecognition || 'prompt';
+        } catch (e) {
+          speechPerm = 'prompt';
+        }
+
+        // Request speech recognition permission if not granted
+        if (speechPerm !== 'granted') {
+          try {
+            const reqStatus = await SpeechRecognition.requestPermissions();
+            speechPerm = reqStatus?.speechRecognition || 'denied';
+          } catch (e) {
+            speechPerm = 'denied';
+          }
+        }
+
+        // Request microphone permission if not granted
+        if (!micPermGranted) {
+          try {
+            const reqMic = await VoiceRecorder.requestAudioRecordingPermission();
+            micPermGranted = !!reqMic?.value;
+          } catch (e) {
+            micPermGranted = false;
+          }
+        }
+
+        console.log(`[VOICE][iOS] microphone permission: ${micPermGranted ? 'granted' : 'denied'}`);
+        console.log(`[VOICE][iOS] speech permission: ${speechPerm}`);
+
+        if (speechPerm === 'granted' && micPermGranted) {
+          this.activeProvider = this.nativeSTTProvider;
+          await this.nativeSTTProvider.start(callbacks);
+          console.log('[VOICE][iOS] provider selected: NativeSpeechRecognitionProvider');
+          return;
+        } else {
+          console.warn('[VOICE][iOS] Permissions not fully granted for native speech, activating fallback');
+        }
+      } catch (sttErr: any) {
+        console.warn('[VOICE][iOS] NativeSpeechRecognitionProvider attempt failed:', sttErr?.message || sttErr);
+        this.activeProvider = null;
+      }
+    } else {
+      if (!micPermGranted) {
+        try {
+          const reqMic = await VoiceRecorder.requestAudioRecordingPermission();
+          micPermGranted = !!reqMic?.value;
+        } catch (e) {
+          micPermGranted = false;
+        }
+      }
+      console.log(`[VOICE][iOS] microphone permission: ${micPermGranted ? 'granted' : 'denied'}`);
+      console.log('[VOICE][iOS] speech permission: not_available');
+    }
+
+    // 4. Fallback on iOS: Native Voice Recorder (capacitor-voice-recorder + /api/transcribe-audio)
+    console.log('[VOICE][iOS] fallback activated: NativeVoiceRecorderProvider');
+    if (this.nativeVoiceRecorderProvider.isAvailable()) {
+      try {
+        this.activeProvider = this.nativeVoiceRecorderProvider;
+        console.log('[VOICE][iOS] provider selected: NativeVoiceRecorderProvider');
+        await this.nativeVoiceRecorderProvider.start(callbacks);
+        return;
+      } catch (recErr: any) {
+        console.warn('[VOICE][iOS] NativeVoiceRecorderProvider failed:', recErr?.message || recErr);
+        this.activeProvider = null;
+        throw recErr;
+      }
+    }
+
+    // 5. Last resort fallback: GeminiAudioFallbackProvider
+    if (this.geminiProvider.isAvailable()) {
+      try {
+        this.activeProvider = this.geminiProvider;
+        console.log('[VOICE][iOS] provider selected: GeminiAudioFallbackProvider');
+        await this.geminiProvider.start(callbacks);
+        return;
+      } catch (gemErr: any) {
+        console.warn('[VOICE][iOS] GeminiAudioFallbackProvider failed:', gemErr?.message || gemErr);
+        this.activeProvider = null;
+        throw gemErr;
+      }
+    }
+
+    throw new Error('Mikrofon/səs qəbulu vasitəsi bu cihazda dəstəklənmir.');
+  }
+
   public async startListening(callbacks: SpeechCallbacks): Promise<void> {
     const isNative = Capacitor.isNativePlatform();
-    console.log(`[SpeechProviderManager] runtime=${isNative ? 'native' : 'web'}`);
+    const platform = Capacitor.getPlatform();
+    console.log(`[SpeechProviderManager] runtime=${isNative ? 'native' : 'web'} platform=${platform}`);
 
+    // iOS specific routing
+    if (platform === 'ios') {
+      await this.startListeningIOS(callbacks);
+      return;
+    }
+
+    // Android native routing (KEEP EXISTING CURRENT FLOW UNCHANGED)
     if (isNative) {
       // 1. Primary on Native Android: Native Speech Recognition (az-AZ locale)
       if (this.nativeSTTProvider.isAvailable()) {

@@ -151,7 +151,12 @@ export const FocusSessionScreen: React.FC<FocusSessionScreenProps> = ({
   };
 
   return (
-    <div className="flex flex-col h-full bg-gradient-to-b from-[#0D1322] via-[#090D16] to-[#070A12] text-white p-4 sm:p-5 justify-between relative select-none rounded-[28px] sm:rounded-[32px] border border-violet-500/20 shadow-[0_0_50px_rgba(139,92,246,0.12)] overflow-hidden">
+    <div
+      className="flex flex-col h-full bg-gradient-to-b from-[#0D1322] via-[#090D16] to-[#070A12] text-white p-4 sm:p-5 justify-between relative select-none rounded-[28px] sm:rounded-[32px] border border-violet-500/20 shadow-[0_0_50px_rgba(139,92,246,0.12)] overflow-hidden"
+      style={{
+        paddingTop: 'max(env(safe-area-inset-top, 0px), 16px)',
+      }}
+    >
       {/* 1. TOP HEADER */}
       <div className="flex items-center justify-between gap-2 z-10">
         {/* Top Left: Focus Brand & Time Span */}

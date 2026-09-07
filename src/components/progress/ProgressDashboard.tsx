@@ -78,11 +78,17 @@ export const ProgressDashboard: React.FC<ProgressDashboardProps> = ({
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-[#090D16] text-white overflow-hidden animate-in fade-in duration-200">
       {/* Top Header Bar */}
-      <div className="flex items-center justify-between border-b border-white/5 bg-[#0C111E]/95 px-4 py-3.5 backdrop-blur-xl shrink-0">
+      <div
+        className="flex items-center justify-between border-b border-white/5 bg-[#0C111E]/95 px-4 pb-3.5 backdrop-blur-xl shrink-0"
+        style={{
+          paddingTop: 'max(env(safe-area-inset-top, 0px), 14px)',
+        }}
+      >
         <div className="flex items-center gap-3">
           <button
             onClick={onClose}
-            className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/5 text-slate-300 border border-white/10 hover:bg-white/10 active:scale-95 transition-all"
+            aria-label="Geri"
+            className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-xl bg-white/5 text-slate-300 border border-white/10 hover:bg-white/10 active:scale-95 transition-all shrink-0"
             title="Geri"
           >
             <ArrowLeft className="h-4 w-4" />

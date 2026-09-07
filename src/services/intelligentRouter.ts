@@ -68,7 +68,76 @@ const AZ_WEEKDAYS: Record<string, number> = {
   'bazar': 0,
 };
 
+/**
+ * Normalizes Azerbaijani text for consistent keyword matching.
+ */
+export function normalizeAz(text: string): string {
+  if (!text) return '';
+  return text
+    .replace(/İ/g, 'i')
+    .replace(/I/g, 'ı')
+    .toLowerCase()
+    .replace(/[.,!?;:'"()]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+/**
+ * Mandatory Rule: CREATE intent must require an explicit creation semantic.
+ * Temporal words alone (sabah, bu gün, axşam, həftə) must NEVER imply create_reminder.
+ */
+export const EXPLICIT_CREATE_REGEX =
+  /\b(xatırlat|xatirlat|xatırlatsın|xatirlatsin|xatırlatmaq|xatirlatmaq|əlavə et|elave et|əlavə elə|elave ele|yarat|yaratsın|yaratmaq|qeyd et|qeyd elə|qeyd apar|planlaşdır|planlasdir|yadıma sal|yadima sal|yadına sal|yadina sal|yada sal|unutma)\b/i;
+
+/**
+ * Mandatory Rule: Query/view phrases MUST NEVER create reminders.
+ * "göstər" must always be treated as retrieval/query intent.
+ */
+export const RETRIEVAL_QUERY_REGEX =
+  /\b(göstər|goster|göstərin|gosterin|göstərərsən|gosterersen|nə var|ne var|nəyim var|neyim var|nə işim var|ne isim var|nə planım var|ne planim var|nə edəcəm|ne edecem|nə etməliyəm|ne etmeliyem|nələr var|neler var|nə vaxtdır|ne vaxtdir|hansı vaxtdır|hansi vaxtdir|planım|planim|planımı|planimi|planlarım|planlarim|planlarımı|planlarimi|xatırlatmam|xatirlatmam|xatırlatmamı|xatirlatmami|xatırlatmalarım|xatirlatmalarim|xatırlatmalarımı|xatirlatmalarimi|xatırlatmaları|xatirlatmalari|görüşlərim|goruslerim|görüşlərimi|goruslerimi|görüşləri|gorusleri|işlərim|islerim|işlərimi|islerimi|tapşırıqlarım|tapsiriqlarim|tapşırıqlarımı|tapsiriqlarimi|cədvəl|cedvel|cədvəli|cedveli|cədvəlim|cedvelim|cədvəlimi|cedvelimi|siyahı|siyahi|siyahısı|siyahisi|siyahımı|siyahimi|tap|axtar|oxu|baxaq|bax)\b/i;
+
+export function hasExplicitCreateVerb(text: string): boolean {
+  const norm = normalizeAz(text);
+  return EXPLICIT_CREATE_REGEX.test(norm);
+}
+
+export function isRetrievalQuery(text: string): boolean {
+  const norm = normalizeAz(text);
+  if (hasExplicitCreateVerb(norm)) {
+    return false;
+  }
+  return RETRIEVAL_QUERY_REGEX.test(norm);
+}
+
+export function isRetrievalQueryTitle(title: string): boolean {
+  if (!title) return true;
+  const norm = normalizeAz(title);
+  if (norm.length < 2) return true;
+  if (RETRIEVAL_QUERY_REGEX.test(norm) && !EXPLICIT_CREATE_REGEX.test(norm)) {
+    return true;
+  }
+  return false;
+}
+
 export class IntelligentRouter {
+  public isRetrievalQuery = isRetrievalQuery;
+  public hasExplicitCreateVerb = hasExplicitCreateVerb;
+  public isRetrievalQueryTitle = isRetrievalQueryTitle;
+
+  private logIntentTrace(trace: {
+    input: string;
+    localClassification: string;
+    backendClassification?: string;
+    finalAction: string;
+    reason: string;
+  }): void {
+    console.log(`[INTENT-TRACE] input: ${trace.input}`);
+    console.log(`[INTENT-TRACE] local classification: ${trace.localClassification}`);
+    console.log(`[INTENT-TRACE] backend classification: ${trace.backendClassification || 'none'}`);
+    console.log(`[INTENT-TRACE] final action: ${trace.finalAction}`);
+    console.log(`[INTENT-TRACE] reason: ${trace.reason}`);
+  }
+
   /**
    * Main entry point: Route prompt through Local Fast Path first, or Gemini if complex.
    */
@@ -82,6 +151,30 @@ export class IntelligentRouter {
     const currentReminders = reminders || reminderService.getAll();
 
     console.log(`[ROUTER] Request received: "${cleanPrompt}"`);
+
+    // 0. Safety check: If input is a retrieval query without explicit create verb, evaluate locally directly
+    if (this.isRetrievalQuery(cleanPrompt) && !this.hasExplicitCreateVerb(cleanPrompt)) {
+      const queryEval = this.handleRetrievalQuery(cleanPrompt, currentReminders);
+      this.logIntentTrace({
+        input: cleanPrompt,
+        localClassification: queryEval.payload.action,
+        backendClassification: 'none (handled by local retrieval guard)',
+        finalAction: queryEval.payload.action,
+        reason: queryEval.reason,
+      });
+
+      const execTime = Math.round(performance.now() - startTime);
+      return {
+        source: 'local_fast_path',
+        intent: queryEval.payload.action,
+        confidence: queryEval.confidence,
+        confidenceTier: 'high',
+        requiresGemini: false,
+        actionPayload: queryEval.payload,
+        executionTimeMs: execTime,
+        reason: queryEval.reason,
+      };
+    }
 
     // 1. Check for Complex Reasoning / Planning triggers that MUST go to Gemini
     const complexReasoningReason = this.detectComplexReasoningTriggers(cleanPrompt);
@@ -123,6 +216,14 @@ export class IntelligentRouter {
       const execTime = Math.round(performance.now() - startTime);
       console.log(`[CLIENT ROUTER] execution time ms: ${execTime}ms`);
 
+      this.logIntentTrace({
+        input: cleanPrompt,
+        localClassification: localEval.payload.action,
+        backendClassification: 'none (handled locally)',
+        finalAction: localEval.payload.action,
+        reason: localEval.reason,
+      });
+
       return {
         source: 'local_fast_path',
         intent: localEval.payload.action,
@@ -150,17 +251,25 @@ export class IntelligentRouter {
     prompt: string,
     currentReminders: Reminder[]
   ): LocalEvaluationResult {
-    const lower = prompt.toLowerCase().trim();
+    const clean = prompt.trim();
+    const lower = clean.toLowerCase();
+
+    // 0. MANDATORY SAFETY GUARD: Query/view phrases MUST NEVER create reminders.
+    // "göstər" must always be treated as retrieval/query intent.
+    if (this.isRetrievalQuery(clean) && !this.hasExplicitCreateVerb(clean)) {
+      const res = this.handleRetrievalQuery(clean, currentReminders);
+      return res;
+    }
 
     // A. SCHEDULE INQUIRIES: Daily Schedule
     if (
       /^(bu gün|bugün|sabah|birigün|biri gün|dünən|cümə|şənbə|bazar|çərşənbə)/i.test(lower) &&
-      /(nə planım var|nə etməliyəm|nəyim var|nə var|planlarım|cədvəli|cədvəl|işlərim var|tapşırıqlar)/i.test(lower)
+      /(nə planım var|nə etməliyəm|nəyim var|nə var|planlarım|planım|cədvəli|cədvəl|işlərim var|tapşırıqlar)/i.test(lower)
     ) {
       const res = this.handleDailyScheduleInquiry(lower, currentReminders);
       return { handledLocally: true, action: res.payload.action, ...res };
     }
-    if (/(bugünkü planlarım|sabahkı planlarım|birigünkü planlarım)/i.test(lower)) {
+    if (/(bugünkü planlarım|bugünkü planımı|sabahkı planlarım|sabahkı planımı|birigünkü planlarım)/i.test(lower)) {
       const res = this.handleDailyScheduleInquiry(lower, currentReminders);
       return { handledLocally: true, action: res.payload.action, ...res };
     }
@@ -168,7 +277,7 @@ export class IntelligentRouter {
     // B. SCHEDULE INQUIRIES: Weekly Schedule
     if (
       /(bu həftə|həftəlik|həftə)/i.test(lower) &&
-      /(hansı günüm daha boşdur|ən boş gün|ən rahat gün|cədvəlimi göstər|planlarım|cədvəl|işlərim var)/i.test(lower)
+      /(hansı günüm daha boşdur|ən boş gün|ən rahat gün|cədvəlimi göstər|planlarım|planımı|cədvəl|işlərim var)/i.test(lower)
     ) {
       const res = this.handleWeeklyScheduleInquiry(currentReminders);
       return { handledLocally: true, action: res.payload.action, ...res };
@@ -176,7 +285,7 @@ export class IntelligentRouter {
 
     // C. SEARCH INQUIRIES
     if (
-      /(ilə bağlı nə xatırlatmam var|haqqında nə planım var|xatırlatmalarını göstər|planlarını göstər|haqqında nə var|haqqında xatırlatmalar)/i.test(lower) ||
+      /(ilə bağlı nə xatırlatmam var|haqqında nə planım var|xatırlatmalarını göstər|planlarını göstər|xatırlatmalarımı göstər|görüşlərimi göstər|haqqında nə var|haqqında xatırlatmalar)/i.test(lower) ||
       /^axtar\s+/i.test(lower)
     ) {
       const res = this.handleSearchInquiry(lower, currentReminders);
@@ -251,44 +360,48 @@ export class IntelligentRouter {
     }
 
     // I. REMINDER CREATION & RECURRENCE (e.g. "Sabah saat 10-da Anara zəng etməyi xatırlat", "Hər 3 gündən bir...")
-    const parsedReminders = this.parseDeterministicReminders(prompt);
-    if (parsedReminders.length > 0) {
-      const isMulti = parsedReminders.length > 1;
-      const summaries = parsedReminders.map(
-        (r) => `${formatDateAz(r.dueDateTime)}: "${r.title}"`
-      );
+    // MANDATORY RULE: CREATE intent must require an explicit creation semantic (xatırlat, əlavə et, yarat, qeyd et, planlaşdır, yadına sal).
+    // Temporal words alone (sabah, bu gün, axşam, həftə) must NEVER imply create_reminder.
+    if (this.hasExplicitCreateVerb(clean) && !this.isRetrievalQuery(clean)) {
+      const parsedReminders = this.parseDeterministicReminders(prompt);
+      if (parsedReminders.length > 0) {
+        const isMulti = parsedReminders.length > 1;
+        const summaries = parsedReminders.map(
+          (r) => `${formatDateAz(r.dueDateTime)}: "${r.title}"`
+        );
 
-      const responseMessage = isMulti
-        ? `${parsedReminders.length} xatırlatma yaradıldı:\n${summaries.map((s, i) => `${i + 1}. ${s}`).join('\n')}`
-        : `Xatırlatma yaradıldı: "${parsedReminders[0].title}" (${formatDateAz(parsedReminders[0].dueDateTime)}).`;
+        const responseMessage = isMulti
+          ? `${parsedReminders.length} xatırlatma yaradıldı:\n${summaries.map((s, i) => `${i + 1}. ${s}`).join('\n')}`
+          : `Xatırlatma yaradıldı: "${parsedReminders[0].title}" (${formatDateAz(parsedReminders[0].dueDateTime)}).`;
 
-      const draftReminders: ExtractedReminderDraft[] = parsedReminders.map((r, idx) => ({
-        id: `local-${Date.now()}-${idx}`,
-        title: r.title,
-        description: r.description || '',
-        dueDateTime: r.dueDateTime,
-        category: r.category,
-        recurrence: r.recurrence,
-        priority: r.priority,
-        inferredTime: r.inferredTime,
-        timeConfidence: r.timeConfidence,
-        notificationEnabled: true,
-      }));
+        const draftReminders: ExtractedReminderDraft[] = parsedReminders.map((r, idx) => ({
+          id: `local-${Date.now()}-${idx}`,
+          title: r.title,
+          description: r.description || '',
+          dueDateTime: r.dueDateTime,
+          category: r.category,
+          recurrence: r.recurrence,
+          priority: r.priority,
+          inferredTime: r.inferredTime,
+          timeConfidence: r.timeConfidence,
+          notificationEnabled: true,
+        }));
 
-      const action: AIActionType = isMulti ? 'create_multiple_reminders' : 'create_reminder';
-      return {
-        handledLocally: true,
-        action,
-        payload: {
+        const action: AIActionType = isMulti ? 'create_multiple_reminders' : 'create_reminder';
+        return {
+          handledLocally: true,
           action,
-          remindersToCreate: draftReminders,
-          responseMessage,
-        },
-        confidence: isMulti ? 0.88 : 0.93,
-        reason: isMulti
-          ? `Parsed ${parsedReminders.length} discrete reminders deterministically.`
-          : `Parsed single reminder with due date and category deterministically.`,
-      };
+          payload: {
+            action,
+            remindersToCreate: draftReminders,
+            responseMessage,
+          },
+          confidence: isMulti ? 0.88 : 0.93,
+          reason: isMulti
+            ? `Parsed ${parsedReminders.length} discrete reminders deterministically.`
+            : `Parsed single reminder with due date and category deterministically.`,
+        };
+      }
     }
 
     // Default fallback if no deterministic pattern matched
@@ -310,6 +423,15 @@ export class IntelligentRouter {
   public parseDeterministicReminders(text: string): ParsedDeterministicItem[] {
     const clean = text.trim();
     if (!clean) return [];
+
+    // MANDATORY SAFETY GUARD: If input is a retrieval query without explicit create verb, NEVER parse reminders!
+    if (this.isRetrievalQuery(clean) && !this.hasExplicitCreateVerb(clean)) {
+      return [];
+    }
+    // MANDATORY RULE: CREATE intent must require an explicit creation semantic
+    if (!this.hasExplicitCreateVerb(clean)) {
+      return [];
+    }
 
     // Check if multi-reminder compound: split by " və ", " sonra ", ",", " ardınca "
     const segments = this.splitMultiReminderSegments(clean);
@@ -336,6 +458,12 @@ export class IntelligentRouter {
   private parseSingleReminderSegment(segment: string): ParsedDeterministicItem | null {
     const lower = segment.toLowerCase();
     const now = new Date();
+
+    // MANDATORY RULE: CREATE intent must require an explicit creation semantic
+    // Temporal words alone (sabah, bu gün, axşam, həftə) must NEVER imply create_reminder.
+    if (!this.hasExplicitCreateVerb(segment)) {
+      return null;
+    }
 
     // 1. Recurrence Detection
     let recurrence: ReminderRecurrence = 'none';
@@ -460,6 +588,12 @@ export class IntelligentRouter {
     const cleanTitle = this.cleanReminderTitle(segment);
     if (!cleanTitle || cleanTitle.length < 2) return null;
 
+    // MANDATORY RULE: Never allow a reminder title that is itself a retrieval command
+    // (e.g. "Sabahkı planımı göstər", "Bugünkü işlərimi göstər", "Xatırlatmalarımı göstər")
+    if (this.isRetrievalQueryTitle(cleanTitle)) {
+      return null;
+    }
+
     return {
       title: cleanTitle,
       dueDateTime: targetDate.toISOString(),
@@ -478,10 +612,10 @@ export class IntelligentRouter {
       t = t.replace(specificTimePattern, ' ');
     }
 
-    // Strip out auxiliary command suffixes and temporal prepositions
-    t = t.replace(/\b(xatırlat|xatirlat|xatırlatmaq|yadıma sal|yadima sal|unutma|əlavə et|qeyd et|yaz)\b/gi, ' ');
-    t = t.replace(/\b(etməyi|etmeyi|aparmağı|aparmagi|içməyi|icmeyi|alması|almasi|öyrənməyi|yoxlamağı)\b/gi, ' ');
-    t = t.replace(/\b(saat\s+\d{1,2}(?::\d{2})?(?:-(?:da|də|ta|tə|yə|a|e))?)\b/gi, ' ');
+    // Strip out auxiliary command suffixes, creation verbs and temporal prepositions
+    t = t.replace(/\b(xatırlat|xatirlat|xatırlatsın|xatirlatsin|xatırlatmaq|xatirlatmaq|yadıma sal|yadima sal|yadına sal|yadina sal|yada sal|unutma|əlavə et|elave et|əlavə elə|elave ele|yarat|qeyd et|qeyd elə|planlaşdır|planlasdir|yaz)\b/gi, ' ');
+    t = t.replace(/\b(etməyi|etmeyi|aparmağı|aparmagi|içməyi|icmeyi|alması|almasi|öyrənməyi|yoxlamağı|zəng etməyi|zeng etmeyi)\b/gi, ' ');
+    t = t.replace(/\b(saat\s+\d{1,2}(?::\d{2})?\s*(?:-|–)?\s*(?:da|də|ta|tə|yə|a|e|dək)?)\b/gi, ' ');
     t = t.replace(/\b(sabah|birigün|biri gün|bu gün|bugün|bu axşam|sabah səhər|sabah axşam|günorta|axşam)\b/gi, ' ');
     t = t.replace(/\b(hər\s+\d+\s+gündən\s+bir|hər\s+gün|hər\s+həftə|hər\s+ay|hər\s+il|həftəiçi)\b/gi, ' ');
     t = t.replace(/\b(zəhmət olmasa|lütfən|mənim üçün|mənə)\b/gi, ' ');
@@ -522,23 +656,109 @@ export class IntelligentRouter {
     return 'personal';
   }
 
+  /**
+   * Resolves retrieval queries (e.g. "Sabahkı planımı göstər", "Görüşlərimi göstər", "Xatırlatmalarımı göstər", "Bu gün nə işim var?")
+   * locally without calling Gemini and without any risk of creating a reminder.
+   */
+  public handleRetrievalQuery(
+    prompt: string,
+    currentReminders: Reminder[]
+  ): LocalEvaluationResult {
+    const norm = normalizeAz(prompt);
+
+    // 1. Weekly schedule inquiry
+    if (/(bu həftə|həftəlik|bu hefte|heftelik|həftə|hefte)/i.test(norm)) {
+      const res = this.handleWeeklyScheduleInquiry(currentReminders);
+      return { handledLocally: true, action: res.payload.action, ...res };
+    }
+
+    // 2. Specific query for meetings / appointments: "Görüşlərimi göstər"
+    if (/(görüş|gorus|iclas)/i.test(norm) && !/(xatırlatmalarımı|planımı|planim)/i.test(norm)) {
+      const allReminders = currentReminders || reminderService.getAll();
+      const meetings = allReminders.filter(
+        (r) => !r.isCompleted && (r.category === 'work' || /(görüş|gorus|iclas|meeting)/i.test(r.title))
+      );
+      let responseMessage = '';
+      if (meetings.length === 0) {
+        responseMessage = 'Planlaşdırılmış heç bir aktiv görüşünüz və ya iclasınız yoxdur.';
+      } else {
+        responseMessage = `Hazırda ${meetings.length} aktiv görüşünüz var:\n` +
+          meetings.map((r, i) => `${i + 1}. ${formatDateAz(r.dueDateTime)} — ${r.title}`).join('\n');
+      }
+      return {
+        handledLocally: true,
+        action: 'search_reminders',
+        payload: {
+          action: 'search_reminders',
+          targetQuery: 'görüş',
+          responseMessage,
+        },
+        confidence: 0.98,
+        reason: 'View meetings inquiry resolved locally.',
+      };
+    }
+
+    // 3. General "Xatırlatmalarımı göstər", "Xatırlatmalarımı oxu", "Bütün xatırlatmalar"
+    if (
+      /(xatırlatmalarımı|xatirlatmalarimi|xatırlatmalarım|xatirlatmalarim|xatırlatmaları|xatirlatmalari|bütün xatırlatmalar|butun xatirlatmalar)/i.test(norm) &&
+      !/(sabah|bugün|bu gün|birigün)/i.test(norm)
+    ) {
+      const allReminders = currentReminders || reminderService.getAll();
+      const active = allReminders.filter((r) => !r.isCompleted);
+      let responseMessage = '';
+      if (active.length === 0) {
+        responseMessage = 'Hazırda heç bir aktiv xatırlatmanız yoxdur.';
+      } else {
+        responseMessage = `Hazırda ${active.length} aktiv xatırlatmanız var:\n` +
+          active.slice(0, 10).map((r, i) => `${i + 1}. ${formatDateAz(r.dueDateTime)} — ${r.title}`).join('\n') +
+          (active.length > 10 ? `\n...və daha ${active.length - 10} xatırlatma.` : '');
+      }
+      return {
+        handledLocally: true,
+        action: 'search_reminders',
+        payload: {
+          action: 'search_reminders',
+          targetQuery: '',
+          responseMessage,
+        },
+        confidence: 0.98,
+        reason: 'View all reminders inquiry resolved locally.',
+      };
+    }
+
+    // 4. Daily schedule inquiry:
+    // Matches "Sabahkı planımı göstər", "Sabah nə var?", "Bugünkü planımı göstər", "Bu gün saat 5-də nə var?", etc.
+    const dailyRes = this.handleDailyScheduleInquiry(norm, currentReminders);
+    return {
+      handledLocally: true,
+      action: 'get_daily_schedule',
+      ...dailyRes,
+    };
+  }
+
   private handleDailyScheduleInquiry(
     lower: string,
     currentReminders: Reminder[]
   ): { payload: AIActionPayload; confidence: number; reason: string } {
+    const norm = normalizeAz(lower);
     let targetDate = new Date();
     let dayLabel = 'Bu gün';
 
-    if (lower.includes('sabah')) {
+    if (/\b(sabah|sabahkı|sabahki)\b/i.test(norm)) {
       targetDate.setDate(targetDate.getDate() + 1);
       dayLabel = 'Sabah';
-    } else if (lower.includes('birigün') || lower.includes('biri gün')) {
+    } else if (/\b(birigün|biri gün|birigünkü|birigunku)\b/i.test(norm)) {
       targetDate.setDate(targetDate.getDate() + 2);
       dayLabel = 'Birigün';
+    } else if (/\b(dünən|dunen|dünənki|dunenki)\b/i.test(norm)) {
+      targetDate.setDate(targetDate.getDate() - 1);
+      dayLabel = 'Dünən';
+    } else if (/\b(bu gün|bugün|bugünkü|bugunku)\b/i.test(norm)) {
+      dayLabel = 'Bu gün';
     } else {
       // Check weekday name
       for (const [wdName, wdIdx] of Object.entries(AZ_WEEKDAYS)) {
-        if (lower.includes(wdName)) {
+        if (norm.includes(wdName)) {
           let diff = wdIdx - targetDate.getDay();
           if (diff <= 0) diff += 7;
           targetDate.setDate(targetDate.getDate() + diff);
@@ -548,15 +768,40 @@ export class IntelligentRouter {
       }
     }
 
+    // Check if user asked for a specific hour (e.g. "Saat 5-də nə var?", "Saat 15:00-da nəyim var?")
+    const hourMatch = norm.match(/saat\s+(\d{1,2})/i);
+    let requestedHour: number | null = null;
+    if (hourMatch && /(nə var|ne var|nəyim var|neyim var|nə işim var|ne isim var)/i.test(norm)) {
+      const parsedH = parseInt(hourMatch[1], 10);
+      if (parsedH >= 0 && parsedH <= 24) {
+        requestedHour = parsedH;
+      }
+    }
+
     const items = reminderService.getDailySchedule(targetDate);
     const dateFormatted = targetDate.toLocaleDateString('az-AZ', { day: 'numeric', month: 'long' });
 
     let responseMessage = '';
-    if (items.length === 0) {
-      responseMessage = `${dayLabel} (${dateFormatted}) üçün heç bir xatırlatmanız yoxdur. Rahat istirahət edə bilərsiniz.`;
+    if (requestedHour !== null) {
+      const matchingHourItems = items.filter((r) => {
+        const d = new Date(r.dueDateTime);
+        const h = d.getHours();
+        return h === requestedHour || (requestedHour! < 12 && h === requestedHour! + 12);
+      });
+      const displayHour = requestedHour < 10 ? `0${requestedHour}:00` : `${requestedHour}:00`;
+      if (matchingHourItems.length === 0) {
+        responseMessage = `${dayLabel} saat ${displayHour} radələrində heç bir planınız və ya xatırlatmanız yoxdur.`;
+      } else {
+        responseMessage = `${dayLabel} saat ${displayHour} radələrindəki planlarınız:\n` +
+          matchingHourItems.map((r, i) => `${i + 1}. ${formatTimeOnly(r.dueDateTime)} — ${r.title}`).join('\n');
+      }
     } else {
-      responseMessage = `${dayLabel} (${dateFormatted}) üçün ${items.length} xatırlatmanız var:\n` +
-        items.map((r, i) => `${i + 1}. ${formatTimeOnly(r.dueDateTime)} — ${r.title}`).join('\n');
+      if (items.length === 0) {
+        responseMessage = `${dayLabel} (${dateFormatted}) üçün heç bir planınız və ya xatırlatmanız yoxdur. Rahat istirahət edə bilərsiniz.`;
+      } else {
+        responseMessage = `${dayLabel} (${dateFormatted}) üçün ${items.length} xatırlatmanız var:\n` +
+          items.map((r, i) => `${i + 1}. ${formatTimeOnly(r.dueDateTime)} — ${r.title}`).join('\n');
+      }
     }
 
     return {
@@ -594,8 +839,9 @@ export class IntelligentRouter {
     lower: string,
     currentReminders: Reminder[]
   ): { payload: AIActionPayload; confidence: number; reason: string } {
-    let query = lower
-      .replace(/(ilə bağlı nə xatırlatmam var|haqqında nə planım var|xatırlatmalarını göstər|haqqında nə var|haqqında xatırlatmalar|haqqında planlar|axtar)/gi, '')
+    const norm = normalizeAz(lower);
+    let query = norm
+      .replace(/(ilə bağlı nə xatırlatmam var|haqqında nə planım var|xatırlatmalarını göstər|xatırlatmalarımı göstər|xatırlatmalarımı|görüşlərimi göstər|haqqında nə var|haqqında xatırlatmalar|haqqında planlar|axtar|göstər)/gi, '')
       .replace(/[.,!?]/g, '')
       .trim();
 
@@ -603,10 +849,13 @@ export class IntelligentRouter {
     let responseMessage = '';
 
     if (matches.length === 0) {
-      responseMessage = `"${query}" ilə bağlı heç bir xatırlatma tapılmadı.`;
+      responseMessage = query ? `"${query}" ilə bağlı heç bir xatırlatma tapılmadı.` : 'Heç bir xatırlatma tapılmadı.';
     } else {
-      responseMessage = `"${query}" üzrə ${matches.length} xatırlatma tapıldı:\n` +
-        matches.map((r, i) => `${i + 1}. ${r.title} (${formatDateAz(r.dueDateTime)})`).join('\n');
+      responseMessage = query
+        ? `"${query}" üzrə ${matches.length} xatırlatma tapıldı:\n` +
+          matches.map((r, i) => `${i + 1}. ${r.title} (${formatDateAz(r.dueDateTime)})`).join('\n')
+        : `Tapılan xatırlatmalar (${matches.length}):\n` +
+          matches.map((r, i) => `${i + 1}. ${r.title} (${formatDateAz(r.dueDateTime)})`).join('\n');
     }
 
     return {
@@ -789,13 +1038,44 @@ export class IntelligentRouter {
       const response = await apiClient.executeAiAction(cleanPrompt, currentReminders, nowISO, timezone);
 
       if (response.success && response.actionPayload) {
+        let actionPayload = response.actionPayload;
+        const backendAction = actionPayload.action;
+
+        // MANDATORY CLIENT-SIDE OVERRIDE GUARD (Rule 8):
+        // If backend returned create_reminder / create_multiple_reminders for a query or title that is a retrieval query, OVERRIDE to query!
+        const hasInvalidTitle = actionPayload.remindersToCreate?.some((r) => this.isRetrievalQueryTitle(r.title));
+        if (
+          (actionPayload.action === 'create_reminder' || actionPayload.action === 'create_multiple_reminders') &&
+          (this.isRetrievalQuery(cleanPrompt) || hasInvalidTitle)
+        ) {
+          console.warn(`[INTENT-TRACE] Backend misclassified query as "${backendAction}". Applying client-side safety guard override.`);
+          const queryEval = this.handleRetrievalQuery(cleanPrompt, currentReminders);
+          actionPayload = queryEval.payload;
+
+          this.logIntentTrace({
+            input: cleanPrompt,
+            localClassification: 'retrieval_guard_override',
+            backendClassification: backendAction,
+            finalAction: actionPayload.action,
+            reason: 'Client-side guard rejected reminder creation for query phrase.',
+          });
+        } else {
+          this.logIntentTrace({
+            input: cleanPrompt,
+            localClassification: 'delegated_to_backend',
+            backendClassification: backendAction,
+            finalAction: actionPayload.action,
+            reason: geminiReason,
+          });
+        }
+
         let affectedReminders: Reminder[] | undefined;
 
-        if (response.actionPayload.action === 'plan_day') {
-          response.actionPayload.needsConfirmation = true;
-          if (!response.actionPayload.dailyPlanProposal && response.actionPayload.remindersToCreate) {
+        if (actionPayload.action === 'plan_day') {
+          actionPayload.needsConfirmation = true;
+          if (!actionPayload.dailyPlanProposal && actionPayload.remindersToCreate) {
             const todayYMD = new Date().toISOString().slice(0, 10);
-            const tasks = response.actionPayload.remindersToCreate.map((d, idx) => ({
+            const tasks = actionPayload.remindersToCreate.map((d, idx) => ({
               id: `plan-task-${Date.now()}-${idx}`,
               title: d.title,
               dueDateTime: d.dueDateTime,
@@ -812,20 +1092,20 @@ export class IntelligentRouter {
               createdAt: new Date().toISOString(),
               targetDate: todayYMD,
               tasks,
-              summaryNote: response.actionPayload.responseMessage,
+              summaryNote: actionPayload.responseMessage,
             };
-            response.actionPayload.dailyPlanProposal = dailyPlannerService.detectAndResolveConflicts(
+            actionPayload.dailyPlanProposal = dailyPlannerService.detectAndResolveConflicts(
               proposal,
               currentReminders
             );
           }
-        } else if (executeDirectly && response.actionPayload.action !== 'general_chat') {
-          const execResult = reminderService.executeAIAction(response.actionPayload);
+        } else if (executeDirectly && actionPayload.action !== 'general_chat') {
+          const execResult = reminderService.executeAIAction(actionPayload);
           if (execResult.affectedReminders) {
             affectedReminders = execResult.affectedReminders;
           }
-          if (execResult.message && !response.actionPayload.responseMessage) {
-            response.actionPayload.responseMessage = execResult.message;
+          if (execResult.message && !actionPayload.responseMessage) {
+            actionPayload.responseMessage = execResult.message;
           }
         }
 
@@ -834,11 +1114,11 @@ export class IntelligentRouter {
 
         return {
           source: 'gemini_path',
-          intent: response.actionPayload.action,
+          intent: actionPayload.action,
           confidence: 0.95,
           confidenceTier: 'high',
           requiresGemini: true,
-          actionPayload: response.actionPayload,
+          actionPayload,
           executionTimeMs: execTime,
           reason: geminiReason,
           affectedReminders,
@@ -852,6 +1132,14 @@ export class IntelligentRouter {
       const fallbackEval = this.evaluateLocalFastPath(cleanPrompt, currentReminders);
       const execTime = Math.round(performance.now() - startTime);
       console.log(`[CLIENT ROUTER] execution time ms: ${execTime}ms`);
+
+      this.logIntentTrace({
+        input: cleanPrompt,
+        localClassification: fallbackEval.payload.action,
+        backendClassification: `error: ${err.message}`,
+        finalAction: fallbackEval.payload.action,
+        reason: fallbackEval.reason,
+      });
 
       return {
         source: 'fallback_deterministic',

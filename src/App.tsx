@@ -244,15 +244,20 @@ export default function App() {
 
           {/* Floating Toast Notification */}
           {toastMessage && (
-            <div className="fixed top-5 left-1/2 -translate-x-1/2 z-50 w-[90%] max-w-sm animate-fade-in pointer-events-none">
-              <div className="flex items-center gap-2.5 rounded-2xl border border-violet-500/40 bg-[#101524]/98 px-4 py-3 shadow-2xl backdrop-blur-xl text-white text-xs pointer-events-auto">
+            <div
+              className="fixed left-1/2 -translate-x-1/2 z-50 w-[90%] max-w-sm animate-fade-in pointer-events-none"
+              style={{ top: 'calc(env(safe-area-inset-top, 0px) + 12px)' }}
+            >
+              <div className="flex items-center gap-2.5 rounded-2xl border border-violet-500/40 bg-[#101524]/98 pl-4 pr-2 py-2 shadow-2xl backdrop-blur-xl text-white text-xs pointer-events-auto">
                 <Sparkles className="h-4 w-4 shrink-0 text-violet-400" />
-                <span className="flex-1 font-semibold text-slate-100">{toastMessage}</span>
+                <span className="flex-1 font-semibold text-slate-100 py-1">{toastMessage}</span>
                 <button
+                  id="toast-dismiss-btn"
                   onClick={() => setToastMessage(null)}
-                  className="text-slate-400 hover:text-white"
+                  aria-label="Bağla"
+                  className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-xl text-slate-400 hover:text-white active:scale-95 transition-all"
                 >
-                  ✕
+                  <span className="text-sm font-bold leading-none">✕</span>
                 </button>
               </div>
             </div>

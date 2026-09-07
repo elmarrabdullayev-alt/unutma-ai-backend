@@ -80,7 +80,8 @@ export const FocusAudioBottomSheet: React.FC<FocusAudioBottomSheetProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="h-8 w-8 rounded-xl bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white flex items-center justify-center transition-colors"
+            aria-label="Bağla"
+            className="h-11 w-11 -mr-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white flex items-center justify-center transition-colors active:scale-95 shrink-0"
           >
             <X className="h-4 w-4" />
           </button>

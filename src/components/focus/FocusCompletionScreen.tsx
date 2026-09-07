@@ -37,7 +37,13 @@ export const FocusCompletionScreen: React.FC<FocusCompletionScreenProps> = ({
   };
 
   return (
-    <div className="flex flex-col h-full bg-[#090D16] text-white p-6 justify-between select-none animate-fade-in">
+    <div
+      className="flex flex-col h-full bg-[#090D16] text-white p-6 justify-between select-none animate-fade-in"
+      style={{
+        paddingTop: 'max(env(safe-area-inset-top, 0px), 24px)',
+        paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 24px)',
+      }}
+    >
       {/* Top Graphic & Title */}
       <div className="flex flex-col items-center text-center mt-6">
         <div className="relative flex items-center justify-center mb-4">

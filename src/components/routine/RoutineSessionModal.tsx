@@ -80,7 +80,13 @@ export const RoutineSessionModal: React.FC<RoutineSessionModalProps> = ({
   const streakData = routineService.getStreakData();
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-black/85 backdrop-blur-md animate-fade-in">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-black/85 backdrop-blur-md animate-fade-in"
+      style={{
+        paddingTop: 'max(env(safe-area-inset-top, 0px), 12px)',
+        paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 12px)',
+      }}
+    >
       <div className="w-full max-w-md max-h-[92vh] flex flex-col rounded-3xl bg-[#0F1523] border border-violet-500/30 shadow-2xl overflow-hidden text-white animate-scale-up">
         {/* Header */}
         <div className="p-4 border-b border-white/10 flex items-center justify-between bg-[#131A2D]">
@@ -111,17 +117,19 @@ export const RoutineSessionModal: React.FC<RoutineSessionModalProps> = ({
             </div>
           </div>
 
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1.5 shrink-0">
             <button
               onClick={() => onEditRoutine(routine)}
-              className="h-8 w-8 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 flex items-center justify-center transition-all active:scale-95"
+              aria-label="Rutini redaktə et"
+              className="h-11 w-11 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 flex items-center justify-center transition-all active:scale-95 shrink-0"
               title="Rutini redaktə et"
             >
               <Pencil className="h-4 w-4" />
             </button>
             <button
               onClick={onClose}
-              className="h-8 w-8 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 flex items-center justify-center transition-all active:scale-95"
+              aria-label="Bağla"
+              className="h-11 w-11 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 flex items-center justify-center transition-all active:scale-95 shrink-0"
             >
               <X className="h-4 w-4" />
             </button>

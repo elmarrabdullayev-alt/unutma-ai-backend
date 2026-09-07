@@ -21,7 +21,10 @@ export const ActiveAlarmBanner: React.FC<ActiveAlarmBannerProps> = ({
   const cat = CATEGORIES[activeAlarmReminder.category] || CATEGORIES.other;
 
   return (
-    <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 w-[94%] max-w-md animate-bounce-short">
+    <div
+      className="fixed left-1/2 -translate-x-1/2 z-50 w-[94%] max-w-md animate-bounce-short"
+      style={{ top: 'calc(env(safe-area-inset-top, 0px) + 12px)' }}
+    >
       <div className="rounded-3xl border border-violet-500/50 bg-[#0F172A]/95 p-4 shadow-2xl shadow-violet-500/30 backdrop-blur-xl text-slate-50">
         <div className="flex items-start gap-3">
           <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-tr from-violet-600 to-indigo-600 text-white border border-white/10 shadow-lg shadow-violet-500/30">
@@ -73,7 +76,8 @@ export const ActiveAlarmBanner: React.FC<ActiveAlarmBannerProps> = ({
               <button
                 id="alarm-dismiss-btn"
                 onClick={onDismiss}
-                className="ml-auto flex h-7 w-7 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-800 hover:text-white"
+                aria-label="Bağla"
+                className="ml-auto flex min-h-[44px] min-w-[44px] items-center justify-center rounded-xl text-slate-400 hover:bg-slate-800 hover:text-white active:scale-95 transition-all"
               >
                 <X className="h-4 w-4" />
               </button>

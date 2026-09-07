@@ -15,7 +15,12 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
   onMicClick,
 }) => {
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-40 max-w-lg mx-auto pointer-events-none">
+    <div
+      className="fixed bottom-0 left-0 right-0 z-40 max-w-lg mx-auto pointer-events-none"
+      style={{
+        paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 8px)',
+      }}
+    >
       {/* Floating Prompt Pill: "Danış, mən xatırladım" */}
       <div className="flex justify-center mb-1.5 pointer-events-auto">
         <button
