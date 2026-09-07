@@ -527,11 +527,31 @@ FƏALİYYƏTLƏR:
 
     console.log('[AI-ACTION] Text AI response received');
     const parsed = JSON.parse(aiResponse.text || "{}");
+    let action = parsed.action || "general_chat";
+    let responseMessage = parsed.responseMessage || "Sorğunuz cavablandırıldı.";
+    let remindersToCreate = parsed.remindersToCreate;
+
+    // SERVER-SIDE INTENT SAFETY GUARD:
+    // Query phrases MUST NEVER create reminders.
+    const promptNorm = String(userPrompt).toLowerCase();
+    const isQueryPhrase = /(göstər|goster|nə var|ne var|nəyim var|neyim var|nə işim var|ne isim var|nə planım var|ne planim var|planımı|planimi|cədvəl|cedvel|siyahı|siyahi)/i.test(promptNorm);
+    const hasCreateVerb = /(xatırlat|xatirlat|əlavə et|elave et|əlavə elə|yarat|qeyd et|planlaşdır|yadıma sal|yadına sal)/i.test(promptNorm);
+
+    if ((action === 'create_reminder' || action === 'create_multiple_reminders') && isQueryPhrase && !hasCreateVerb) {
+      console.warn(`[AI-ACTION] Guard triggered: Query phrase "${userPrompt}" misclassified by LLM as "${action}". Overriding to schedule inquiry.`);
+      remindersToCreate = undefined;
+      if (/həftə|hefte/i.test(promptNorm)) {
+        action = 'get_weekly_schedule';
+      } else {
+        action = 'get_daily_schedule';
+      }
+    }
+
     return res.json({
       success: true,
       actionPayload: {
-        action: parsed.action || "general_chat",
-        responseMessage: parsed.responseMessage || "Sorğunuz cavablandırıldı.",
+        action,
+        responseMessage,
         targetReminderId: parsed.targetReminderId,
         targetQuery: parsed.targetQuery,
         delayMinutes: parsed.delayMinutes,
@@ -546,7 +566,7 @@ FƏALİYYƏTLƏR:
               steps: parsed.routineProposal.steps || [],
             }
           : undefined,
-        remindersToCreate: (parsed.remindersToCreate || []).map((r: any, idx: number) => ({
+        remindersToCreate: (remindersToCreate || []).map((r: any, idx: number) => ({
           id: `extracted-${Date.now()}-${idx}`,
           title: r.title,
           description: r.description || "",
