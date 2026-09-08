@@ -40,7 +40,7 @@ export const MobileReminderCard: React.FC<MobileReminderCardProps> = ({
   const categoryInfo = CATEGORIES[reminder.category] || CATEGORIES.other;
   const { label: relativeTime, isPast, isUrgent } = getRelativeTimeAz(reminder.dueDateTime);
   const timeOnly = formatTimeOnly(reminder.dueDateTime);
-  const recurrenceLabel = getRecurrenceLabelAz(reminder.recurrence);
+  const recurrenceLabel = getRecurrenceLabelAz(reminder);
 
   const handleSpeak = (e: React.MouseEvent) => {
     e.stopPropagation();

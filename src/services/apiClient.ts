@@ -39,7 +39,7 @@ export class ApiClient {
   private customBaseUrl: string = '';
 
   constructor() {
-    const envUrl = import.meta.env.VITE_API_BASE_URL || '';
+    const envUrl = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_API_BASE_URL) || '';
     this.customBaseUrl = envUrl.trim().replace(/\/+$/, '');
   }
 

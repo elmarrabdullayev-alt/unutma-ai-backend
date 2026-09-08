@@ -120,8 +120,8 @@ function getRetryDelay(attemptIndex: number, suggestedRetryAfterMs?: number): nu
 // TEXT AI CONFIGURATION (1 PRIMARY, 1 FALLBACK, MAX 1 RETRY, 10-15s BUDGET)
 // =========================================================================
 const TEXT_AI_MODELS = [
-  "gemini-3.8-flash", // Primary model
-  "gemini-2.5-flash", // Fallback model
+  "gemini-3.5-flash", // Primary fast model
+  "gemini-3.8-flash", // Fallback model
 ];
 const MAX_TEXT_AI_BUDGET_MS = 14000; // 14s budget
 const MAX_RETRIES_PER_TEXT_MODEL = 1; // Max 1 retry per model
@@ -344,13 +344,13 @@ SƏNİN MƏQSƏDİN:
 İstifadəçinin Azərbaycan dilindəki istənilən əmrini, sualını və ya tapşırığını analiz edib DƏQİQ STRUKTURLAŞDIRILMIŞ FƏALİYYƏT (action) generasiya etməkdir.
 
 QƏTİ VƏ MƏCBURİ TƏHLÜKƏSİZLİK QAYDALARI:
-1. 'create_reminder' / 'create_multiple_reminders' YALNIZ və YALNIZ istifadəçi açıq şəkildə yaratma və ya xatırlatma feili işlətdikdə ('xatırlat', 'əlavə et', 'yarat', 'qeyd et', 'planlaşdır', 'yadıma sal') seçilə bilər.
-2. Təqvim və ya zaman sözləri təkcə (məs: "sabah", "bu gün", "axşam", "həftə") heç vaxt xatırlatma yaradılması anlamına gəlmir!
-3. İstifadəçi mövcud cədvəli, planı, işləri, xatırlatmaları soruşursa və ya "göstər" deyirsə:
-   - Məsələn: "Sabahkı planımı göstər", "Bugünkü planımı göstər", "Sabah nə var?", "Bu gün nə işim var?", "Xatırlatmalarımı göstər", "Görüşlərimi göstər":
+1. İstifadəçi xatırlatma, tapşırıq və ya fəaliyyət əmrləri verirsə (məs: "Sabah saat 10-da Anara zəng et, saat 2-də maşınlara bax, axşam dərmanı al", "Saat 3-də həkimə get", "Dərman içməyi xatırlat", "Zəng et", "Marketdən çörək al", "Axşam dərmanı al"), bu 'create_reminder' və ya 'create_multiple_reminders' kimi təsnif edilməlidir! Hər bir fəaliyyəti ayrıca xatırlatma kimi remindersToCreate massivinə daxil et.
+2. Təqvim və ya zaman sözləri təkbaşına hərəkətsiz deyilirsə (məsələn sadəcə "sabah" və ya "bu gün") xatırlatma yaradılmır.
+3. QƏTİ QADAĞA: İstifadəçi mövcud cədvəli, planı, işləri, xatırlatmaları soruşursa və ya "göstər", "nə planım var", "nəyim var" deyirsə:
+   - Məsələn: "Sabahkı planımı göstər", "Bugünkü planımı göstər", "Sabah nə var?", "Bu gün nə işim var?", "Sabah nə planım var?", "Xatırlatmalarımı göstər", "Görüşlərimi göstər":
    - BU QƏTİYYƏN VƏ HEÇ VAXT 'create_reminder' OLA BİLMƏZ!
    - Bu HƏMİŞƏ 'get_daily_schedule' (və ya 'get_weekly_schedule', 'search_reminders') olmalıdır!
-   - 'göstər' feili HƏMİŞƏ MƏLUMAT ƏLDƏ ETMƏK (retrieval/query) niyyətidir!
+   - 'göstər' və ya 'nə planım var' sorğuları HƏMİŞƏ MƏLUMAT ƏLDƏ ETMƏK (retrieval/query) niyyətidir!
 
 FƏALİYYƏTLƏR:
 

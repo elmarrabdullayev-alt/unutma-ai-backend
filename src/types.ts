@@ -29,6 +29,31 @@ export type ReminderRecurrence =
   | 'weekdays'
   | 'custom';
 
+export type RecurrenceUnit = 'day' | 'week' | 'month' | 'year';
+
+export interface RecurrenceConfig {
+  type: 'interval' | 'daily' | 'weekly' | 'monthly' | 'yearly' | 'weekdays' | 'custom';
+  unit?: RecurrenceUnit;
+  interval?: number;
+  dayOfWeek?: number;
+  daysOfWeek?: number[];
+  dayOfMonth?: number;
+}
+
+export interface ReminderConflict {
+  candidateId?: string;
+  candidateTitle: string;
+  candidateDueDateTime: string;
+  conflictingReminderId?: string;
+  conflictingReminderTitle: string;
+  conflictingDueDateTime: string;
+  formattedTime: string; // e.g. "10:00"
+  formattedDate: string; // e.g. "Sabah" or "9 sentyabr"
+  message: string; // e.g. "10:00 üçün artıq 'İclas' xatırlatması var."
+  suggestedAlternativeDueDateTime?: string;
+  suggestedAlternativeTime?: string;
+}
+
 export type ReminderPriority = 'high' | 'medium' | 'low';
 
 export interface Reminder {
@@ -39,6 +64,10 @@ export interface Reminder {
   category: ReminderCategory;
   recurrence: ReminderRecurrence;
   recurrenceDays?: number[]; // [1, 2, 3, 4, 5] for Mon-Fri
+  recurrenceInterval?: number; // e.g. 2, 3
+  recurrenceUnit?: RecurrenceUnit; // 'day' | 'week' | 'month' | 'year'
+  recurrenceRule?: RecurrenceConfig;
+  recurrenceDayOfMonth?: number;
   priority: ReminderPriority;
   isCompleted: boolean;
   createdAt: string;
@@ -59,6 +88,11 @@ export interface ExtractedReminderDraft {
   dueDateTime: string;
   category: ReminderCategory;
   recurrence: ReminderRecurrence;
+  recurrenceDays?: number[];
+  recurrenceInterval?: number;
+  recurrenceUnit?: RecurrenceUnit;
+  recurrenceRule?: RecurrenceConfig;
+  recurrenceDayOfMonth?: number;
   priority: ReminderPriority;
   notificationEnabled?: boolean;
   inferredTime?: boolean;
@@ -184,6 +218,8 @@ export interface AIActionPayload {
   responseSpeech?: string;
   responseMessage: string;
   needsConfirmation?: boolean;
+  conflicts?: ReminderConflict[];
+  hasConflict?: boolean;
 }
 
 export interface AssistantMessage {

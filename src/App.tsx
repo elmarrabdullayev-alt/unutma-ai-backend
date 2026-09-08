@@ -176,6 +176,26 @@ export default function App() {
   };
 
   const handleRemindersCreated = (newReminders: Reminder[], summary: string) => {
+    const currentAll = reminderService.getAll();
+    const currentIds = new Set(currentAll.map((r) => r.id));
+    const missing = newReminders.filter((r) => !currentIds.has(r.id));
+    if (missing.length > 0) {
+      reminderService.createMultipleReminders(
+        missing.map((r) => ({
+          id: r.id,
+          title: r.title,
+          description: r.description || '',
+          dueDateTime: r.dueDateTime,
+          category: r.category,
+          priority: r.priority,
+          recurrence: r.recurrence,
+          sourceVoiceText: r.sourceVoiceText,
+        }))
+      );
+    }
+    const all = reminderService.getAll();
+    setReminders(all);
+    console.log(`[VOICE-FLOW] UI refresh: ${newReminders.length} new reminders created, total=${all.length}`);
     setToastMessage(summary || `${newReminders.length} yeni xatırlatma yaradıldı!`);
     setTimeout(() => setToastMessage(null), 4000);
   };

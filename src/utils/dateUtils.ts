@@ -152,8 +152,26 @@ export function getShortWeekdayAz(date: Date): string {
   return AZ_DAYS_SHORT[date.getDay()];
 }
 
-export function getRecurrenceLabelAz(recurrence: string): string {
-  switch (recurrence) {
+export function getRecurrenceLabelAz(reminderOrRecurrence: Reminder | string): string {
+  if (typeof reminderOrRecurrence === 'object' && reminderOrRecurrence !== null) {
+    const r = reminderOrRecurrence;
+    if (r.recurrenceInterval && r.recurrenceInterval > 1) {
+      if (r.recurrenceUnit === 'day') return `Hər ${r.recurrenceInterval} gündən bir`;
+      if (r.recurrenceUnit === 'week') return `Hər ${r.recurrenceInterval} həftədən bir`;
+      if (r.recurrenceUnit === 'month') return `Hər ${r.recurrenceInterval} aydan bir`;
+      if (r.recurrenceUnit === 'year') return `Hər ${r.recurrenceInterval} ildən bir`;
+    }
+    if (r.recurrenceDayOfMonth) {
+      return `Hər ayın ${r.recurrenceDayOfMonth}-i`;
+    }
+    if (r.recurrenceDays && r.recurrenceDays.length === 1) {
+      const dayNames = ['bazar', 'bazar ertəsi', 'çərşənbə axşamı', 'çərşənbə', 'cümə axşamı', 'cümə', 'şənbə'];
+      return `Hər ${dayNames[r.recurrenceDays[0]]}`;
+    }
+    return getRecurrenceLabelAz(r.recurrence);
+  }
+
+  switch (reminderOrRecurrence) {
     case 'daily':
       return 'Hər gün';
     case 'weekly':
@@ -162,6 +180,8 @@ export function getRecurrenceLabelAz(recurrence: string): string {
       return 'Hər ay';
     case 'yearly':
       return 'Hər il';
+    case 'weekdays':
+      return 'Həftəiçi';
     default:
       return '';
   }

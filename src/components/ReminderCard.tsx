@@ -54,7 +54,7 @@ export const ReminderCard: React.FC<ReminderCardProps> = ({
   const categoryInfo = CATEGORIES[reminder.category] || CATEGORIES.other;
   const CategoryIcon = CATEGORY_ICON_MAP[reminder.category] || Bell;
   const { label: relativeTime, isPast, isUrgent } = getRelativeTimeAz(reminder.dueDateTime);
-  const recurrenceLabel = getRecurrenceLabelAz(reminder.recurrence);
+  const recurrenceLabel = getRecurrenceLabelAz(reminder);
 
   const handleSpeak = () => {
     const speechText = `${reminder.title}. ${relativeTime}. ${reminder.description || ''}`;

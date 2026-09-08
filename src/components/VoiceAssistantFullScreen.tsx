@@ -13,15 +13,28 @@ import {
   RefreshCw,
   Volume2,
   AlertCircle,
+  AlertTriangle,
+  Repeat,
 } from 'lucide-react';
-import { Reminder, ReminderCategory, ReminderRecurrence, ReminderPriority, DailyPlanProposal, RoutineProposal } from '../types';
+import {
+  Reminder,
+  ReminderCategory,
+  ReminderRecurrence,
+  ReminderPriority,
+  DailyPlanProposal,
+  RoutineProposal,
+  RecurrenceUnit,
+  RecurrenceConfig,
+  ReminderConflict,
+} from '../types';
 import { CATEGORIES } from '../utils/categoryMeta';
 import { playMicStartSound, playSuccessSound, speakText } from '../utils/soundUtils';
-import { formatTimeOnly, formatDateAz } from '../utils/dateUtils';
+import { formatTimeOnly, formatDateAz, getRecurrenceLabelAz } from '../utils/dateUtils';
 import { reminderService } from '../services/reminderService';
 import { speechManager } from '../services/speech/SpeechProviderManager';
 import { apiClient } from '../services/apiClient';
 import { intelligentRouter } from '../services/intelligentRouter';
+import { conflictDetector } from '../services/conflictDetector';
 
 interface VoiceAssistantFullScreenProps {
   isOpen: boolean;
@@ -38,6 +51,11 @@ interface EditableExtractedReminder {
   dueDateTime: string;
   category: ReminderCategory;
   recurrence: ReminderRecurrence;
+  recurrenceDays?: number[];
+  recurrenceInterval?: number;
+  recurrenceUnit?: RecurrenceUnit;
+  recurrenceRule?: RecurrenceConfig;
+  recurrenceDayOfMonth?: number;
   priority: ReminderPriority;
   inferredTime?: boolean;
   timeConfidence?: 'exact' | 'inferred' | 'ambiguous';
@@ -62,6 +80,7 @@ export const VoiceAssistantFullScreen: React.FC<VoiceAssistantFullScreenProps> =
   const [assistantSpokenResponse, setAssistantSpokenResponse] = useState<string | null>(null);
   const [viewStep, setViewStep] = useState<'listening' | 'review' | 'answer'>('listening');
   const [editingCardId, setEditingCardId] = useState<string | null>(null);
+  const [detectedConflicts, setDetectedConflicts] = useState<ReminderConflict[]>([]);
 
   const isMountedRef = useRef(true);
   const timerIntervalRef = useRef<number | null>(null);
@@ -272,10 +291,21 @@ export const VoiceAssistantFullScreen: React.FC<VoiceAssistantFullScreenProps> =
           dueDateTime: r.dueDateTime,
           category: r.category || 'other',
           recurrence: r.recurrence || 'none',
+          recurrenceDays: r.recurrenceDays,
+          recurrenceInterval: r.recurrenceInterval,
+          recurrenceUnit: r.recurrenceUnit,
+          recurrenceRule: r.recurrenceRule,
+          recurrenceDayOfMonth: r.recurrenceDayOfMonth,
           priority: r.priority || 'medium',
           inferredTime: Boolean(r.inferredTime),
           timeConfidence: r.timeConfidence || (r.inferredTime ? 'inferred' : 'exact'),
         }));
+
+        const conflicts = payload.conflicts && payload.conflicts.length > 0
+          ? payload.conflicts
+          : conflictDetector.detectConflicts(editableList, currentReminders);
+
+        setDetectedConflicts(conflicts);
         setParsedReminders(editableList);
         setParsedSummary(payload.responseMessage || `${editableList.length} xatırlatma tapdım`);
         setViewStep('review');
@@ -354,10 +384,21 @@ export const VoiceAssistantFullScreen: React.FC<VoiceAssistantFullScreenProps> =
           dueDateTime: r.dueDateTime,
           category: r.category || 'other',
           recurrence: r.recurrence || 'none',
+          recurrenceDays: r.recurrenceDays,
+          recurrenceInterval: r.recurrenceInterval,
+          recurrenceUnit: r.recurrenceUnit,
+          recurrenceRule: r.recurrenceRule,
+          recurrenceDayOfMonth: r.recurrenceDayOfMonth,
           priority: r.priority || 'medium',
           inferredTime: Boolean(r.inferredTime),
           timeConfidence: r.timeConfidence || (r.inferredTime ? 'inferred' : 'exact'),
         }));
+
+        const conflicts = payload.conflicts && payload.conflicts.length > 0
+          ? payload.conflicts
+          : conflictDetector.detectConflicts(editableList, currentReminders);
+
+        setDetectedConflicts(conflicts);
         setParsedReminders(editableList);
         setParsedSummary(payload.responseMessage || `${editableList.length} xatırlatma tapdım`);
         setViewStep('review');
@@ -373,6 +414,8 @@ export const VoiceAssistantFullScreen: React.FC<VoiceAssistantFullScreenProps> =
           inferredTime: true,
           timeConfidence: 'inferred',
         };
+        const conflicts = conflictDetector.detectConflicts([single], currentReminders);
+        setDetectedConflicts(conflicts);
         setParsedReminders([single]);
         setParsedSummary('1 xatırlatma tapdım');
         setViewStep('review');
@@ -387,8 +430,16 @@ export const VoiceAssistantFullScreen: React.FC<VoiceAssistantFullScreenProps> =
     }
   };
 
-  const handleConfirmAll = () => {
+  const handleConfirmAll = (force = false) => {
     if (parsedReminders.length === 0) return;
+
+    if (!force && detectedConflicts.length > 0) {
+      return;
+    }
+
+    if (force && detectedConflicts.length > 0) {
+      conflictDetector.logUserDecision('Yenə də əlavə et');
+    }
 
     // Save directly to centralized repository
     const created = reminderService.createMultipleReminders(
@@ -403,25 +454,75 @@ export const VoiceAssistantFullScreen: React.FC<VoiceAssistantFullScreenProps> =
     onClose();
   };
 
+  const handleForceSave = () => {
+    handleConfirmAll(true);
+  };
+
+  const handleApplyAlternativeTime = (conflict: ReminderConflict) => {
+    conflictDetector.logUserDecision('Vaxtı dəyiş');
+    if (conflict.suggestedAlternativeTime) {
+      setParsedReminders((prev) => {
+        const next = prev.map((item) => {
+          if (item.id === conflict.candidateReminder.id || item.title === conflict.candidateReminder.title) {
+            const d = new Date(item.dueDateTime);
+            const [h, m] = conflict.suggestedAlternativeTime!.split(':').map(Number);
+            d.setHours(h, m, 0, 0);
+            return {
+              ...item,
+              dueDateTime: d.toISOString(),
+              inferredTime: false,
+              timeConfidence: 'exact' as const,
+            };
+          }
+          return item;
+        });
+        const newConflicts = conflictDetector.detectConflicts(next, reminderService.getAll());
+        setDetectedConflicts(newConflicts);
+        return next;
+      });
+    } else {
+      setEditingCardId(conflict.candidateReminder.id);
+    }
+  };
+
+  const handleCancelConflictReminder = (conflict: ReminderConflict) => {
+    conflictDetector.logUserDecision('Ləğv et');
+    setParsedReminders((prev) => {
+      const next = prev.filter(
+        (item) => item.id !== conflict.candidateReminder.id && item.title !== conflict.candidateReminder.title
+      );
+      const newConflicts = conflictDetector.detectConflicts(next, reminderService.getAll());
+      setDetectedConflicts(newConflicts);
+      if (next.length === 0) {
+        setViewStep('listening');
+      }
+      return next;
+    });
+  };
+
   const handleUpdateItem = (id: string, updates: Partial<EditableExtractedReminder>) => {
-    setParsedReminders((prev) =>
-      prev.map((item) =>
+    setParsedReminders((prev) => {
+      const next = prev.map((item) =>
         item.id === id
           ? {
               ...item,
               ...updates,
-              // If user explicitly edited the time, it's no longer inferred
               inferredTime: updates.dueDateTime ? false : item.inferredTime,
               timeConfidence: updates.dueDateTime ? 'exact' : item.timeConfidence,
             }
           : item
-      )
-    );
+      );
+      const newConflicts = conflictDetector.detectConflicts(next, reminderService.getAll());
+      setDetectedConflicts(newConflicts);
+      return next;
+    });
   };
 
   const handleDeleteItem = (id: string) => {
     const next = parsedReminders.filter((item) => item.id !== id);
     setParsedReminders(next);
+    const newConflicts = conflictDetector.detectConflicts(next, reminderService.getAll());
+    setDetectedConflicts(newConflicts);
     if (next.length === 0) {
       setViewStep('listening');
     }
@@ -625,16 +726,70 @@ export const VoiceAssistantFullScreen: React.FC<VoiceAssistantFullScreenProps> =
                 </p>
               </div>
 
+              {/* Conflict Warning Banner */}
+              {detectedConflicts.length > 0 && (
+                <div id="conflict-warning-banner" className="mb-3 rounded-2xl border border-amber-500/40 bg-amber-500/10 p-3.5 shadow-lg backdrop-blur-sm animate-fade-in">
+                  <div className="flex items-start gap-2.5">
+                    <AlertTriangle className="h-5 w-5 text-amber-400 shrink-0 mt-0.5" />
+                    <div className="flex-1 min-w-0">
+                      <h4 className="text-xs font-bold text-amber-300">Vaxt Toqquşması Xəbərdarlığı</h4>
+                      {detectedConflicts.map((c, idx) => (
+                        <div key={idx} className="mt-1">
+                          <p className="text-[11px] text-amber-200/90 leading-relaxed font-medium">
+                            {c.message}
+                          </p>
+                          {c.suggestedAlternativeTime && (
+                            <p className="text-[10px] text-amber-300/80 mt-0.5">
+                              Təklif olunan boş vaxt: <span className="font-bold underline">{c.suggestedAlternativeTime}</span>
+                            </p>
+                          )}
+                          <div className="mt-2.5 flex items-center gap-2 flex-wrap">
+                            <button
+                              id={`conflict-force-add-${idx}`}
+                              onClick={handleForceSave}
+                              className="px-2.5 py-1 rounded-lg bg-amber-500/25 hover:bg-amber-500/35 border border-amber-500/40 text-[11px] font-bold text-amber-200 active:scale-95 transition-all"
+                            >
+                              Yenə də əlavə et
+                            </button>
+                            <button
+                              id={`conflict-change-time-${idx}`}
+                              onClick={() => handleApplyAlternativeTime(c)}
+                              className="px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/15 border border-white/20 text-[11px] font-bold text-white active:scale-95 transition-all"
+                            >
+                              {c.suggestedAlternativeTime ? `Vaxtı ${c.suggestedAlternativeTime} et` : 'Vaxtı dəyiş'}
+                            </button>
+                            <button
+                              id={`conflict-cancel-${idx}`}
+                              onClick={() => handleCancelConflictReminder(c)}
+                              className="px-2.5 py-1 rounded-lg bg-rose-500/15 hover:bg-rose-500/25 border border-rose-500/30 text-[11px] font-bold text-rose-300 active:scale-95 transition-all"
+                            >
+                              Ləğv et
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Extracted Reminders List */}
               <div className="space-y-2.5 max-h-[52vh] overflow-y-auto pr-0.5">
                 {parsedReminders.map((item, index) => {
                   const catMeta = CATEGORIES[item.category] || CATEGORIES.other;
                   const isEditing = editingCardId === item.id;
+                  const itemHasConflict = detectedConflicts.some(
+                    (c) => c.candidateReminder.id === item.id || c.candidateReminder.title === item.title
+                  );
 
                   return (
                     <div
                       key={item.id}
-                      className="rounded-2xl border border-white/10 bg-[#121828] p-3.5 shadow-md"
+                      className={`rounded-2xl border p-3.5 shadow-md transition-all ${
+                        itemHasConflict
+                          ? 'border-amber-500/50 bg-[#161720]'
+                          : 'border-white/10 bg-[#121828]'
+                      }`}
                     >
                       {isEditing ? (
                         <div className="space-y-2">
@@ -712,11 +867,26 @@ export const VoiceAssistantFullScreen: React.FC<VoiceAssistantFullScreenProps> =
                                 • {catMeta.label}
                               </span>
 
+                              {/* Recurrence indicator badge */}
+                              {item.recurrence && item.recurrence !== 'none' && (
+                                <span className="inline-flex items-center gap-1 rounded-full bg-violet-500/15 border border-violet-500/30 px-2 py-0.5 text-[9px] font-bold text-violet-300">
+                                  <Repeat className="h-2.5 w-2.5" />
+                                  {getRecurrenceLabelAz(item as any)}
+                                </span>
+                              )}
+
                               {/* Inferred time indicator badge */}
                               {item.inferredTime && (
                                 <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/15 border border-amber-500/30 px-2 py-0.5 text-[9px] font-bold text-amber-300">
                                   <Clock className="h-2.5 w-2.5" />
                                   Təxmini vaxt
+                                </span>
+                              )}
+
+                              {itemHasConflict && (
+                                <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/20 border border-amber-500/40 px-2 py-0.5 text-[9px] font-bold text-amber-300">
+                                  <AlertTriangle className="h-2.5 w-2.5" />
+                                  Toqquşma
                                 </span>
                               )}
                             </div>

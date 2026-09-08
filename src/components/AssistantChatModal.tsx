@@ -14,13 +14,16 @@ import {
   ArrowRight,
   Bot,
   User,
+  AlertTriangle,
 } from 'lucide-react';
 import { Reminder, AssistantMessage } from '../types';
 import { SAMPLE_QUESTIONS } from '../utils/categoryMeta';
-import { speakText, stopSpeaking, playMicStartSound } from '../utils/soundUtils';
+import { speakText, stopSpeaking, playMicStartSound, playSuccessSound } from '../utils/soundUtils';
 import { apiClient } from '../services/apiClient';
 import { speechManager } from '../services/speech/SpeechProviderManager';
 import { intelligentRouter } from '../services/intelligentRouter';
+import { reminderService } from '../services/reminderService';
+import { conflictDetector } from '../services/conflictDetector';
 
 interface AssistantChatModalProps {
   isOpen: boolean;
@@ -119,8 +122,40 @@ export const AssistantChatModal: React.FC<AssistantChatModalProps> = ({
     // Check local fast path
     const evaluation = intelligentRouter.evaluateLocalFastPath(query, reminders);
     if (evaluation.handledLocally && evaluation.confidence >= 0.8) {
-      console.log(`[ASSISTANT-MODAL] Local answer for "${query}"`);
-      const answer = evaluation.payload.responseMessage || 'Məlumat tapıldı.';
+      console.log(`[ASSISTANT-MODAL] Local answer for "${query}" (${evaluation.action})`);
+      const payload = evaluation.payload;
+
+      if (
+        (payload.action === 'create_reminder' || payload.action === 'create_multiple_reminders') &&
+        payload.hasConflict
+      ) {
+        const assistantMessage: AssistantMessage = {
+          id: `ai-${Date.now()}`,
+          role: 'assistant',
+          text: payload.responseMessage || 'Təqviminizdə bu vaxt üçün başqa xatırlatma var.',
+          timestamp: new Date().toLocaleTimeString('az-AZ', { hour: '2-digit', minute: '2-digit' }),
+          actionPayload: payload,
+          executed: false,
+        };
+        setMessages((prev) => [...prev, assistantMessage]);
+        speakText(assistantMessage.text);
+        setIsSpeaking(true);
+        return;
+      }
+
+      let answer = payload.responseMessage || 'Məlumat tapıldı.';
+      if (
+        payload.action === 'create_reminder' ||
+        payload.action === 'create_multiple_reminders' ||
+        payload.action === 'update_reminder' ||
+        payload.action === 'delete_reminder' ||
+        payload.action === 'complete_reminder'
+      ) {
+        const res = reminderService.executeAIAction(payload);
+        if (res.message) answer = res.message;
+        playSuccessSound();
+      }
+
       const assistantMessage: AssistantMessage = {
         id: `ai-${Date.now()}`,
         role: 'assistant',
@@ -143,13 +178,16 @@ export const AssistantChatModal: React.FC<AssistantChatModalProps> = ({
         executeDirectly: true,
       });
 
-      const answer = routeResult.actionPayload.responseMessage || 'Məlumat tapılmadı.';
+      const payload = routeResult.actionPayload;
+      const answer = payload.responseMessage || 'Məlumat tapılmadı.';
 
       const assistantMessage: AssistantMessage = {
         id: `ai-${Date.now()}`,
         role: 'assistant',
         text: answer,
         timestamp: new Date().toLocaleTimeString('az-AZ', { hour: '2-digit', minute: '2-digit' }),
+        actionPayload: payload.hasConflict ? payload : undefined,
+        executed: !payload.hasConflict,
       };
 
       setMessages((prev) => [...prev, assistantMessage]);
@@ -169,6 +207,74 @@ export const AssistantChatModal: React.FC<AssistantChatModalProps> = ({
       setMessages((prev) => [...prev, errorMessage]);
       setIsLoading(false);
     }
+  };
+
+  const handleConflictForceAdd = (msg: AssistantMessage) => {
+    if (!msg.actionPayload) return;
+    conflictDetector.logUserDecision('Yenə də əlavə et');
+    const result = reminderService.executeAIAction({
+      ...msg.actionPayload,
+      hasConflict: false,
+      needsConfirmation: false,
+    });
+    playSuccessSound();
+
+    setMessages((prev) =>
+      prev.map((m) => (m.id === msg.id ? { ...m, executed: true } : m)).concat([
+        {
+          id: `ai-${Date.now()}`,
+          role: 'assistant',
+          text: result.message || 'Xatırlatma əlavə edildi.',
+          timestamp: new Date().toLocaleTimeString('az-AZ', { hour: '2-digit', minute: '2-digit' }),
+        },
+      ])
+    );
+  };
+
+  const handleConflictChangeTime = (msg: AssistantMessage) => {
+    if (!msg.actionPayload) return;
+    conflictDetector.logUserDecision('Vaxtı dəyiş');
+    const altTime = msg.actionPayload.conflicts?.[0]?.suggestedAlternativeDueDateTime;
+    const altTimeStr = msg.actionPayload.conflicts?.[0]?.suggestedAlternativeTime;
+
+    let payload = { ...msg.actionPayload, hasConflict: false, needsConfirmation: false };
+    if (altTime && payload.remindersToCreate && payload.remindersToCreate.length > 0) {
+      payload.remindersToCreate = payload.remindersToCreate.map((r, i) =>
+        i === 0 ? { ...r, dueDateTime: altTime, inferredTime: false } : r
+      );
+    }
+
+    const result = reminderService.executeAIAction(payload);
+    playSuccessSound();
+
+    const successMsg = altTimeStr
+      ? `Vaxt ${altTimeStr} olaraq dəyişdirildi və xatırlatma əlavə edildi.`
+      : result.message || 'Vaxt dəyişdirildi və xatırlatma əlavə edildi.';
+
+    setMessages((prev) =>
+      prev.map((m) => (m.id === msg.id ? { ...m, executed: true } : m)).concat([
+        {
+          id: `ai-${Date.now()}`,
+          role: 'assistant',
+          text: successMsg,
+          timestamp: new Date().toLocaleTimeString('az-AZ', { hour: '2-digit', minute: '2-digit' }),
+        },
+      ])
+    );
+  };
+
+  const handleConflictCancel = (msg: AssistantMessage) => {
+    conflictDetector.logUserDecision('Ləğv et');
+    setMessages((prev) =>
+      prev.map((m) => (m.id === msg.id ? { ...m, executed: true } : m)).concat([
+        {
+          id: `ai-${Date.now()}`,
+          role: 'assistant',
+          text: 'Xatırlatma yaradılması ləğv edildi.',
+          timestamp: new Date().toLocaleTimeString('az-AZ', { hour: '2-digit', minute: '2-digit' }),
+        },
+      ])
+    );
   };
 
   const handleSpeakToggle = (text: string) => {
@@ -246,6 +352,37 @@ export const AssistantChatModal: React.FC<AssistantChatModalProps> = ({
                 }`}
               >
                 <div className="whitespace-pre-wrap">{msg.text}</div>
+
+                {msg.actionPayload?.hasConflict && !msg.executed && (
+                  <div className="mt-2.5 pt-2.5 border-t border-white/10 space-y-2">
+                    <div className="flex items-center gap-1.5 text-amber-300 text-[11px] font-semibold">
+                      <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+                      <span>Toqquşma aşkarlandı</span>
+                    </div>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <button
+                        onClick={() => handleConflictForceAdd(msg)}
+                        className="px-2.5 py-1 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-[11px] font-bold text-amber-200 active:scale-95 transition-all"
+                      >
+                        Yenə də əlavə et
+                      </button>
+                      <button
+                        onClick={() => handleConflictChangeTime(msg)}
+                        className="px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/15 border border-white/20 text-[11px] font-bold text-white active:scale-95 transition-all"
+                      >
+                        {msg.actionPayload.conflicts?.[0]?.suggestedAlternativeTime
+                          ? `Vaxtı ${msg.actionPayload.conflicts[0].suggestedAlternativeTime} et`
+                          : 'Vaxtı dəyiş'}
+                      </button>
+                      <button
+                        onClick={() => handleConflictCancel(msg)}
+                        className="px-2.5 py-1 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-[11px] font-bold text-rose-300 active:scale-95 transition-all"
+                      >
+                        Ləğv et
+                      </button>
+                    </div>
+                  </div>
+                )}
 
                 <div
                   className={`mt-1.5 flex items-center justify-between text-[10px] ${

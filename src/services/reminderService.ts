@@ -16,18 +16,31 @@ class ReminderService {
   private listeners: ReminderListener[] = [];
   private isLoaded = false;
 
+  private initPromise: Promise<void>;
+
   constructor() {
     this.storage = getReminderStorageProvider();
-    this.init();
+    this.initPromise = this.init();
+  }
+
+  public async waitUntilLoaded(): Promise<void> {
+    await this.initPromise;
   }
 
   private async init() {
     try {
       const stored = await this.storage.getAll();
       if (stored && stored.length > 0) {
-        this.reminders = stored;
+        const existingIds = new Set(stored.map((r) => r.id));
+        const newlyAdded = this.reminders.filter((r) => !existingIds.has(r.id));
+        this.reminders = [...stored, ...newlyAdded];
+        if (newlyAdded.length > 0) {
+          await this.storage.saveAll(this.reminders);
+        }
       } else {
-        this.reminders = this.generateStarterReminders();
+        if (this.reminders.length === 0) {
+          this.reminders = this.generateStarterReminders();
+        }
         await this.storage.saveAll(this.reminders);
       }
     } catch (e) {
@@ -47,10 +60,12 @@ class ReminderService {
   }
 
   private async persist() {
+    console.log(`[VOICE-FLOW] persistence started: count=${this.reminders.length}, storage=${this.storage.name}`);
     try {
       await this.storage.saveAll(this.reminders);
+      console.log(`[VOICE-FLOW] persistence success: count=${this.reminders.length}, storage=${this.storage.name}`);
     } catch (e) {
-      console.error('[ReminderService] Persist error:', e);
+      console.error('[VOICE-FLOW] persistence error:', e);
     }
   }
 
@@ -84,6 +99,11 @@ class ReminderService {
       dueDateTime: draft.dueDateTime || new Date(Date.now() + 60 * 60 * 1000).toISOString(),
       category: (draft.category as ReminderCategory) || 'other',
       recurrence: (draft.recurrence as ReminderRecurrence) || 'none',
+      recurrenceDays: (draft as any).recurrenceDays,
+      recurrenceInterval: (draft as any).recurrenceInterval,
+      recurrenceUnit: (draft as any).recurrenceUnit,
+      recurrenceRule: (draft as any).recurrenceRule,
+      recurrenceDayOfMonth: (draft as any).recurrenceDayOfMonth,
       priority: draft.priority || 'medium',
       isCompleted: false,
       createdAt: nowISO,
@@ -113,6 +133,11 @@ class ReminderService {
         dueDateTime: draft.dueDateTime,
         category: draft.category || 'other',
         recurrence: draft.recurrence || 'none',
+        recurrenceDays: draft.recurrenceDays,
+        recurrenceInterval: draft.recurrenceInterval,
+        recurrenceUnit: draft.recurrenceUnit,
+        recurrenceRule: draft.recurrenceRule,
+        recurrenceDayOfMonth: draft.recurrenceDayOfMonth,
         priority: draft.priority || 'medium',
         isCompleted: false,
         createdAt: nowISO,
@@ -342,14 +367,35 @@ class ReminderService {
     const current = new Date(r.dueDateTime);
     const next = new Date(current);
 
-    if (r.recurrence === 'daily') {
+    if (r.recurrenceInterval && r.recurrenceUnit) {
+      if (r.recurrenceUnit === 'day') {
+        next.setDate(next.getDate() + r.recurrenceInterval);
+      } else if (r.recurrenceUnit === 'week') {
+        next.setDate(next.getDate() + (r.recurrenceInterval * 7));
+      } else if (r.recurrenceUnit === 'month') {
+        next.setMonth(next.getMonth() + r.recurrenceInterval);
+        if (r.recurrenceDayOfMonth) next.setDate(r.recurrenceDayOfMonth);
+      } else if (r.recurrenceUnit === 'year') {
+        next.setFullYear(next.getFullYear() + r.recurrenceInterval);
+      }
+    } else if (r.recurrence === 'daily') {
       next.setDate(next.getDate() + 1);
     } else if (r.recurrence === 'weekly') {
       next.setDate(next.getDate() + 7);
     } else if (r.recurrence === 'monthly') {
       next.setMonth(next.getMonth() + 1);
+      if (r.recurrenceDayOfMonth) next.setDate(r.recurrenceDayOfMonth);
     } else if (r.recurrence === 'yearly') {
       next.setFullYear(next.getFullYear() + 1);
+    } else if (r.recurrence === 'weekdays') {
+      const day = next.getDay();
+      if (day === 5) {
+        next.setDate(next.getDate() + 3);
+      } else if (day === 6) {
+        next.setDate(next.getDate() + 2);
+      } else {
+        next.setDate(next.getDate() + 1);
+      }
     } else {
       return;
     }
@@ -360,6 +406,11 @@ class ReminderService {
       dueDateTime: next.toISOString(),
       category: r.category,
       recurrence: r.recurrence,
+      recurrenceDays: r.recurrenceDays,
+      recurrenceInterval: r.recurrenceInterval,
+      recurrenceUnit: r.recurrenceUnit,
+      recurrenceRule: r.recurrenceRule,
+      recurrenceDayOfMonth: r.recurrenceDayOfMonth,
       priority: r.priority,
       notificationEnabled: true,
     });
