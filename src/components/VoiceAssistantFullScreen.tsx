@@ -460,10 +460,13 @@ export const VoiceAssistantFullScreen: React.FC<VoiceAssistantFullScreenProps> =
 
   const handleApplyAlternativeTime = (conflict: ReminderConflict) => {
     conflictDetector.logUserDecision('Vaxtı dəyiş');
+    const targetId = conflict.candidateReminder?.id || conflict.candidateId;
+    const targetTitle = conflict.candidateReminder?.title || conflict.candidateTitle;
+
     if (conflict.suggestedAlternativeTime) {
       setParsedReminders((prev) => {
         const next = prev.map((item) => {
-          if (item.id === conflict.candidateReminder.id || item.title === conflict.candidateReminder.title) {
+          if ((targetId && item.id === targetId) || item.title === targetTitle) {
             const d = new Date(item.dueDateTime);
             const [h, m] = conflict.suggestedAlternativeTime!.split(':').map(Number);
             d.setHours(h, m, 0, 0);
@@ -481,15 +484,20 @@ export const VoiceAssistantFullScreen: React.FC<VoiceAssistantFullScreenProps> =
         return next;
       });
     } else {
-      setEditingCardId(conflict.candidateReminder.id);
+      if (targetId) {
+        setEditingCardId(targetId);
+      }
     }
   };
 
   const handleCancelConflictReminder = (conflict: ReminderConflict) => {
     conflictDetector.logUserDecision('Ləğv et');
+    const targetId = conflict.candidateReminder?.id || conflict.candidateId;
+    const targetTitle = conflict.candidateReminder?.title || conflict.candidateTitle;
+
     setParsedReminders((prev) => {
       const next = prev.filter(
-        (item) => item.id !== conflict.candidateReminder.id && item.title !== conflict.candidateReminder.title
+        (item) => !(targetId && item.id === targetId) && item.title !== targetTitle
       );
       const newConflicts = conflictDetector.detectConflicts(next, reminderService.getAll());
       setDetectedConflicts(newConflicts);
@@ -779,7 +787,11 @@ export const VoiceAssistantFullScreen: React.FC<VoiceAssistantFullScreenProps> =
                   const catMeta = CATEGORIES[item.category] || CATEGORIES.other;
                   const isEditing = editingCardId === item.id;
                   const itemHasConflict = detectedConflicts.some(
-                    (c) => c.candidateReminder.id === item.id || c.candidateReminder.title === item.title
+                    (c) => {
+                      const cId = c.candidateReminder?.id || c.candidateId;
+                      const cTitle = c.candidateReminder?.title || c.candidateTitle;
+                      return (cId && cId === item.id) || cTitle === item.title;
+                    }
                   );
 
                   return (
@@ -931,7 +943,7 @@ export const VoiceAssistantFullScreen: React.FC<VoiceAssistantFullScreenProps> =
             <div className="space-y-2 pt-3">
               <button
                 id="confirm-extracted-reminders-btn"
-                onClick={handleConfirmAll}
+                onClick={() => handleConfirmAll()}
                 disabled={parsedReminders.length === 0}
                 className="flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-tr from-violet-600 to-indigo-600 py-3.5 text-sm font-bold text-white shadow-xl shadow-violet-500/30 border border-white/10 hover:brightness-110 active:scale-98 transition-all"
               >

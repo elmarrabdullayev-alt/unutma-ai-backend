@@ -19,7 +19,13 @@ import {
 } from 'lucide-react';
 import { Reminder, ReminderCategory } from '../types';
 import { CATEGORIES } from '../utils/categoryMeta';
-import { getRelativeTimeAz, formatDateAz, getRecurrenceLabelAz } from '../utils/dateUtils';
+import {
+  getRelativeTimeAz,
+  formatDateAz,
+  getRecurrenceLabelAz,
+  getReminderUrgencyStatus,
+  formatTimeOnly,
+} from '../utils/dateUtils';
 import { speakText } from '../utils/soundUtils';
 
 interface ReminderCardProps {
@@ -61,10 +67,18 @@ export const ReminderCard: React.FC<ReminderCardProps> = ({
     speakText(speechText);
   };
 
+  const urgencyStatus = getReminderUrgencyStatus(reminder);
+  const isCompleted = reminder.isCompleted;
+  const isOverdue = !isCompleted && (urgencyStatus === 'overdue' || isPast);
+  const isNear = !isCompleted && !isOverdue && urgencyStatus === 'nearDue';
+  const timeOnly = formatTimeOnly(reminder.dueDateTime);
+
   // Determine vertical accent bar color based on status/priority/category
   const getAccentBarColor = () => {
-    if (reminder.isCompleted) return 'bg-slate-600';
-    if (reminder.priority === 'high' || isPast) return 'bg-rose-500 shadow-sm shadow-rose-500/50';
+    if (isCompleted) return 'bg-slate-600';
+    if (isOverdue) return 'bg-rose-500 shadow-sm shadow-rose-500/50';
+    if (isNear) return 'bg-gradient-to-b from-rose-400 to-rose-600 shadow-[0_0_10px_rgba(244,63,94,0.7)]';
+    if (reminder.priority === 'high') return 'bg-rose-500 shadow-sm shadow-rose-500/50';
     if (isUrgent) return 'bg-amber-500 shadow-sm shadow-amber-500/50';
     if (reminder.category === 'personal') return 'bg-violet-500 shadow-sm shadow-violet-500/50';
     if (reminder.category === 'work') return 'bg-indigo-500 shadow-sm shadow-indigo-500/50';
@@ -78,8 +92,12 @@ export const ReminderCard: React.FC<ReminderCardProps> = ({
     <div
       id={`reminder-card-${reminder.id}`}
       className={`group relative rounded-2xl border transition-all duration-200 ${
-        reminder.isCompleted
+        isCompleted
           ? 'border-white/5 bg-slate-900/40 opacity-60'
+          : isOverdue
+          ? 'border-rose-500/30 bg-[#151a29] shadow-md shadow-rose-500/5'
+          : isNear
+          ? 'border-rose-500/35 bg-gradient-to-r from-[#171324] via-[#141829] to-[#141829] shadow-[0_4px_24px_-4px_rgba(244,63,94,0.22)] hover:border-rose-500/50'
           : isUrgent
           ? 'border-amber-500/30 bg-slate-800/60 shadow-lg shadow-amber-500/5'
           : 'border-white/5 bg-slate-800/40 hover:border-white/15 hover:bg-slate-800/70 shadow-sm'
@@ -133,11 +151,41 @@ export const ReminderCard: React.FC<ReminderCardProps> = ({
 
           {/* Time & Relative Timing */}
           <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
+            {timeOnly && (
+              <span
+                className={`inline-flex items-center gap-1 font-bold ${
+                  isCompleted
+                    ? 'text-slate-500'
+                    : isOverdue
+                    ? 'text-rose-400'
+                    : isNear
+                    ? 'text-rose-400'
+                    : 'text-slate-200'
+                }`}
+              >
+                {isNear && (
+                  <span className="h-1.5 w-1.5 rounded-full bg-rose-500 animate-pulse shrink-0" />
+                )}
+                {timeOnly}
+              </span>
+            )}
+
+            {isNear && (
+              <span className="inline-flex items-center gap-1 rounded-md border border-rose-500/30 bg-rose-500/10 px-1.5 py-0.5 text-[9px] font-extrabold uppercase tracking-wider text-rose-300">
+                <Clock3 className="h-2.5 w-2.5 text-rose-400" />
+                2 saat içində
+              </span>
+            )}
+
             <span
               className={`inline-flex items-center gap-1 font-medium ${
-                isPast && !reminder.isCompleted
-                  ? 'text-rose-400'
-                  : isUrgent && !reminder.isCompleted
+                isCompleted
+                  ? 'text-slate-500'
+                  : isOverdue
+                  ? 'text-rose-400 font-semibold'
+                  : isNear
+                  ? 'text-rose-400 font-semibold'
+                  : isUrgent
                   ? 'text-amber-400'
                   : 'text-slate-400'
               }`}

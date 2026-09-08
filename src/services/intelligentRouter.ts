@@ -484,6 +484,8 @@ export class IntelligentRouter {
     const clean = text.trim();
     if (!clean) return [];
 
+    console.log('[RECURRENCE-TEST] input:', clean);
+
     // MANDATORY SAFETY GUARD: If input is a retrieval query without explicit create verb, NEVER parse reminders!
     if (this.isRetrievalQuery(clean) && !this.hasExplicitCreateVerb(clean)) {
       return [];
@@ -494,12 +496,16 @@ export class IntelligentRouter {
 
     // Check if multi-reminder compound: split by punctuation, conjunctions, or time transitions
     const segments = this.splitMultiReminderSegments(clean);
+    console.log('[RECURRENCE-TEST] segments:', segments);
     const results: ParsedDeterministicItem[] = [];
     let contextDate: Date | null = null;
 
     for (const segment of segments) {
       const item = this.parseSingleReminderSegment(segment, contextDate);
       if (item) {
+        console.log('[RECURRENCE-TEST] recurrenceInterval:', item.recurrenceInterval);
+        console.log('[RECURRENCE-TEST] recurrenceUnit:', item.recurrenceUnit);
+        console.log('[RECURRENCE-TEST] parsed result:', item);
         results.push(item);
         contextDate = new Date(item.dueDateTime);
       }
@@ -522,8 +528,21 @@ export class IntelligentRouter {
     }
 
     // 3. Split by spoken time transitions without punctuation
-    const timeTransitionRegex = /(?<=\S\s+)(?<!saat\s+)(?=(?:saat\s+\d+|saat\s+(?:bir|iki|üç|dörd|beş|altı|yeddi|səkkiz|doqquz|on)|\d+\s*[-–]?(?:də|da|de|ta|tə)\s+|(?:bir|iki|üç|dörd|beş|altı|yeddi|səkkiz|doqquz|on)\s*[-–]?(?:də|da|de|ta|tə)\s+|axşam|axsam|günorta|gunorta|səhər|seher|gecə|gece)\b)/gi;
-    const parts = text.split(timeTransitionRegex).map((s) => s.trim().replace(/\.+$/, '')).filter(Boolean);
+    // Must NOT split after recurrence phrases (e.g. "hər 2/3/5 gündən bir", "hər gün", etc.)
+    const timeTransitionRegex = /(?<=\S\s+)(?<!saat\s+)(?<!\b(?:hər|her)\s+(?:\d+|bir|iki|üç|uc|dörd|dord|beş|bes|altı|alti|yeddi|səkkiz|sekkiz|doqquz|on)\s+(?:gündən|gunden|həftədən|hefteden|aydan|ildən|ilden)\s+bir\s+)(?<!\b(?:hər|her)\s+(?:gün|gun|həftə|hefte|ay|il|səhər|seher|axşam|axsam)\s+)(?<!\b(?:gündən|gunden|həftədən|hefteden|aydan|ildən|ilden)\s+bir\s+)(?<!\bbir\s+)(?<!\b(?:hər|her)\s+)(?=(?:saat\s+\d+|saat\s+(?:bir|iki|üç|dörd|beş|altı|yeddi|səkkiz|doqquz|on)|\d+\s*[-–]?(?:də|da|de|ta|tə)\s+|(?:bir|iki|üç|dörd|beş|altı|yeddi|səkkiz|doqquz|on)\s*[-–]?(?:də|da|de|ta|tə)\s+|axşam|axsam|günorta|gunorta|səhər|seher|gecə|gece)\b)/giu;
+    const rawParts = text.split(timeTransitionRegex).map((s) => s.trim().replace(/\.+$/, '')).filter(Boolean);
+
+    // Safeguard: If any segment is an incomplete recurrence phrase (e.g. "hər 3 gündən bir"), re-attach to the next segment
+    const parts: string[] = [];
+    for (let i = 0; i < rawParts.length; i++) {
+      const cur = rawParts[i];
+      if (/^hər\s+(?:\d+|bir|iki|üç|uc|dörd|dord|beş|bes|altı|alti|yeddi|səkkiz|sekkiz|doqquz|on)?\s*(?:gündən|gunden|həftədən|hefteden|aydan|ildən|ilden)?\s*bir$/iu.test(cur) && i + 1 < rawParts.length) {
+        rawParts[i + 1] = cur + ' ' + rawParts[i + 1];
+      } else {
+        parts.push(cur);
+      }
+    }
+
     return parts.length > 1 ? parts : [text];
   }
 
@@ -543,11 +562,17 @@ export class IntelligentRouter {
     let recurrenceDayOfMonth: number | undefined = undefined;
     let isRecurring = false;
 
-    const intervalDay = lower.match(/hər\s+(\d+)\s+gündən\s+bir/i);
-    const intervalWeek = lower.match(/hər\s+(\d+)\s+həftədən\s+bir/i);
-    const intervalMonth = lower.match(/hər\s+(\d+)\s+aydan\s+bir/i);
-    const intervalYear = lower.match(/hər\s+(\d+)\s+ildən\s+bir/i);
-    const monthDayMatch = lower.match(/hər\s+ayın\s+(\d+)(?:[-–]?(?:i|si|ı|sı|u|su|ü|sü))?/i);
+    const intervalDay = lower.match(/hər\s+(\d+|bir|iki|üç|uc|dörd|dord|beş|bes|altı|alti|yeddi|səkkiz|sekkiz|doqquz|on)\s+(?:gündən|gunden)\s+bir/iu);
+    const intervalWeek = lower.match(/hər\s+(\d+|bir|iki|üç|uc|dörd|dord|beş|bes|altı|alti|yeddi|səkkiz|sekkiz|doqquz|on)\s+(?:həftədən|hefteden)\s+bir/iu);
+    const intervalMonth = lower.match(/hər\s+(\d+|bir|iki|üç|uc|dörd|dord|beş|bes|altı|alti|yeddi|səkkiz|sekkiz|doqquz|on)\s+(?:aydan)\s+bir/iu);
+    const intervalYear = lower.match(/hər\s+(\d+|bir|iki|üç|uc|dörd|dord|beş|bes|altı|alti|yeddi|səkkiz|sekkiz|doqquz|on)\s+(?:ildən|ilden)\s+bir/iu);
+    const monthDayMatch = lower.match(/hər\s+ayın\s+(\d+)(?:[-–]?(?:i|si|ı|sı|u|su|ü|sü))?/iu);
+
+    const parseIntervalNumber = (raw: string): number => {
+      const val = raw.trim().toLowerCase();
+      if (/^\d+$/.test(val)) return parseInt(val, 10);
+      return AZ_WORD_NUMBERS[val] || 1;
+    };
 
     const weekdaysMap: Record<string, number> = {
       'bazar ertəsi': 1, 'bazar ertesi': 1,
@@ -561,22 +586,22 @@ export class IntelligentRouter {
 
     if (intervalDay) {
       recurrence = 'custom';
-      recurrenceInterval = parseInt(intervalDay[1], 10);
+      recurrenceInterval = parseIntervalNumber(intervalDay[1]);
       recurrenceUnit = 'day';
       isRecurring = true;
     } else if (intervalWeek) {
       recurrence = 'custom';
-      recurrenceInterval = parseInt(intervalWeek[1], 10);
+      recurrenceInterval = parseIntervalNumber(intervalWeek[1]);
       recurrenceUnit = 'week';
       isRecurring = true;
     } else if (intervalMonth) {
       recurrence = 'custom';
-      recurrenceInterval = parseInt(intervalMonth[1], 10);
+      recurrenceInterval = parseIntervalNumber(intervalMonth[1]);
       recurrenceUnit = 'month';
       isRecurring = true;
     } else if (intervalYear) {
       recurrence = 'custom';
-      recurrenceInterval = parseInt(intervalYear[1], 10);
+      recurrenceInterval = parseIntervalNumber(intervalYear[1]);
       recurrenceUnit = 'year';
       isRecurring = true;
     } else if (monthDayMatch) {
@@ -654,7 +679,7 @@ export class IntelligentRouter {
         recurrenceDays,
         recurrenceInterval,
         recurrenceUnit,
-        recurrenceRule: isRecurring
+        recurrenceRule: isRecurring && recurrence !== 'none'
           ? {
               type: recurrence === 'custom' ? 'interval' : recurrence,
               unit: recurrenceUnit,
@@ -671,9 +696,9 @@ export class IntelligentRouter {
     }
 
     // 3. Prepare text for time searching (strip recurring interval numbers to prevent false hour matches)
-    let textForTimeSearch = lower.replace(/hər\s+\d+\s+(?:gündən|gunden|həftədən|hefteden|aydan|ildən|ilden)\s+bir/gi, ' ');
-    textForTimeSearch = textForTimeSearch.replace(/hər\s+ayın\s+\d+(?:[-–]?(?:i|si|ı|sı|u|su|ü|sü))?/gi, ' ');
-    textForTimeSearch = textForTimeSearch.replace(/hər\s+(?:gün|gun|həftə|hefte|ay|il|bazar\s*ertəsi|bazar\s*ertesi)/gi, ' ');
+    let textForTimeSearch = lower.replace(/hər\s+(?:\d+|bir|iki|üç|uc|dörd|dord|beş|bes|altı|alti|yeddi|səkkiz|sekkiz|doqquz|on)\s+(?:gündən|gunden|həftədən|hefteden|aydan|ildən|ilden)\s+bir/giu, ' ');
+    textForTimeSearch = textForTimeSearch.replace(/hər\s+ayın\s+\d+(?:[-–]?(?:i|si|ı|sı|u|su|ü|sü))?/giu, ' ');
+    textForTimeSearch = textForTimeSearch.replace(/hər\s+(?:gün|gun|həftə|hefte|ay|il|bazar\s*ertəsi|bazar\s*ertesi)/giu, ' ');
 
     // 4. Exact or Inferred Time of Day
     let targetHours = 10;
@@ -801,7 +826,7 @@ export class IntelligentRouter {
       return null;
     }
 
-    const recurrenceRule: RecurrenceConfig | undefined = isRecurring
+    const recurrenceRule: RecurrenceConfig | undefined = isRecurring && recurrence !== 'none'
       ? {
           type: recurrence === 'custom' ? 'interval' : recurrence,
           unit: recurrenceUnit,
@@ -835,14 +860,14 @@ export class IntelligentRouter {
     }
 
     // Strip recurrence phrases
-    t = t.replace(/hər\s+\d+\s+(?:gündən|gunden|həftədən|hefteden|aydan|ildən|ilden)\s+bir/gi, ' ');
-    t = t.replace(/hər\s+ayın\s+\d+(?:[-–]?(?:i|si|ı|sı|u|su|ü|sü))?/gi, ' ');
-    t = t.replace(/hər\s+(?:gün|gun|həftə|hefte|ay|il|bazar\s*ertəsi|bazar\s*ertesi|çərşənbə\s*axşamı|cersenbe\s*axsami|çərşənbə|cersenbe|cümə\s*axşamı|cume\s*axsami|cümə|cume|şənbə|senbe|bazar|həftəiçi|hefteici|iş\s*günü|is\s*gunu)/gi, ' ');
+    t = t.replace(/hər\s+(?:\d+|bir|iki|üç|uc|dörd|dord|beş|bes|altı|alti|yeddi|səkkiz|sekkiz|doqquz|on)\s+(?:gündən|gunden|həftədən|hefteden|aydan|ildən|ilden)\s+bir/giu, ' ');
+    t = t.replace(/hər\s+ayın\s+\d+(?:[-–]?(?:i|si|ı|sı|u|su|ü|sü))?/giu, ' ');
+    t = t.replace(/hər\s+(?:gün|gun|həftə|hefte|ay|il|bazar\s*ertəsi|bazar\s*ertesi|çərşənbə\s*axşamı|cersenbe\s*axsami|çərşənbə|cersenbe|cümə\s*axşamı|cume\s*axsami|cümə|cume|şənbə|senbe|bazar|həftəiçi|hefteici|iş\s*günü|is\s*gunu)/giu, ' ');
 
     // Strip out numbers with time suffixes: saat 10-da, 2-də, 2 də
-    t = t.replace(/(?:saat\s+)?\d{1,2}(?::\d{2})?\s*[-–]?(?:da|də|de|ta|tə|yə|a|e|dək)?/gi, ' ');
+    t = t.replace(/(?:saat\s+)?\d{1,2}(?::\d{2})?(?:\s*[-–]?\s*(?:da|də|de|ta|tə|yə|a|e|dək)(?!\p{L}))?/giu, ' ');
     // Strip out spoken numbers: saat onda, onda, ikidə, saat ikidə
-    t = t.replace(/(?:saat\s+)?(onda|ikidə|üçdə|dörddə|beşdə|altıda|yeddida|səkkizdə|doqquzda|on bir də|on iki də|bir|iki|üç|dörd|beş|altı|yeddi|səkkiz|doqquz|on)\s*[-–]?(?:da|də|de|ta|tə)?/gi, ' ');
+    t = t.replace(/(?:saat\s+)?(onda|ikidə|üçdə|dörddə|beşdə|altıda|yeddida|səkkizdə|doqquzda|on bir də|on iki də|bir|iki|üç|dörd|beş|altı|yeddi|səkkiz|doqquz|on)(?:\s*[-–]?(?:da|də|de|ta|tə)(?!\p{L}))?/giu, ' ');
 
     // Normalize specific possessive nouns to base forms
     t = t.replace(/\biclasım\b/gi, 'iclas');
@@ -869,7 +894,7 @@ export class IntelligentRouter {
   }
 
   private inferCategory(title: string): ReminderCategory {
-    const l = title.toLowerCase();
+    const l = normalizeAz(title);
     if (/həkim|hekim|dərman|derman|analiz|resept|xəstəxana|klinika|vitamin|diş|stomatoloq|sağlamlıq|idman|trenajor|qaçış/i.test(l)) {
       return 'health';
     }

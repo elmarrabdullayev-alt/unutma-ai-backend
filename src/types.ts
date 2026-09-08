@@ -44,6 +44,7 @@ export interface ReminderConflict {
   candidateId?: string;
   candidateTitle: string;
   candidateDueDateTime: string;
+  candidateReminder?: { id?: string; title: string; dueDateTime: string };
   conflictingReminderId?: string;
   conflictingReminderTitle: string;
   conflictingDueDateTime: string;

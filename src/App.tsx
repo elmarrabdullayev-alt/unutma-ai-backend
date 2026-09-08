@@ -201,7 +201,15 @@ export default function App() {
   };
 
   const handleToggleComplete = (id: string) => {
-    reminderService.toggleComplete(id);
+    const updated = reminderService.toggleComplete(id);
+    if (updated) {
+      setToastMessage(
+        updated.isCompleted
+          ? 'Xatırlatma tamamlandı və "Bitmiş" bölməsinə keçirildi.'
+          : 'Xatırlatma yenidən aktiv edildi.'
+      );
+      setTimeout(() => setToastMessage(null), 2500);
+    }
   };
 
   const handleDeleteReminder = (id: string) => {
@@ -284,7 +292,7 @@ export default function App() {
           )}
 
           {/* Dynamic Native Mobile Screens */}
-          <main className="flex-1 pb-28 pt-2 overflow-y-auto">
+          <main className="flex-1 pb-36 pt-2 overflow-y-auto">
             {currentTab === 'home' && (
               <HomeScreen
                 reminders={reminders}

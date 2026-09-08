@@ -191,3 +191,119 @@ export function isReminderPast(r: Reminder): boolean {
   const target = new Date(r.dueDateTime);
   return target.getTime() < Date.now();
 }
+
+export type ReminderUrgencyStatus = 'completed' | 'overdue' | 'nearDue' | 'normal';
+
+/**
+ * Calculates the next visible occurrence Date for a reminder,
+ * properly projecting recurring patterns (daily, weekly, weekdays, monthly, yearly, custom interval).
+ */
+export function getNextOccurrenceDate(reminder: Reminder, now: Date = new Date()): Date {
+  const base = new Date(reminder.dueDateTime);
+  if (isNaN(base.getTime())) return base;
+
+  if (!reminder.recurrence || reminder.recurrence === 'none') {
+    return base;
+  }
+
+  // If the stored dueDateTime is still in the future or equal to now, that is the current visible occurrence
+  if (base.getTime() >= now.getTime()) {
+    return base;
+  }
+
+  // If past and recurring, project forward to find the next occurrence strictly >= now
+  const next = new Date(base);
+  const nowMs = now.getTime();
+  const maxIterations = 500;
+  let iterations = 0;
+
+  const rec = reminder.recurrence;
+  const interval = reminder.recurrenceInterval && reminder.recurrenceInterval > 0 ? reminder.recurrenceInterval : 1;
+  const unit = reminder.recurrenceUnit || (rec === 'weekly' ? 'week' : rec === 'monthly' ? 'month' : rec === 'yearly' ? 'year' : 'day');
+
+  while (next.getTime() < nowMs && iterations < maxIterations) {
+    iterations++;
+    if (rec === 'custom') {
+      if (unit === 'day') next.setDate(next.getDate() + interval);
+      else if (unit === 'week') next.setDate(next.getDate() + interval * 7);
+      else if (unit === 'month') {
+        next.setMonth(next.getMonth() + interval);
+        if (reminder.recurrenceDayOfMonth) next.setDate(reminder.recurrenceDayOfMonth);
+      } else if (unit === 'year') {
+        next.setFullYear(next.getFullYear() + interval);
+      } else {
+        next.setDate(next.getDate() + interval);
+      }
+    } else if (rec === 'daily') {
+      next.setDate(next.getDate() + 1);
+    } else if (rec === 'weekly') {
+      next.setDate(next.getDate() + 7);
+    } else if (rec === 'weekdays') {
+      next.setDate(next.getDate() + 1);
+      const d = next.getDay();
+      if (d === 0) next.setDate(next.getDate() + 1); // Sunday -> Monday
+      else if (d === 6) next.setDate(next.getDate() + 2); // Saturday -> Monday
+    } else if (rec === 'monthly') {
+      next.setMonth(next.getMonth() + 1);
+      if (reminder.recurrenceDayOfMonth) next.setDate(reminder.recurrenceDayOfMonth);
+    } else if (rec === 'yearly') {
+      next.setFullYear(next.getFullYear() + 1);
+    } else {
+      break;
+    }
+  }
+
+  return next;
+}
+
+/**
+ * Returns whether a reminder is due within the next 2 hours:
+ * - reminder.isCompleted === false
+ * - dueDateTime >= now
+ * - dueDateTime <= now + 2 hours
+ * For recurring reminders, calculates based on visible next occurrence.
+ */
+export function isNearDue(reminder: Reminder, now: Date = new Date()): boolean {
+  return getReminderUrgencyStatus(reminder, now) === 'nearDue';
+}
+
+/**
+ * Evaluates urgency status with strict priority:
+ * 1. completed
+ * 2. overdue
+ * 3. nearDue (within next 2 hours)
+ * 4. normal
+ */
+export function getReminderUrgencyStatus(reminder: Reminder, now: Date = new Date()): ReminderUrgencyStatus {
+  // 1. completed: highest priority
+  if (reminder.isCompleted) {
+    return 'completed';
+  }
+
+  // Check if past for non-recurring or active instance
+  const originalDue = new Date(reminder.dueDateTime);
+  const isOriginalPast = !isNaN(originalDue.getTime()) && originalDue.getTime() < now.getTime();
+
+  // If non-recurring and past, it is overdue
+  if ((!reminder.recurrence || reminder.recurrence === 'none') && isOriginalPast) {
+    return 'overdue';
+  }
+
+  // Calculate visible occurrence (handles recurring projection)
+  const occurrence = getNextOccurrenceDate(reminder, now);
+  const diffMs = occurrence.getTime() - now.getTime();
+  const twoHoursMs = 2 * 60 * 60 * 1000;
+
+  // 2. overdue: if occurrence is in the past
+  if (diffMs < 0) {
+    return 'overdue';
+  }
+
+  // 3. nearDue: if occurrence is within next 2 hours (0 <= diffMs <= 2 hours)
+  if (diffMs <= twoHoursMs) {
+    return 'nearDue';
+  }
+
+  // 4. normal
+  return 'normal';
+}

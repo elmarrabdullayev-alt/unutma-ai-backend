@@ -180,6 +180,11 @@ export class ConflictDetector {
           candidateId: candidate.id,
           candidateTitle: candidate.title || 'Xatırlatma',
           candidateDueDateTime: candidate.dueDateTime,
+          candidateReminder: {
+            id: candidate.id,
+            title: candidate.title || 'Xatırlatma',
+            dueDateTime: candidate.dueDateTime,
+          },
           conflictingReminderId: matchedExisting.id,
           conflictingReminderTitle: matchedExisting.title,
           conflictingDueDateTime: matchedExisting.dueDateTime,
@@ -204,6 +209,11 @@ export class ConflictDetector {
           candidateId: candidate.id,
           candidateTitle: candidate.title || 'Xatırlatma',
           candidateDueDateTime: candidate.dueDateTime,
+          candidateReminder: {
+            id: candidate.id,
+            title: candidate.title || 'Xatırlatma',
+            dueDateTime: candidate.dueDateTime,
+          },
           conflictingReminderId: matchedBatchCandidate.id,
           conflictingReminderTitle: matchedBatchCandidate.title,
           conflictingDueDateTime: matchedBatchCandidate.dueDateTime,
