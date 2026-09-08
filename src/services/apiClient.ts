@@ -35,6 +35,8 @@ export interface AskAssistantResponse {
   error?: string;
 }
 
+export const NATIVE_API_FALLBACK = 'https://unutma-ai-backend.onrender.com';
+
 export class ApiClient {
   private customBaseUrl: string = '';
 
@@ -44,20 +46,14 @@ export class ApiClient {
   }
 
   public getBaseUrl(): string {
-    if (this.customBaseUrl) {
-      return this.customBaseUrl;
+    const isNative = Capacitor.isNativePlatform();
+
+    if (isNative) {
+      return this.customBaseUrl || NATIVE_API_FALLBACK;
     }
-    // If inside Capacitor Native WebView without explicit VITE_API_BASE_URL:
-    // Notice: WebView runs on capacitor://localhost or https://localhost
-    // In dev / preview it falls back to current window origin if available
-    if (typeof window !== 'undefined' && window.location && window.location.origin) {
-      if (Capacitor.isNativePlatform() && window.location.origin.includes('localhost')) {
-        // Return empty string or prompt caution
-        return '';
-      }
-      return window.location.origin;
-    }
-    return '';
+
+    // Web runtime preserves relative /api behavior unless VITE_API_BASE_URL is explicitly configured
+    return this.customBaseUrl || '';
   }
 
   public setBaseUrl(url: string) {
@@ -65,8 +61,7 @@ export class ApiClient {
   }
 
   public isConfiguredForNative(): boolean {
-    if (!Capacitor.isNativePlatform()) return true;
-    return !!this.customBaseUrl;
+    return true;
   }
 
   public buildUrl(path: string): string {
@@ -84,17 +79,17 @@ export class ApiClient {
     timeoutMs: number = 25000
   ): Promise<T> {
     const isNative = Capacitor.isNativePlatform();
-    const baseUrl = this.getBaseUrl();
+    const platform = Capacitor.getPlatform();
+    const envBaseUrl = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_API_BASE_URL) || '';
+    const resolvedBaseUrl = this.getBaseUrl();
+    const url = this.buildUrl(endpoint);
 
     console.log(`[ApiClient] runtime=${isNative ? 'native' : 'web'}`);
-    console.log(`[ApiClient] baseUrl=${baseUrl || '(none)'}`);
-    console.log(`[ApiClient] request=${endpoint}`);
+    console.log(`[ApiClient] platform=${platform}`);
+    console.log(`[ApiClient] envBaseUrl=${envBaseUrl || '(none)'}`);
+    console.log(`[ApiClient] resolvedBaseUrl=${resolvedBaseUrl || '(relative /api)'}`);
+    console.log(`[ApiClient] full request URL=${url}`);
 
-    if (isNative && !baseUrl) {
-      throw new Error('AI server bağlantısı konfiqurasiya edilməyib.');
-    }
-
-    const url = this.buildUrl(endpoint);
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs);
 
