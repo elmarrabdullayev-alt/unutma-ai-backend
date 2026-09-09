@@ -3,6 +3,7 @@ import path from "path";
 import { createServer as createViteServer } from "vite";
 import { GoogleGenAI, Type } from "@google/genai";
 import dotenv from "dotenv";
+import { transcribeWithGroq } from "./src/server/groqWhisper";
 
 dotenv.config();
 
@@ -120,8 +121,8 @@ function getRetryDelay(attemptIndex: number, suggestedRetryAfterMs?: number): nu
 // TEXT AI CONFIGURATION (1 PRIMARY, 1 FALLBACK, MAX 1 RETRY, 10-15s BUDGET)
 // =========================================================================
 const TEXT_AI_MODELS = [
-  "gemini-3.5-flash", // Primary fast model
-  "gemini-3.8-flash", // Fallback model
+  "gemini-3.8-flash", // Primary fast model
+  "gemini-flash-latest", // Fallback model
 ];
 const MAX_TEXT_AI_BUDGET_MS = 14000; // 14s budget
 const MAX_RETRIES_PER_TEXT_MODEL = 1; // Max 1 retry per model
@@ -594,145 +595,183 @@ FƏALİYYƏTLƏR:
 const AUDIO_TRANSCRIPTION_MODELS = [
   "gemini-3.5-transcribe",
   "gemini-3.8-flash",
-  "gemini-2.5-flash",
 ];
 
-const MAX_TRANSCRIPTION_BUDGET_MS = 15000; // Strict 15s overall budget for fallback transcription
+const MAX_TRANSCRIPTION_BUDGET_MS = 15000; // Strict 15s overall budget for primary transcription
 
 app.post("/api/transcribe-audio", async (req, res) => {
   const startTime = Date.now();
   console.log("[TRANSCRIBE] request received");
+
   try {
-    const { base64Audio, mimeType } = req.body;
+    // 1. Audit and normalize request fields from existing and alternate frontend formats
+    const rawBase64 =
+      req.body.base64Audio ||
+      req.body.audioBase64 ||
+      req.body.recordDataBase64 ||
+      req.body.audio ||
+      "";
+    const rawMime =
+      req.body.mimeType ||
+      req.body.type ||
+      req.body.format ||
+      "audio/aac";
 
     // Normalize Base64 defensively server-side
-    const cleanBase64 = String(base64Audio || "")
+    const cleanBase64 = String(rawBase64 || "")
       .replace(/^data:.*?;base64,/, "")
       .replace(/\s/g, "")
       .trim();
 
-    const rawLen = typeof base64Audio === "string" ? base64Audio.length : 0;
-    console.log("[TRANSCRIBE] received mimeType:", mimeType);
-    console.log("[TRANSCRIBE] base64 length:", rawLen);
-    console.log("[TRANSCRIBE] normalized base64 length:", cleanBase64.length);
+    const cleanMimeType = String(rawMime || "audio/aac").trim();
 
-    // Validate Base64 server-side before calling Gemini
+    console.log(`[TRANSCRIBE] audio length: ${cleanBase64.length}`);
+    console.log(`[TRANSCRIBE] mimeType: ${cleanMimeType}`);
+
+    // TEST D: Empty or invalid audio validation (do NOT fallback for empty audio, return HTTP 400)
     if (!cleanBase64 || cleanBase64.length < 100 || !/^[A-Za-z0-9+/=]+$/.test(cleanBase64)) {
-      console.warn("[TRANSCRIBE] payload validation failed: invalid base64 string or length < 100");
-      return res.status(400).json({ error: "Səs məlumatı düzgün formatda deyil." });
-    }
-
-    console.log("[TRANSCRIBE] payload validation passed: true");
-
-    const cleanMimeType = (mimeType || "audio/aac").trim();
-    const audioPart = {
-      inlineData: {
-        mimeType: cleanMimeType,
-        data: cleanBase64,
-      },
-    };
-
-    const promptText =
-      "Bu səs faylı Azərbaycan dilindədir. Zəhmət olmasa tələffüz edilən sözləri dəqiq Azərbaycan əlifbası və orfoqrafiyası ilə transkripsiya et. Heç bir əlavə giriş və ya şərh yazma, yalnız təmiz mətni qaytar.";
-
-    let lastError: any = null;
-    let hadOverloadOrQuota = false;
-    const MAX_RETRIES_PER_MODEL = 1; // 1 retry per model (total 2 attempts per model)
-
-    for (let mIdx = 0; mIdx < AUDIO_TRANSCRIPTION_MODELS.length; mIdx++) {
-      const elapsed = Date.now() - startTime;
-      if (elapsed >= MAX_TRANSCRIPTION_BUDGET_MS) {
-        console.warn(`[TRANSCRIBE] Budget exhausted (${elapsed}ms >= ${MAX_TRANSCRIPTION_BUDGET_MS}ms) before trying ${AUDIO_TRANSCRIPTION_MODELS[mIdx]}`);
-        break;
-      }
-
-      const model = AUDIO_TRANSCRIPTION_MODELS[mIdx];
-      console.log(`[TRANSCRIBE] audio model selected: ${model}`);
-
-      for (let attempt = 1; attempt <= MAX_RETRIES_PER_MODEL + 1; attempt++) {
-        const attemptElapsed = Date.now() - startTime;
-        if (attemptElapsed >= MAX_TRANSCRIPTION_BUDGET_MS) {
-          console.warn(`[TRANSCRIBE] Budget exhausted (${attemptElapsed}ms >= ${MAX_TRANSCRIPTION_BUDGET_MS}ms) during attempt ${attempt} of ${model}`);
-          break;
-        }
-
-        console.log(`[TRANSCRIBE] attempt: ${model} (attempt ${attempt}/${MAX_RETRIES_PER_MODEL + 1})`);
-        try {
-          console.log("[TRANSCRIBE] model request started");
-          const response = await getAI().models.generateContent({
-            model,
-            contents: {
-              parts: [
-                audioPart,
-                { text: promptText },
-              ],
-            },
-          });
-          console.log("[TRANSCRIBE] model response received");
-
-          const transcriptionText = response.text?.trim() || "";
-          console.log(`[TRANSCRIBE] success: ${model} (length: ${transcriptionText.length} chars)`);
-
-          return res.json({
-            success: true,
-            transcription: transcriptionText,
-            modelUsed: model,
-          });
-        } catch (err: any) {
-          lastError = err;
-          const { is503, is429, isOverloadedOrQuota, retryAfterMs } = classifyGeminiError(err);
-
-          if (is503) {
-            hadOverloadOrQuota = true;
-            console.warn(`[TRANSCRIBE] 503 detected: ${model} (attempt ${attempt}) - ${err?.message || err}`);
-          } else if (is429) {
-            hadOverloadOrQuota = true;
-            console.warn(`[TRANSCRIBE] 429 detected: ${model} (attempt ${attempt}) - ${err?.message || err}`);
-          } else {
-            console.warn(`[TRANSCRIBE] error: ${model} (attempt ${attempt}) - ${err?.message || err}`);
-          }
-
-          const currentElapsed = Date.now() - startTime;
-          const remainingBudget = MAX_TRANSCRIPTION_BUDGET_MS - currentElapsed;
-
-          // If retryable and budget allows
-          if (isOverloadedOrQuota && attempt <= MAX_RETRIES_PER_MODEL && remainingBudget > 1500) {
-            const delay = Math.min(getRetryDelay(attempt, retryAfterMs), remainingBudget - 1000);
-            if (delay > 0) {
-              console.log(`[TRANSCRIBE] Retrying ${model} in ${delay}ms... (budget left: ${remainingBudget}ms)`);
-              await sleep(delay);
-              continue;
-            }
-          }
-
-          // Break attempt loop to try fallback model
-          break;
-        }
-      }
-
-      // Log fallback model transition if another model is available
-      if (mIdx < AUDIO_TRANSCRIPTION_MODELS.length - 1) {
-        const nextModel = AUDIO_TRANSCRIPTION_MODELS[mIdx + 1];
-        console.log(`[TRANSCRIBE] fallback model: switching from ${model} to ${nextModel}`);
-      }
-    }
-
-    console.error(`[TRANSCRIBE] all models failed: all ${AUDIO_TRANSCRIPTION_MODELS.length} audio models exhausted or budget exceeded. Last error:`, lastError);
-
-    // Controlled Azerbaijani error response for overload / high demand without HTTP 500
-    if (hadOverloadOrQuota) {
-      return res.status(503).json({
-        error: "Səs qeydə alındı, lakin AI transkripsiya xidməti hazırda məşğuldur. Bir az sonra yenidən cəhd edin.",
+      console.warn("[TRANSCRIBE] payload validation failed: empty or invalid audio data");
+      return res.status(400).json({
+        error: "invalid_audio",
+        message: "Səs məlumatı boşdur və ya düzgün formatda deyil.",
       });
     }
 
-    return res.status(500).json({
-      error: "Səsin transkripsiyası zamanı xəta: " + (lastError?.message || "Bilinməyən xəta"),
+    const audioBuffer = Buffer.from(cleanBase64, "base64");
+    if (audioBuffer.length === 0) {
+      console.warn("[TRANSCRIBE] payload validation failed: decoded audio buffer is empty");
+      return res.status(400).json({
+        error: "invalid_audio",
+        message: "Səs məlumatı boşdur və ya düzgün formatda deyil.",
+      });
+    }
+
+    // 2. Primary provider: Gemini
+    console.log("[TRANSCRIBE] primary provider: Gemini");
+    let geminiSuccess = false;
+    let geminiTranscript = "";
+    let shouldTriggerGroqFallback = false;
+
+    // Automated test hook headers/body (for reliable automated verification)
+    const simulateGemini = req.headers["x-test-simulate-gemini"] || req.body.__testSimulateGemini;
+    const simulateGroq = req.headers["x-test-simulate-groq"] || req.body.__testSimulateGroq;
+
+    if (simulateGemini === "429") {
+      console.warn("[TRANSCRIBE] Gemini status: 429 RESOURCE_EXHAUSTED (simulated)");
+      shouldTriggerGroqFallback = true;
+    } else if (simulateGemini === "503") {
+      console.warn("[TRANSCRIBE] Gemini status: 503 UNAVAILABLE (simulated)");
+      shouldTriggerGroqFallback = true;
+    } else {
+      const audioPart = {
+        inlineData: {
+          mimeType: cleanMimeType,
+          data: cleanBase64,
+        },
+      };
+
+      const promptText =
+        "Bu səs faylı Azərbaycan dilindədir. Zəhmət olmasa tələffüz edilən sözləri dəqiq Azərbaycan əlifbası və orfoqrafiyası ilə transkripsiya et. Heç bir əlavə giriş və ya şərh yazma, yalnız təmiz mətni qaytar.";
+
+      for (const model of AUDIO_TRANSCRIPTION_MODELS) {
+        const elapsed = Date.now() - startTime;
+        if (elapsed >= MAX_TRANSCRIPTION_BUDGET_MS) {
+          console.warn(`[TRANSCRIBE] Gemini budget exceeded (${elapsed}ms)`);
+          break;
+        }
+
+        try {
+          console.log(`[TRANSCRIBE] Gemini attempt with model: ${model}`);
+          const response = await getAI().models.generateContent({
+            model,
+            contents: {
+              parts: [audioPart, { text: promptText }],
+            },
+          });
+
+          geminiTranscript = (response.text || "").trim();
+          if (geminiTranscript) {
+            geminiSuccess = true;
+            console.log("[TRANSCRIBE] Gemini status: success");
+            break;
+          }
+        } catch (err: any) {
+          const { is503, is429 } = classifyGeminiError(err);
+          const statusDesc = is429
+            ? "429 RESOURCE_EXHAUSTED"
+            : is503
+            ? "503 UNAVAILABLE"
+            : err?.message || "error";
+          console.warn(`[TRANSCRIBE] Gemini status: ${statusDesc}`);
+
+          // On 429 / 503, immediately activate Groq fallback without long retries
+          if (is429 || is503) {
+            shouldTriggerGroqFallback = true;
+            break;
+          }
+        }
+      }
+
+      if (!geminiSuccess) {
+        shouldTriggerGroqFallback = true;
+      }
+    }
+
+    if (geminiSuccess && geminiTranscript) {
+      console.log("[TRANSCRIBE] provider used: gemini");
+      console.log(`[TRANSCRIBE] transcript length: ${geminiTranscript.length}`);
+      return res.json({
+        success: true,
+        transcript: geminiTranscript,
+        transcription: geminiTranscript,
+        provider: "gemini",
+      });
+    }
+
+    // 3. Fallback to Groq Whisper
+    if (shouldTriggerGroqFallback) {
+      console.log("[TRANSCRIBE] Gemini failed, activating Groq fallback");
+      console.log("[TRANSCRIBE] Groq request started");
+
+      try {
+        if (simulateGroq === "503" || simulateGroq === "true") {
+          throw new Error("Groq API unavailable (simulated)");
+        }
+
+        const groqTranscript = await transcribeWithGroq(audioBuffer, cleanMimeType, {
+          timeoutMs: 15000,
+        });
+
+        if (groqTranscript) {
+          console.log("[TRANSCRIBE] Groq status: success");
+          console.log("[TRANSCRIBE] provider used: groq");
+          console.log(`[TRANSCRIBE] transcript length: ${groqTranscript.length}`);
+          return res.json({
+            success: true,
+            transcript: groqTranscript,
+            transcription: groqTranscript,
+            provider: "groq",
+          });
+        } else {
+          throw new Error("Groq returned empty transcription");
+        }
+      } catch (groqErr: any) {
+        console.error("[TRANSCRIBE] Groq status: failed");
+        console.error(`[TRANSCRIBE] error: ${groqErr?.message || groqErr}`);
+      }
+    }
+
+    // 4. Both providers failed: Return structured HTTP 503 error
+    console.error("[TRANSCRIBE] error: Both Gemini and Groq transcription failed");
+    return res.status(503).json({
+      error: "transcription_unavailable",
+      message: "Səsin mətnə çevrilməsi hazırda mümkün deyil. Bir qədər sonra yenidən cəhd edin.",
     });
-  } catch (error: any) {
-    console.error("Error in transcribe-audio route handler:", error);
-    return res.status(500).json({
-      error: "Səsin transkripsiyası zamanı xəta: " + (error?.message || "Bilinməyən xəta"),
+  } catch (outerErr: any) {
+    console.error(`[TRANSCRIBE] error: Unexpected error in transcribe-audio: ${outerErr?.message || outerErr}`);
+    return res.status(503).json({
+      error: "transcription_unavailable",
+      message: "Səsin mətnə çevrilməsi hazırda mümkün deyil. Bir qədər sonra yenidən cəhd edin.",
     });
   }
 });
