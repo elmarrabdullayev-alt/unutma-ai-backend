@@ -26,11 +26,12 @@ export interface RouteOptions {
 }
 
 export interface RouterResult {
-  source: 'local_fast_path' | 'gemini_path' | 'fallback_deterministic';
+  source: 'local_fast_path' | 'ai_path' | 'gemini_path' | 'fallback_deterministic';
   intent: AIActionType;
   confidence: number;
   confidenceTier: 'high' | 'medium' | 'low';
-  requiresGemini: boolean;
+  requiresAi: boolean;
+  requiresGemini?: boolean;
   actionPayload: AIActionPayload;
   executionTimeMs: number;
   reason: string;
@@ -194,6 +195,7 @@ export class IntelligentRouter {
         intent: queryEval.payload.action,
         confidence: queryEval.confidence,
         confidenceTier: 'high',
+        requiresAi: false,
         requiresGemini: false,
         actionPayload: queryEval.payload,
         executionTimeMs: execTime,
@@ -201,14 +203,14 @@ export class IntelligentRouter {
       };
     }
 
-    // 1. Check for Complex Reasoning / Planning triggers that MUST go to Gemini
+    // 1. Check for Complex Reasoning / Planning triggers that MUST go to AI backend
     const complexReasoningReason = this.detectComplexReasoningTriggers(cleanPrompt);
     if (complexReasoningReason) {
       console.log(`[CLIENT ROUTER] backend required: ${complexReasoningReason}`);
       console.log(`[ROUTER] intent: complex_planning_reasoning`);
       console.log(`[ROUTER] deterministic confidence: 0.35 (low)`);
 
-      return this.executeGeminiPath(cleanPrompt, currentReminders, startTime, complexReasoningReason, options.executeDirectly);
+      return this.executeAiPath(cleanPrompt, currentReminders, startTime, complexReasoningReason, options.executeDirectly);
     }
 
     // 2. Deterministic Intent Evaluation (LOCAL FAST PATH)
@@ -270,6 +272,7 @@ export class IntelligentRouter {
         intent: localEval.payload.action,
         confidence: localEval.confidence,
         confidenceTier: 'high',
+        requiresAi: false,
         requiresGemini: false,
         actionPayload: localEval.payload,
         executionTimeMs: execTime,
@@ -279,10 +282,10 @@ export class IntelligentRouter {
       };
     }
 
-    // 3. Fallback to Gemini Path when confidence is moderate/low or ambiguous
+    // 3. Fallback to AI Path when confidence is moderate/low or ambiguous
     const fallbackReason = `Deterministic confidence below threshold (${localEval.confidence.toFixed(2)}) or ambiguous natural language`;
     console.log(`[CLIENT ROUTER] backend required: ${fallbackReason}`);
-    return this.executeGeminiPath(cleanPrompt, currentReminders, startTime, fallbackReason, options.executeDirectly);
+    return this.executeAiPath(cleanPrompt, currentReminders, startTime, fallbackReason, options.executeDirectly);
   }
 
   /**
@@ -1285,13 +1288,13 @@ export class IntelligentRouter {
   }
 
   /**
-   * Executes the Gemini Path with fallback if needed.
+   * Executes the AI Path (OpenAI backend) with fallback if needed.
    */
-  private async executeGeminiPath(
+  private async executeAiPath(
     cleanPrompt: string,
     currentReminders: Reminder[],
     startTime: number,
-    geminiReason: string,
+    aiReason: string,
     executeDirectly?: boolean
   ): Promise<RouterResult> {
     try {
@@ -1328,7 +1331,7 @@ export class IntelligentRouter {
             localClassification: 'delegated_to_backend',
             backendClassification: backendAction,
             finalAction: actionPayload.action,
-            reason: geminiReason,
+            reason: aiReason,
           });
         }
 
@@ -1395,24 +1398,25 @@ export class IntelligentRouter {
         const execTime = Math.round(performance.now() - startTime);
         console.log(`[CLIENT ROUTER] execution time ms: ${execTime}ms`);
         console.log(
-          `[VOICE-FLOW] router result: ${actionPayload.action}, source=gemini_path, reminders=${actionPayload.remindersToCreate?.length || 0}`
+          `[VOICE-FLOW] router result: ${actionPayload.action}, source=ai_path, reminders=${actionPayload.remindersToCreate?.length || 0}`
         );
 
         return {
-          source: 'gemini_path',
+          source: 'ai_path',
           intent: actionPayload.action,
           confidence: 0.95,
           confidenceTier: 'high',
-          requiresGemini: true,
+          requiresAi: true,
+          requiresGemini: false,
           actionPayload,
           executionTimeMs: execTime,
-          reason: geminiReason,
+          reason: aiReason,
           affectedReminders,
         };
       }
       throw new Error(response.error || 'AI cavab verə bilmədi');
     } catch (err: any) {
-      console.warn(`[ROUTER] fallback activated: Gemini error (${err.message}). Falling back to deterministic handler.`);
+      console.warn(`[ROUTER] fallback activated: AI backend error (${err.message}). Falling back to deterministic handler.`);
 
       // Activate deterministic fallback
       const fallbackEval = this.evaluateLocalFastPath(cleanPrompt, currentReminders);
@@ -1432,6 +1436,7 @@ export class IntelligentRouter {
         intent: fallbackEval.payload.action,
         confidence: fallbackEval.confidence,
         confidenceTier: 'medium',
+        requiresAi: false,
         requiresGemini: false,
         actionPayload: {
           ...fallbackEval.payload,
@@ -1439,9 +1444,22 @@ export class IntelligentRouter {
             'Xidmət hazırda məşğuldur, sorğunuz ehtiyat qaydalarla icra edildi.',
         },
         executionTimeMs: execTime,
-        reason: `Gemini unavailable (${err.message}); deterministic fallback executed.`,
+        reason: `AI backend unavailable (${err.message}); deterministic fallback executed.`,
       };
     }
+  }
+
+  /**
+   * Backward-compatible delegation for executeGeminiPath.
+   */
+  private async executeGeminiPath(
+    cleanPrompt: string,
+    currentReminders: Reminder[],
+    startTime: number,
+    reason: string,
+    executeDirectly?: boolean
+  ): Promise<RouterResult> {
+    return this.executeAiPath(cleanPrompt, currentReminders, startTime, reason, executeDirectly);
   }
 }
 

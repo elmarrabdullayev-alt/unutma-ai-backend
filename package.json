@@ -9,7 +9,7 @@
     "start": "node dist/server.cjs",
     "clean": "rm -rf dist server.js",
     "lint": "tsc --noEmit",
-    "test": "tsx tests/transcription.test.ts"
+    "test": "tsx tests/runAllTests.ts"
   },
   "dependencies": {
     "@capacitor-community/speech-recognition": "^7.0.1",
@@ -21,7 +21,6 @@
     "@capacitor/ios": "^8.5.1",
     "@capacitor/local-notifications": "^8.3.1",
     "@capacitor/preferences": "^8.0.1",
-    "@google/genai": "^2.4.0",
     "@react-three/drei": "^10.7.8",
     "@react-three/fiber": "^9.7.0",
     "@tailwindcss/vite": "^4.1.14",

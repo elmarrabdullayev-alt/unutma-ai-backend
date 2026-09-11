@@ -5,14 +5,14 @@ import { SpeechCallbacks, SpeechRecognitionProvider } from './SpeechRecognitionP
 import { NativeSpeechRecognitionProvider } from './NativeSpeechRecognitionProvider';
 import { NativeVoiceRecorderProvider } from './NativeVoiceRecorderProvider';
 import { WebSpeechRecognitionProvider } from './WebSpeechRecognitionProvider';
-import { GeminiAudioFallbackProvider } from './GeminiAudioFallbackProvider';
+import { OpenAIAudioFallbackProvider } from './OpenAIAudioFallbackProvider';
 
 export class SpeechProviderManager {
   private activeProvider: SpeechRecognitionProvider | null = null;
   private nativeSTTProvider = new NativeSpeechRecognitionProvider();
   private nativeVoiceRecorderProvider = new NativeVoiceRecorderProvider();
   private webProvider = new WebSpeechRecognitionProvider();
-  private geminiProvider = new GeminiAudioFallbackProvider();
+  private openAIAudioProvider = new OpenAIAudioFallbackProvider();
 
   public getActiveProviderName(): string {
     return this.activeProvider ? this.activeProvider.name : 'None';
@@ -34,10 +34,10 @@ export class SpeechProviderManager {
       return (
         this.nativeSTTProvider.isAvailable() ||
         this.nativeVoiceRecorderProvider.isAvailable() ||
-        this.geminiProvider.isAvailable()
+        this.openAIAudioProvider.isAvailable()
       );
     }
-    return this.webProvider.isAvailable() || this.geminiProvider.isAvailable();
+    return this.webProvider.isAvailable() || this.openAIAudioProvider.isAvailable();
   }
 
   private async startListeningIOS(callbacks: SpeechCallbacks): Promise<void> {
@@ -191,7 +191,7 @@ export class SpeechProviderManager {
         } catch (sttErr: any) {
           console.warn('[SpeechProviderManager] Native STT start failed:', sttErr);
           console.log('[NATIVE STT] failed');
-          console.log('[NATIVE STT] Gemini fallback activated');
+          console.log('[NATIVE STT] OpenAI audio fallback activated');
         }
       }
 
@@ -208,17 +208,17 @@ export class SpeechProviderManager {
       }
 
       // 3. Last-resort fallback: MediaRecorder fallback
-      if (this.geminiProvider.isAvailable()) {
-        this.activeProvider = this.geminiProvider;
-        console.log('[SpeechProviderManager] last resort provider=GeminiAudioFallbackProvider');
-        await this.geminiProvider.start(callbacks);
+      if (this.openAIAudioProvider.isAvailable()) {
+        this.activeProvider = this.openAIAudioProvider;
+        console.log('[SpeechProviderManager] last resort provider=OpenAIAudioFallbackProvider');
+        await this.openAIAudioProvider.start(callbacks);
         return;
       }
 
       throw new Error('Mikrofon/səs qəbulu vasitəsi bu cihazda dəstəklənmir.');
     }
 
-    // Web browser environment: prefer WebSpeechRecognitionProvider for real-time streaming, fallback to GeminiAudioFallbackProvider
+    // Web browser environment: prefer WebSpeechRecognitionProvider for real-time streaming, fallback to OpenAIAudioFallbackProvider
     if (this.webProvider.isAvailable()) {
       try {
         this.activeProvider = this.webProvider;
@@ -226,15 +226,15 @@ export class SpeechProviderManager {
         await this.webProvider.start(callbacks);
         return;
       } catch (err) {
-        console.warn('[SpeechProviderManager] WebSpeech start failed, switching to Gemini fallback:', err);
+        console.warn('[SpeechProviderManager] WebSpeech start failed, switching to OpenAI audio fallback:', err);
       }
     }
 
-    // Fallback to Gemini MediaRecorder capture on web
-    if (this.geminiProvider.isAvailable()) {
-      this.activeProvider = this.geminiProvider;
-      console.log('[SpeechProviderManager] provider=GeminiAudioFallbackProvider');
-      await this.geminiProvider.start(callbacks);
+    // Fallback to OpenAI MediaRecorder capture on web
+    if (this.openAIAudioProvider.isAvailable()) {
+      this.activeProvider = this.openAIAudioProvider;
+      console.log('[SpeechProviderManager] provider=OpenAIAudioFallbackProvider');
+      await this.openAIAudioProvider.start(callbacks);
     } else {
       throw new Error('Heç bir mikrofon/səs qəbulu vasitəsi bu mühitdə dəstəklənmir.');
     }

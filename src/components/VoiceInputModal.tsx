@@ -221,7 +221,7 @@ export const VoiceInputModal: React.FC<VoiceInputModalProps> = ({
       return;
     }
 
-    // 2. Otherwise trigger Gemini path
+    // 2. Otherwise trigger AI server path
     setIsProcessing(true);
 
     try {

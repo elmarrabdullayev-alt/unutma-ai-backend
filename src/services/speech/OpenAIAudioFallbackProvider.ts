@@ -1,8 +1,8 @@
 import { SpeechCallbacks, SpeechRecognitionProvider } from './SpeechRecognitionProvider';
 import { apiClient } from '../apiClient';
 
-export class GeminiAudioFallbackProvider implements SpeechRecognitionProvider {
-  public readonly name = 'GeminiAudioFallbackProvider';
+export class OpenAIAudioFallbackProvider implements SpeechRecognitionProvider {
+  public readonly name = 'OpenAIAudioFallbackProvider';
   private mediaRecorder: MediaRecorder | null = null;
   private audioChunks: Blob[] = [];
   private mediaStream: MediaStream | null = null;
@@ -35,9 +35,9 @@ export class GeminiAudioFallbackProvider implements SpeechRecognitionProvider {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       this.mediaStream = stream;
-      console.log('[GeminiAudioFallbackProvider] microphone stream acquired');
+      console.log('[OpenAIAudioFallbackProvider] microphone stream acquired');
     } catch (err: any) {
-      console.error('[GeminiAudioFallbackProvider] getUserMedia error:', err);
+      console.error('[OpenAIAudioFallbackProvider] getUserMedia error:', err);
       if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
         throw new Error('Mikrofon icazəsi verilməyib. Zəhmət olmasa tətbiq tənzimləmələrindən mikrofon icazəsi verin.');
       }
@@ -68,7 +68,7 @@ export class GeminiAudioFallbackProvider implements SpeechRecognitionProvider {
         loop();
       }
     } catch (e) {
-      console.warn('[GeminiAudioFallbackProvider] Audio visualizer error (non-fatal):', e);
+      console.warn('[OpenAIAudioFallbackProvider] Audio visualizer error (non-fatal):', e);
     }
 
     // 3. Setup MediaRecorder with best supported mimeType
@@ -95,7 +95,7 @@ export class GeminiAudioFallbackProvider implements SpeechRecognitionProvider {
     };
 
     recorder.onerror = (err) => {
-      console.warn('[GeminiAudioFallbackProvider] MediaRecorder error event:', err);
+      console.warn('[OpenAIAudioFallbackProvider] MediaRecorder error event:', err);
       if (callbacks.onError) callbacks.onError(err);
     };
 
@@ -105,7 +105,7 @@ export class GeminiAudioFallbackProvider implements SpeechRecognitionProvider {
 
     recorder.start(250);
     this.mediaRecorder = recorder;
-    console.log('[GeminiAudioFallbackProvider] recorder started');
+    console.log('[OpenAIAudioFallbackProvider] recorder started');
   }
 
   public async stop(): Promise<string> {
@@ -135,7 +135,7 @@ export class GeminiAudioFallbackProvider implements SpeechRecognitionProvider {
       currentRecorder.onstop = async () => {
         try {
           this.cleanupStream();
-          console.log(`[GeminiAudioFallbackProvider] audio chunks count=${this.audioChunks.length}`);
+          console.log(`[OpenAIAudioFallbackProvider] audio chunks count=${this.audioChunks.length}`);
 
           if (this.audioChunks.length === 0) {
             resolve('');
@@ -153,11 +153,11 @@ export class GeminiAudioFallbackProvider implements SpeechRecognitionProvider {
 
           const base64 = await this.blobToBase64(blob);
           const transcriptionUrl = apiClient.buildUrl('/api/transcribe-audio');
-          console.log(`[GeminiAudioFallbackProvider] transcription URL=${transcriptionUrl}`);
+          console.log(`[OpenAIAudioFallbackProvider] transcription URL=${transcriptionUrl}`);
 
           const data = await apiClient.transcribeAudio(base64, blob.type || 'audio/webm');
-          console.log('[GeminiAudioFallbackProvider] response status=200');
-          console.log('[GeminiAudioFallbackProvider] transcription received');
+          console.log('[OpenAIAudioFallbackProvider] response status=200');
+          console.log('[OpenAIAudioFallbackProvider] transcription received');
 
           const resultText = (data.transcription || '').trim();
           if (this.callbacks?.onResult) {
@@ -166,7 +166,7 @@ export class GeminiAudioFallbackProvider implements SpeechRecognitionProvider {
 
           resolve(resultText);
         } catch (err: any) {
-          console.error('[GeminiAudioFallbackProvider] Transcribe error:', err);
+          console.error('[OpenAIAudioFallbackProvider] Transcribe error:', err);
           const errorMsg = err.message?.includes('AI server bağlantısı')
             ? err.message
             : (err.message || 'Səs qeydə alındı, lakin transkripsiya edilə bilmədi.');

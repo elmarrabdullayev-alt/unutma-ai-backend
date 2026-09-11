@@ -182,7 +182,7 @@ export class NativeVoiceRecorderProvider implements SpeechRecognitionProvider {
           return '';
         }
 
-        // Send to Gemini transcription backend with normalized payload
+        // Send to OpenAI transcription backend with normalized payload
         console.log('[NATIVE VOICE] transcription started');
         const transcriptionResponse = await apiClient.transcribeAudio(normalizedBase64, mimeType);
         const text = (transcriptionResponse.transcription || '').trim();

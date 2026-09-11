@@ -54,9 +54,9 @@ export class DailyPlannerService {
       return this.detectAndResolveConflicts(localProposal, todayReminders);
     }
 
-    // 2. If ambiguous or local extraction found <2 items, call Gemini via existing /api/ai-action
+    // 2. If ambiguous or local extraction found <2 items, call AI via existing /api/ai-action
     try {
-      console.log('[DailyPlanner] Calling Gemini path via /api/ai-action');
+      console.log('[DailyPlanner] Calling AI path via /api/ai-action');
       const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Baku';
       const nowISO = new Date().toISOString();
 
@@ -70,7 +70,7 @@ export class DailyPlannerService {
       if (aiResponse.success && aiResponse.actionPayload) {
         const payload = aiResponse.actionPayload;
 
-        // Check if Gemini returned structured dailyPlanProposal or remindersToCreate
+        // Check if AI returned structured dailyPlanProposal or remindersToCreate
         if (payload.dailyPlanProposal && payload.dailyPlanProposal.tasks.length > 0) {
           return this.detectAndResolveConflicts(payload.dailyPlanProposal, todayReminders);
         }
@@ -92,7 +92,7 @@ export class DailyPlannerService {
         }
       }
     } catch (err) {
-      console.warn('[DailyPlanner] Gemini path error, falling back to local heuristic:', err);
+      console.warn('[DailyPlanner] AI path error, falling back to local heuristic:', err);
     }
 
     // Fallback: If AI fails or returns empty, build best-effort local plan

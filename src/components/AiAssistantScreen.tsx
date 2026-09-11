@@ -173,7 +173,7 @@ export const AiAssistantScreen: React.FC<AiAssistantScreenProps> = ({
       return;
     }
 
-    // Otherwise show loading indicator while calling Gemini path
+    // Otherwise show loading indicator while calling AI path
     setIsLoading(true);
 
     try {
