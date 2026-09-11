@@ -93,7 +93,8 @@ function normalizeAzerbaijaniRecurrence(prompt: string, reminderItem: any): void
 // =========================================================================
 app.post("/api/parse-reminder", async (req, res) => {
   try {
-    const { text, userNowISO, userTimezone } = req.body;
+    const text = req.body.text || req.body.prompt || req.body.userPrompt || req.body.message;
+    const { userNowISO, userTimezone } = req.body;
 
     if (!text || typeof text !== "string") {
       return res.status(400).json({ error: "Mətn daxil edilməyib." });
@@ -231,7 +232,8 @@ app.post("/api/ai-action", async (req, res) => {
   console.log("[AI-ACTION] provider: OpenAI");
 
   try {
-    const { userPrompt, reminders, userNowISO, userTimezone } = req.body;
+    const userPrompt = req.body.userPrompt || req.body.prompt || req.body.text || req.body.command;
+    const { reminders, userNowISO, userTimezone } = req.body;
 
     if (!userPrompt) {
       return res.status(400).json({ error: "Əmr və ya sual daxil edilməyib." });
