@@ -3,7 +3,7 @@ import path from "path";
 import { createServer as createViteServer } from "vite";
 import { GoogleGenAI, Type } from "@google/genai";
 import dotenv from "dotenv";
-import { transcribeWithGroq } from "./src/server/groqWhisper";
+import { transcribeWithOpenAI } from "./src/server/openaiAudio";
 
 dotenv.config();
 
@@ -650,18 +650,18 @@ app.post("/api/transcribe-audio", async (req, res) => {
     console.log("[TRANSCRIBE] primary provider: Gemini");
     let geminiSuccess = false;
     let geminiTranscript = "";
-    let shouldTriggerGroqFallback = false;
+    let shouldTriggerOpenAIFallback = false;
 
     // Automated test hook headers/body (for reliable automated verification)
     const simulateGemini = req.headers["x-test-simulate-gemini"] || req.body.__testSimulateGemini;
-    const simulateGroq = req.headers["x-test-simulate-groq"] || req.body.__testSimulateGroq;
+    const simulateOpenAI = req.headers["x-test-simulate-openai"] || req.body.__testSimulateOpenAI;
 
     if (simulateGemini === "429") {
       console.warn("[TRANSCRIBE] Gemini status: 429 RESOURCE_EXHAUSTED (simulated)");
-      shouldTriggerGroqFallback = true;
+      shouldTriggerOpenAIFallback = true;
     } else if (simulateGemini === "503") {
       console.warn("[TRANSCRIBE] Gemini status: 503 UNAVAILABLE (simulated)");
-      shouldTriggerGroqFallback = true;
+      shouldTriggerOpenAIFallback = true;
     } else {
       const audioPart = {
         inlineData: {
@@ -704,16 +704,16 @@ app.post("/api/transcribe-audio", async (req, res) => {
             : err?.message || "error";
           console.warn(`[TRANSCRIBE] Gemini status: ${statusDesc}`);
 
-          // On 429 / 503, immediately activate Groq fallback without long retries
+          // On 429, 503, quota exhausted, unavailable, or times out: automatically activate OpenAI fallback
           if (is429 || is503) {
-            shouldTriggerGroqFallback = true;
+            shouldTriggerOpenAIFallback = true;
             break;
           }
         }
       }
 
       if (!geminiSuccess) {
-        shouldTriggerGroqFallback = true;
+        shouldTriggerOpenAIFallback = true;
       }
     }
 
@@ -728,41 +728,41 @@ app.post("/api/transcribe-audio", async (req, res) => {
       });
     }
 
-    // 3. Fallback to Groq Whisper
-    if (shouldTriggerGroqFallback) {
-      console.log("[TRANSCRIBE] Gemini failed, activating Groq fallback");
-      console.log("[TRANSCRIBE] Groq request started");
+    // 3. Fallback to OpenAI (gpt-4o-mini-transcribe)
+    if (shouldTriggerOpenAIFallback) {
+      console.log("[TRANSCRIBE] Gemini failed, activating OpenAI fallback");
+      console.log("[TRANSCRIBE] OpenAI request started");
 
       try {
-        if (simulateGroq === "503" || simulateGroq === "true") {
-          throw new Error("Groq API unavailable (simulated)");
+        if (simulateOpenAI === "503" || simulateOpenAI === "true") {
+          throw new Error("OpenAI API unavailable (simulated)");
         }
 
-        const groqTranscript = await transcribeWithGroq(audioBuffer, cleanMimeType, {
+        const openAITranscript = await transcribeWithOpenAI(audioBuffer, cleanMimeType, {
           timeoutMs: 15000,
         });
 
-        if (groqTranscript) {
-          console.log("[TRANSCRIBE] Groq status: success");
-          console.log("[TRANSCRIBE] provider used: groq");
-          console.log(`[TRANSCRIBE] transcript length: ${groqTranscript.length}`);
+        if (openAITranscript) {
+          console.log("[TRANSCRIBE] OpenAI status: success");
+          console.log("[TRANSCRIBE] provider used: openai");
+          console.log(`[TRANSCRIBE] transcript length: ${openAITranscript.length}`);
           return res.json({
             success: true,
-            transcript: groqTranscript,
-            transcription: groqTranscript,
-            provider: "groq",
+            transcript: openAITranscript,
+            transcription: openAITranscript,
+            provider: "openai",
           });
         } else {
-          throw new Error("Groq returned empty transcription");
+          throw new Error("OpenAI returned empty transcription");
         }
-      } catch (groqErr: any) {
-        console.error("[TRANSCRIBE] Groq status: failed");
-        console.error(`[TRANSCRIBE] error: ${groqErr?.message || groqErr}`);
+      } catch (openAIErr: any) {
+        console.error("[TRANSCRIBE] OpenAI status: failed");
+        console.error(`[TRANSCRIBE] OpenAI error: ${openAIErr?.message || openAIErr}`);
       }
     }
 
     // 4. Both providers failed: Return structured HTTP 503 error
-    console.error("[TRANSCRIBE] error: Both Gemini and Groq transcription failed");
+    console.error("[TRANSCRIBE] error: Both Gemini and OpenAI transcription failed");
     return res.status(503).json({
       error: "transcription_unavailable",
       message: "Səsin mətnə çevrilməsi hazırda mümkün deyil. Bir qədər sonra yenidən cəhd edin.",

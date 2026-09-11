@@ -1,9 +1,9 @@
 import http from "http";
-import { getGroqCompatibleFilename, transcribeWithGroq } from "../src/server/groqWhisper";
+import { getOpenAICompatibleFilename, transcribeWithOpenAI } from "../src/server/openaiAudio";
 
 async function runTests() {
   console.log("==================================================");
-  console.log("RUNNING UNUTMA AI TRANSCRIPTION TEST SUITE");
+  console.log("RUNNING UNUTMA AI TRANSCRIPTION TEST SUITE (OPENAI)");
   console.log("==================================================\n");
 
   let passed = 0;
@@ -20,16 +20,16 @@ async function runTests() {
   }
 
   // ----------------------------------------------------
-  // 1. UNIT TESTS FOR GROQ WHISPER CONFIGURATION
+  // 1. UNIT TESTS FOR OPENAI AUDIO CONFIGURATION
   // ----------------------------------------------------
-  console.log("--- SECTION 1: Groq Whisper Unit Tests ---");
+  console.log("--- SECTION 1: OpenAI Audio Unit Tests ---");
 
   // Format mapping
-  assert(getGroqCompatibleFilename("audio/aac") === "audio.m4a", "Filename mapping: audio/aac maps to audio.m4a container");
-  assert(getGroqCompatibleFilename("audio/m4a") === "audio.m4a", "Filename mapping: audio/m4a maps to audio.m4a");
-  assert(getGroqCompatibleFilename("audio/webm") === "audio.webm", "Filename mapping: audio/webm maps to audio.webm");
-  assert(getGroqCompatibleFilename("audio/wav") === "audio.wav", "Filename mapping: audio/wav maps to audio.wav");
-  assert(getGroqCompatibleFilename("audio/mp3") === "audio.mp3", "Filename mapping: audio/mp3 maps to audio.mp3");
+  assert(getOpenAICompatibleFilename("audio/aac") === "audio.m4a", "Filename mapping: audio/aac maps to audio.m4a container");
+  assert(getOpenAICompatibleFilename("audio/m4a") === "audio.m4a", "Filename mapping: audio/m4a maps to audio.m4a");
+  assert(getOpenAICompatibleFilename("audio/webm") === "audio.webm", "Filename mapping: audio/webm maps to audio.webm");
+  assert(getOpenAICompatibleFilename("audio/wav") === "audio.wav", "Filename mapping: audio/wav maps to audio.wav");
+  assert(getOpenAICompatibleFilename("audio/mp3") === "audio.mp3", "Filename mapping: audio/mp3 maps to audio.mp3");
 
   // In-memory FormData and parameters check with mock fetch
   const mockAudioBuffer = Buffer.from("VGVzdEF1ZGlvRGF0YUZvclVudXRtYUFJ", "utf-8");
@@ -45,35 +45,35 @@ async function runTests() {
     });
   };
 
-  const groqResult = await transcribeWithGroq(mockAudioBuffer, "audio/aac", {
-    apiKey: "gsk_test_mock_key_12345",
+  const openAIResult = await transcribeWithOpenAI(mockAudioBuffer, "audio/aac", {
+    apiKey: "sk-test-mock-key-12345",
     fetchFn: mockFetch,
   });
 
-  assert(groqResult === "Sabah saat 10-da Anara zəng et", "Groq transcription result parsed correctly");
-  assert(capturedHeaders["Authorization"] === "Bearer gsk_test_mock_key_12345", "Groq Authorization header set correctly");
-  assert(capturedBody?.get("model") === "whisper-large-v3-turbo", "Groq model set to whisper-large-v3-turbo");
-  assert(capturedBody?.get("language") === "az", "Groq language set to Azerbaijani ('az')");
+  assert(openAIResult === "Sabah saat 10-da Anara zəng et", "OpenAI transcription result parsed correctly");
+  assert(capturedHeaders["Authorization"] === "Bearer sk-test-mock-key-12345", "OpenAI Authorization header set correctly");
+  assert(capturedBody?.get("model") === "gpt-4o-mini-transcribe", "OpenAI model set to gpt-4o-mini-transcribe");
+  assert(capturedBody?.get("language") === "az", "OpenAI language set to Azerbaijani ('az')");
 
   // Verify missing API key error
   try {
-    delete process.env.GROQ_API_KEY;
-    await transcribeWithGroq(mockAudioBuffer, "audio/aac", { apiKey: "" });
-    assert(false, "Throws error when GROQ_API_KEY is missing");
+    delete process.env.OPENAI_API_KEY;
+    await transcribeWithOpenAI(mockAudioBuffer, "audio/aac", { apiKey: "" });
+    assert(false, "Throws error when OPENAI_API_KEY is missing");
   } catch (err: any) {
-    assert(err.message.includes("GROQ_API_KEY is not configured"), "Throws explicit error when GROQ_API_KEY is missing");
+    assert(err.message.includes("OPENAI_API_KEY is not configured"), "Throws explicit error when OPENAI_API_KEY is missing");
   }
 
   // ----------------------------------------------------
-  // 2. MOCK GROQ SERVER FOR END-TO-END VERIFICATION
+  // 2. MOCK OPENAI SERVER FOR END-TO-END VERIFICATION
   // ----------------------------------------------------
   console.log("\n--- SECTION 2: End-to-End Fallback Tests with Mock Server ---");
-  const MOCK_GROQ_PORT = 3999;
-  let mockGroqReceivedAudioMime = "";
-  let mockGroqReceivedModel = "";
-  let mockGroqReceivedLanguage = "";
+  const MOCK_OPENAI_PORT = 3999;
+  let mockOpenAIReceivedAudioMime = "";
+  let mockOpenAIReceivedModel = "";
+  let mockOpenAIReceivedLanguage = "";
 
-  const mockGroqServer = http.createServer((req, res) => {
+  const mockOpenAIServer = http.createServer((req, res) => {
     if (req.method === "POST" && req.url === "/audio/transcriptions") {
       let bodyData = Buffer.alloc(0);
       req.on("data", (chunk) => {
@@ -81,14 +81,14 @@ async function runTests() {
       });
       req.on("end", () => {
         const bodyStr = bodyData.toString("utf-8");
-        if (bodyStr.includes('name="model"\r\n\r\nwhisper-large-v3-turbo')) {
-          mockGroqReceivedModel = "whisper-large-v3-turbo";
+        if (bodyStr.includes('name="model"\r\n\r\ngpt-4o-mini-transcribe')) {
+          mockOpenAIReceivedModel = "gpt-4o-mini-transcribe";
         }
         if (bodyStr.includes('name="language"\r\n\r\naz')) {
-          mockGroqReceivedLanguage = "az";
+          mockOpenAIReceivedLanguage = "az";
         }
         if (bodyStr.includes('filename="audio.m4a"')) {
-          mockGroqReceivedAudioMime = "audio/aac";
+          mockOpenAIReceivedAudioMime = "audio/aac";
         }
 
         res.writeHead(200, { "Content-Type": "application/json" });
@@ -100,19 +100,19 @@ async function runTests() {
     }
   });
 
-  await new Promise<void>((resolve) => mockGroqServer.listen(MOCK_GROQ_PORT, resolve));
+  await new Promise<void>((resolve) => mockOpenAIServer.listen(MOCK_OPENAI_PORT, resolve));
 
-  // Test transcribeWithGroq pointing to mock server
-  const mockServerResult = await transcribeWithGroq(mockAudioBuffer, "audio/aac", {
-    apiKey: "gsk_test_key_valid",
-    baseUrl: `http://localhost:${MOCK_GROQ_PORT}`,
+  // Test transcribeWithOpenAI pointing to mock server
+  const mockServerResult = await transcribeWithOpenAI(mockAudioBuffer, "audio/aac", {
+    apiKey: "sk-test-key-valid",
+    baseUrl: `http://localhost:${MOCK_OPENAI_PORT}`,
   });
-  assert(mockServerResult === "Sabah saat 10-da Anara zəng et", "Groq mock server response parsed");
-  assert(mockGroqReceivedModel === "whisper-large-v3-turbo", "Groq request sent whisper-large-v3-turbo model");
-  assert(mockGroqReceivedLanguage === "az", "Groq request favored Azerbaijani ('az')");
-  assert(mockGroqReceivedAudioMime === "audio/aac", "Groq accepted audio/aac formatted as audio.m4a");
+  assert(mockServerResult === "Sabah saat 10-da Anara zəng et", "OpenAI mock server response parsed");
+  assert(mockOpenAIReceivedModel === "gpt-4o-mini-transcribe", "OpenAI request sent gpt-4o-mini-transcribe model");
+  assert(mockOpenAIReceivedLanguage === "az", "OpenAI request favored Azerbaijani ('az')");
+  assert(mockOpenAIReceivedAudioMime === "audio/aac", "OpenAI accepted audio/aac formatted as audio.m4a");
 
-  mockGroqServer.close();
+  mockOpenAIServer.close();
 
   // ----------------------------------------------------
   // 3. INTEGRATION TESTS ON RUNNING SERVER (:3000)
@@ -137,7 +137,7 @@ async function runTests() {
     assert(false, "TEST D: Empty audio", e.message);
   }
 
-  // TEST B: Gemini returns 429 -> Groq fallback activates
+  // TEST B: Gemini returns 429 -> OpenAI fallback activates
   try {
     const resB = await fetch(`${API_BASE}/api/transcribe-audio`, {
       method: "POST",
@@ -152,17 +152,17 @@ async function runTests() {
     });
     const dataB = await resB.json();
     if (resB.status === 200) {
-      assert(dataB.provider === "groq", "TEST B: Gemini 429 triggers Groq fallback provider='groq'");
+      assert(dataB.provider === "openai", "TEST B: Gemini 429 triggers OpenAI fallback provider='openai'");
       assert(!!(dataB.transcript || dataB.transcription), "TEST B: Valid transcript returned");
     } else {
       assert(resB.status === 503 && dataB.error === "transcription_unavailable",
-        "TEST B: Fallback activated and handled with structured 503 error when Groq key is unset");
+        "TEST B: Fallback activated and handled with structured 503 error when OpenAI key is unset");
     }
   } catch (e: any) {
     assert(false, "TEST B: Gemini 429 fallback", e.message);
   }
 
-  // TEST C: Gemini returns 503 -> Groq fallback activates
+  // TEST C: Gemini returns 503 -> OpenAI fallback activates
   try {
     const resC = await fetch(`${API_BASE}/api/transcribe-audio`, {
       method: "POST",
@@ -177,23 +177,23 @@ async function runTests() {
     });
     const dataC = await resC.json();
     if (resC.status === 200) {
-      assert(dataC.provider === "groq", "TEST C: Gemini 503 triggers Groq fallback provider='groq'");
+      assert(dataC.provider === "openai", "TEST C: Gemini 503 triggers OpenAI fallback provider='openai'");
     } else {
       assert(resC.status === 503 && dataC.error === "transcription_unavailable",
-        "TEST C: Gemini 503 triggers Groq fallback flow with structured 503 if Groq key unset");
+        "TEST C: Gemini 503 triggers OpenAI fallback flow with structured 503 if OpenAI key unset");
     }
   } catch (e: any) {
     assert(false, "TEST C: Gemini 503 fallback", e.message);
   }
 
-  // TEST E: Both Gemini and Groq fail -> Structured HTTP 503 Azerbaijani error
+  // TEST E: Both Gemini and OpenAI fail -> Structured HTTP 503 Azerbaijani error
   try {
     const resE = await fetch(`${API_BASE}/api/transcribe-audio`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         "x-test-simulate-gemini": "503",
-        "x-test-simulate-groq": "503",
+        "x-test-simulate-openai": "503",
       },
       body: JSON.stringify({
         base64Audio: sampleBase64,
@@ -208,14 +208,14 @@ async function runTests() {
     assert(false, "TEST E: Both providers fail", e.message);
   }
 
-  // TEST F: iPhone NativeVoiceRecorder input format compatibility
+  // TEST F: iPhone NativeVoiceRecorder input format compatibility (recordDataBase64 + audio/aac)
   try {
     const resF = await fetch(`${API_BASE}/api/transcribe-audio`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         "x-test-simulate-gemini": "503",
-        "x-test-simulate-groq": "503",
+        "x-test-simulate-openai": "503",
       },
       body: JSON.stringify({
         recordDataBase64: sampleBase64, // iPhone plugin field
