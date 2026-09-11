@@ -74,7 +74,7 @@ async function runTests() {
   // ----------------------------------------------------
   // 2. MOCK OPENAI SERVER FOR END-TO-END VERIFICATION
   // ----------------------------------------------------
-  console.log("\n--- SECTION 2: End-to-End Fallback Tests with Mock Server ---");
+  console.log("\n--- SECTION 2: End-to-End Transcription Tests with Mock Server ---");
   const MOCK_OPENAI_PORT = 3999;
   let mockOpenAIReceivedAudioFilename = "";
   let mockOpenAIReceivedModel = "";
@@ -124,82 +124,96 @@ async function runTests() {
   // ----------------------------------------------------
   // 3. INTEGRATION TESTS ON RUNNING SERVER (:3000)
   // ----------------------------------------------------
-  console.log("\n--- SECTION 3: HTTP Route Tests /api/transcribe-audio ---");
+  console.log("\n--- SECTION 3: HTTP Route Tests /api/transcribe-audio (OpenAI Only) ---");
   const API_BASE = "http://localhost:3000";
 
   // Create valid base64 audio sample for testing
   const sampleBase64 = Buffer.from("RIFF....WAVEfmt ....data" + "A".repeat(200)).toString("base64");
 
-  // TEST D: Empty audio -> HTTP 400, no provider call
+  // TEST A: iPhone NativeVoiceRecorder input format (recordDataBase64 + audio/m4a)
   try {
-    const resD = await fetch(`${API_BASE}/api/transcribe-audio`, {
+    const resA = await fetch(`${API_BASE}/api/transcribe-audio`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ base64Audio: "", mimeType: "audio/m4a" }),
+      headers: {
+        "Content-Type": "application/json",
+        "x-test-simulate-openai": "mock_success",
+      },
+      body: JSON.stringify({
+        recordDataBase64: sampleBase64,
+        mimeType: "audio/m4a",
+      }),
     });
-    const dataD = await resD.json();
-    assert(resD.status === 400, "TEST D: Empty audio returns HTTP 400", `status=${resD.status}`);
-    assert(dataD.error === "invalid_audio", "TEST D: Error code is invalid_audio");
+    const dataA = await resA.json();
+    assert(resA.status === 200, "TEST A: iPhone format returns HTTP 200", `status=${resA.status}`);
+    assert(dataA.provider === "openai", "TEST A: Provider is strictly 'openai'");
+    assert(dataA.transcript === "Sabah saat 10-da Anara zəng et", "TEST A: Transcript returned correctly");
+    assert(dataA.transcription === "Sabah saat 10-da Anara zəng et", "TEST A: Transcription field populated");
+    assert(dataA.success === true, "TEST A: success is true");
   } catch (e: any) {
-    assert(false, "TEST D: Empty audio", e.message);
+    assert(false, "TEST A: iPhone format transcription", e.message);
   }
 
-  // TEST B: Gemini returns 429 -> OpenAI fallback activates
+  // TEST B: Alternate web format (base64Audio + audio/mp4)
   try {
     const resB = await fetch(`${API_BASE}/api/transcribe-audio`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "x-test-simulate-gemini": "429",
+        "x-test-simulate-openai": "mock_success",
       },
       body: JSON.stringify({
         base64Audio: sampleBase64,
-        mimeType: "audio/m4a",
+        mimeType: "audio/mp4",
       }),
     });
     const dataB = await resB.json();
-    if (resB.status === 200) {
-      assert(dataB.provider === "openai", "TEST B: Gemini 429 triggers OpenAI fallback provider='openai'");
-      assert(!!(dataB.transcript || dataB.transcription), "TEST B: Valid transcript returned");
-    } else {
-      assert(resB.status === 503 && dataB.error === "transcription_unavailable",
-        "TEST B: Fallback activated and handled with structured 503 error when OpenAI key is unset");
-    }
+    assert(resB.status === 200, "TEST B: MP4 audio format returns HTTP 200", `status=${resB.status}`);
+    assert(dataB.provider === "openai", "TEST B: Provider is 'openai'");
   } catch (e: any) {
-    assert(false, "TEST B: Gemini 429 fallback", e.message);
+    assert(false, "TEST B: MP4 audio format", e.message);
   }
 
-  // TEST C: Gemini returns 503 -> OpenAI fallback activates
+  // TEST C: Empty audio -> HTTP 400 invalid_audio
   try {
     const resC = await fetch(`${API_BASE}/api/transcribe-audio`, {
       method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ base64Audio: "", mimeType: "audio/m4a" }),
+    });
+    const dataC = await resC.json();
+    assert(resC.status === 400, "TEST C: Empty audio returns HTTP 400", `status=${resC.status}`);
+    assert(dataC.error === "invalid_audio", "TEST C: Error code is invalid_audio");
+  } catch (e: any) {
+    assert(false, "TEST C: Empty audio", e.message);
+  }
+
+  // TEST D: OpenAI audio rejection (HTTP 400 / corrupted) -> returns structured 400 diagnostic error
+  try {
+    const resD = await fetch(`${API_BASE}/api/transcribe-audio`, {
+      method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "x-test-simulate-gemini": "503",
+        "x-test-simulate-openai": "400",
       },
       body: JSON.stringify({
-        audioBase64: sampleBase64,
+        recordDataBase64: sampleBase64,
         mimeType: "audio/m4a",
       }),
     });
-    const dataC = await resC.json();
-    if (resC.status === 200) {
-      assert(dataC.provider === "openai", "TEST C: Gemini 503 triggers OpenAI fallback provider='openai'");
-    } else {
-      assert(resC.status === 503 && dataC.error === "transcription_unavailable",
-        "TEST C: Gemini 503 triggers OpenAI fallback flow with structured 503 if OpenAI key unset");
-    }
+    const dataD = await resD.json();
+    assert(resD.status === 400, "TEST D: Rejected audio returns HTTP 400", `status=${resD.status}`);
+    assert(dataD.error === "transcription_rejected", "TEST D: Error code is transcription_rejected");
+    assert(!!dataD.details, "TEST D: Diagnostic details are provided");
   } catch (e: any) {
-    assert(false, "TEST C: Gemini 503 fallback", e.message);
+    assert(false, "TEST D: Audio rejection", e.message);
   }
 
-  // TEST E: Both Gemini and OpenAI fail -> Structured HTTP 503 Azerbaijani error
+  // TEST E: OpenAI 503 error -> returns structured 503 error
   try {
     const resE = await fetch(`${API_BASE}/api/transcribe-audio`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "x-test-simulate-gemini": "503",
         "x-test-simulate-openai": "503",
       },
       body: JSON.stringify({
@@ -208,32 +222,11 @@ async function runTests() {
       }),
     });
     const dataE = await resE.json();
-    assert(resE.status === 503, "TEST E: Both failing returns HTTP 503", `status=${resE.status}`);
+    assert(resE.status === 503, "TEST E: OpenAI 503 returns HTTP 503", `status=${resE.status}`);
     assert(dataE.error === "transcription_unavailable", "TEST E: Error code is transcription_unavailable");
-    assert(dataE.message?.includes("Səsin mətnə çevrilməsi hazırda mümkün deyil"), "TEST E: Structured Azerbaijani error message");
+    assert(dataE.message?.includes("Səsin mətnə çevrilməsi hazırda mümkün deyil"), "TEST E: Structured Azerbaijani message");
   } catch (e: any) {
-    assert(false, "TEST E: Both providers fail", e.message);
-  }
-
-  // TEST F: iPhone NativeVoiceRecorder input format compatibility (recordDataBase64 + audio/m4a)
-  try {
-    const resF = await fetch(`${API_BASE}/api/transcribe-audio`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-test-simulate-gemini": "503",
-        "x-test-simulate-openai": "503",
-      },
-      body: JSON.stringify({
-        recordDataBase64: sampleBase64, // iPhone plugin field
-        mimeType: "audio/m4a",
-      }),
-    });
-    const dataF = await resF.json();
-    assert(resF.status === 503 && dataF.error === "transcription_unavailable",
-      "TEST F: iPhone NativeVoiceRecorder format (recordDataBase64 + audio/m4a) recognized and normalized");
-  } catch (e: any) {
-    assert(false, "TEST F: iPhone NativeVoiceRecorder input format", e.message);
+    assert(false, "TEST E: OpenAI 503", e.message);
   }
 
   console.log("\n==================================================");

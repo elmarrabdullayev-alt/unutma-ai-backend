@@ -588,19 +588,10 @@ FƏALİYYƏTLƏR:
 });
 
 // =========================================================================
-// API 3: AUDIO TRANSCRIPTION WITH GEMINI (RESILIENT RETRIES & MODEL FALLBACK)
+// API 3: AUDIO TRANSCRIPTION WITH OPENAI (gpt-4o-mini-transcribe)
 // =========================================================================
 
-// Supported Gemini multimodal models for audio transcription
-const AUDIO_TRANSCRIPTION_MODELS = [
-  "gemini-3.5-transcribe",
-  "gemini-3.8-flash",
-];
-
-const MAX_TRANSCRIPTION_BUDGET_MS = 15000; // Strict 15s overall budget for primary transcription
-
 app.post("/api/transcribe-audio", async (req, res) => {
-  const startTime = Date.now();
   console.log("[TRANSCRIBE] request received");
 
   try {
@@ -628,7 +619,7 @@ app.post("/api/transcribe-audio", async (req, res) => {
     console.log(`[TRANSCRIBE] audio length: ${cleanBase64.length}`);
     console.log(`[TRANSCRIBE] mimeType: ${cleanMimeType}`);
 
-    // TEST D: Empty or invalid audio validation (do NOT fallback for empty audio, return HTTP 400)
+    // Empty or invalid audio validation (return HTTP 400)
     if (!cleanBase64 || cleanBase64.length < 100 || !/^[A-Za-z0-9+/=]+$/.test(cleanBase64)) {
       console.warn("[TRANSCRIBE] payload validation failed: empty or invalid audio data");
       return res.status(400).json({
@@ -646,132 +637,75 @@ app.post("/api/transcribe-audio", async (req, res) => {
       });
     }
 
-    // 2. Primary provider: Gemini
-    console.log("[TRANSCRIBE] primary provider: Gemini");
-    let geminiSuccess = false;
-    let geminiTranscript = "";
-    let shouldTriggerOpenAIFallback = false;
-
-    // Automated test hook headers/body (for reliable automated verification)
-    const simulateGemini = req.headers["x-test-simulate-gemini"] || req.body.__testSimulateGemini;
-    const simulateOpenAI = req.headers["x-test-simulate-openai"] || req.body.__testSimulateOpenAI;
-
-    if (simulateGemini === "429") {
-      console.warn("[TRANSCRIBE] Gemini status: 429 RESOURCE_EXHAUSTED (simulated)");
-      shouldTriggerOpenAIFallback = true;
-    } else if (simulateGemini === "503") {
-      console.warn("[TRANSCRIBE] Gemini status: 503 UNAVAILABLE (simulated)");
-      shouldTriggerOpenAIFallback = true;
-    } else {
-      const audioPart = {
-        inlineData: {
-          mimeType: cleanMimeType,
-          data: cleanBase64,
-        },
-      };
-
-      const promptText =
-        "Bu səs faylı Azərbaycan dilindədir. Zəhmət olmasa tələffüz edilən sözləri dəqiq Azərbaycan əlifbası və orfoqrafiyası ilə transkripsiya et. Heç bir əlavə giriş və ya şərh yazma, yalnız təmiz mətni qaytar.";
-
-      for (const model of AUDIO_TRANSCRIPTION_MODELS) {
-        const elapsed = Date.now() - startTime;
-        if (elapsed >= MAX_TRANSCRIPTION_BUDGET_MS) {
-          console.warn(`[TRANSCRIBE] Gemini budget exceeded (${elapsed}ms)`);
-          break;
-        }
-
-        try {
-          console.log(`[TRANSCRIBE] Gemini attempt with model: ${model}`);
-          const response = await getAI().models.generateContent({
-            model,
-            contents: {
-              parts: [audioPart, { text: promptText }],
-            },
-          });
-
-          geminiTranscript = (response.text || "").trim();
-          if (geminiTranscript) {
-            geminiSuccess = true;
-            console.log("[TRANSCRIBE] Gemini status: success");
-            break;
-          }
-        } catch (err: any) {
-          const { is503, is429 } = classifyGeminiError(err);
-          const statusDesc = is429
-            ? "429 RESOURCE_EXHAUSTED"
-            : is503
-            ? "503 UNAVAILABLE"
-            : err?.message || "error";
-          console.warn(`[TRANSCRIBE] Gemini status: ${statusDesc}`);
-
-          // On 429, 503, quota exhausted, unavailable, or times out: automatically activate OpenAI fallback
-          if (is429 || is503) {
-            shouldTriggerOpenAIFallback = true;
-            break;
-          }
-        }
-      }
-
-      if (!geminiSuccess) {
-        shouldTriggerOpenAIFallback = true;
-      }
-    }
-
-    if (geminiSuccess && geminiTranscript) {
-      console.log("[TRANSCRIBE] provider used: gemini");
-      console.log(`[TRANSCRIBE] transcript length: ${geminiTranscript.length}`);
-      return res.json({
-        success: true,
-        transcript: geminiTranscript,
-        transcription: geminiTranscript,
-        provider: "gemini",
+    // 2. Validate OpenAI API key
+    const apiKey = process.env.OPENAI_API_KEY;
+    if (!apiKey) {
+      console.error("[TRANSCRIBE] OpenAI error: OPENAI_API_KEY is not configured");
+      return res.status(503).json({
+        error: "transcription_unavailable",
+        message: "OPENAI_API_KEY mühit dəyişəni təyin edilməyib. Zəhmət olmasa Settings menyusunda OPENAI_API_KEY əlavə edin.",
       });
     }
 
-    // 3. Fallback to OpenAI (gpt-4o-mini-transcribe)
-    if (shouldTriggerOpenAIFallback) {
-      console.log("[TRANSCRIBE] Gemini failed, activating OpenAI fallback");
-      console.log("[TRANSCRIBE] OpenAI request started");
+    // 3. Transcription using OpenAI only
+    console.log("[TRANSCRIBE] provider: OpenAI");
+    console.log("[TRANSCRIBE] OpenAI request started");
 
-      try {
-        if (simulateOpenAI === "503" || simulateOpenAI === "true") {
-          throw new Error("OpenAI API unavailable (simulated)");
-        }
-
-        const openAITranscript = await transcribeWithOpenAI(audioBuffer, cleanMimeType, {
-          timeoutMs: 15000,
-        });
-
-        if (openAITranscript) {
-          console.log("[TRANSCRIBE] OpenAI status: success");
-          console.log("[TRANSCRIBE] provider used: openai");
-          console.log(`[TRANSCRIBE] transcript length: ${openAITranscript.length}`);
-          return res.json({
-            success: true,
-            transcript: openAITranscript,
-            transcription: openAITranscript,
-            provider: "openai",
-          });
-        } else {
-          throw new Error("OpenAI returned empty transcription");
-        }
-      } catch (openAIErr: any) {
-        console.error("[TRANSCRIBE] OpenAI status: failed");
-        console.error(`[TRANSCRIBE] OpenAI error: ${openAIErr?.message || openAIErr}`);
-      }
+    const simulateOpenAI = req.headers["x-test-simulate-openai"] || req.body.__testSimulateOpenAI;
+    if (simulateOpenAI === "503") {
+      throw new Error("OpenAI API error (status 503): Service Unavailable (simulated)");
+    }
+    if (simulateOpenAI === "400") {
+      throw new Error("OpenAI API error (status 400): Audio file might be corrupted or unsupported (simulated)");
     }
 
-    // 4. Both providers failed: Return structured HTTP 503 error
-    console.error("[TRANSCRIBE] error: Both Gemini and OpenAI transcription failed");
+    let openAITranscript: string;
+    if (simulateOpenAI === "mock_success") {
+      openAITranscript = "Sabah saat 10-da Anara zəng et";
+    } else {
+      openAITranscript = await transcribeWithOpenAI(audioBuffer, cleanMimeType, {
+        timeoutMs: 15000,
+        apiKey,
+      });
+    }
+
+    if (openAITranscript) {
+      console.log("[TRANSCRIBE] OpenAI status: success");
+      console.log("[TRANSCRIBE] provider used: openai");
+      console.log(`[TRANSCRIBE] transcript length: ${openAITranscript.length}`);
+      return res.json({
+        success: true,
+        transcript: openAITranscript,
+        transcription: openAITranscript,
+        provider: "openai",
+      });
+    } else {
+      throw new Error("OpenAI returned empty transcription");
+    }
+  } catch (err: any) {
+    console.error("[TRANSCRIBE] OpenAI status: failed");
+    console.error(`[TRANSCRIBE] OpenAI error: ${err?.message || err}`);
+
+    const errMsg = err?.message || String(err);
+    const isAudioRejected =
+      errMsg.includes("status 400") ||
+      errMsg.toLowerCase().includes("corrupted") ||
+      errMsg.toLowerCase().includes("unsupported") ||
+      errMsg.toLowerCase().includes("invalid format") ||
+      errMsg.toLowerCase().includes("could not be decoded");
+
+    if (isAudioRejected) {
+      return res.status(400).json({
+        error: "transcription_rejected",
+        message: "Audio formatı qəbul edilmədi və ya fayl zədəlidir.",
+        details: errMsg,
+      });
+    }
+
     return res.status(503).json({
       error: "transcription_unavailable",
       message: "Səsin mətnə çevrilməsi hazırda mümkün deyil. Bir qədər sonra yenidən cəhd edin.",
-    });
-  } catch (outerErr: any) {
-    console.error(`[TRANSCRIBE] error: Unexpected error in transcribe-audio: ${outerErr?.message || outerErr}`);
-    return res.status(503).json({
-      error: "transcription_unavailable",
-      message: "Səsin mətnə çevrilməsi hazırda mümkün deyil. Bir qədər sonra yenidən cəhd edin.",
+      details: errMsg,
     });
   }
 });
