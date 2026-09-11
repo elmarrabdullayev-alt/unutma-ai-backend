@@ -615,7 +615,7 @@ app.post("/api/transcribe-audio", async (req, res) => {
       req.body.mimeType ||
       req.body.type ||
       req.body.format ||
-      "audio/aac";
+      "audio/m4a";
 
     // Normalize Base64 defensively server-side
     const cleanBase64 = String(rawBase64 || "")
@@ -623,7 +623,7 @@ app.post("/api/transcribe-audio", async (req, res) => {
       .replace(/\s/g, "")
       .trim();
 
-    const cleanMimeType = String(rawMime || "audio/aac").trim();
+    const cleanMimeType = String(rawMime || "audio/m4a").trim();
 
     console.log(`[TRANSCRIBE] audio length: ${cleanBase64.length}`);
     console.log(`[TRANSCRIBE] mimeType: ${cleanMimeType}`);

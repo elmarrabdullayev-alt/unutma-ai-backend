@@ -1,5 +1,5 @@
 import http from "http";
-import { getOpenAICompatibleFilename, transcribeWithOpenAI } from "../src/server/openaiAudio";
+import { getOpenAICompatibleFilename, getOpenAIUploadDetails, transcribeWithOpenAI } from "../src/server/openaiAudio";
 
 async function runTests() {
   console.log("==================================================");
@@ -24,9 +24,16 @@ async function runTests() {
   // ----------------------------------------------------
   console.log("--- SECTION 1: OpenAI Audio Unit Tests ---");
 
-  // Format mapping
-  assert(getOpenAICompatibleFilename("audio/aac") === "audio.m4a", "Filename mapping: audio/aac maps to audio.m4a container");
-  assert(getOpenAICompatibleFilename("audio/m4a") === "audio.m4a", "Filename mapping: audio/m4a maps to audio.m4a");
+  // Format and MIME mapping
+  const m4aDetails = getOpenAIUploadDetails("audio/m4a");
+  assert(m4aDetails.filename === "audio.m4a" && m4aDetails.uploadMimeType === "audio/m4a", "M4A upload details: filename audio.m4a, MIME audio/m4a");
+
+  const mp4Details = getOpenAIUploadDetails("audio/mp4");
+  assert(mp4Details.filename === "audio.m4a" && mp4Details.uploadMimeType === "audio/mp4", "MP4 upload details: filename audio.m4a, MIME audio/mp4");
+
+  const aacDetails = getOpenAIUploadDetails("audio/aac");
+  assert(aacDetails.filename === "audio.aac" && aacDetails.uploadMimeType === "audio/aac", "Raw AAC is NOT blindly renamed to audio.m4a (filename audio.aac, MIME audio/aac)");
+
   assert(getOpenAICompatibleFilename("audio/webm") === "audio.webm", "Filename mapping: audio/webm maps to audio.webm");
   assert(getOpenAICompatibleFilename("audio/wav") === "audio.wav", "Filename mapping: audio/wav maps to audio.wav");
   assert(getOpenAICompatibleFilename("audio/mp3") === "audio.mp3", "Filename mapping: audio/mp3 maps to audio.mp3");
@@ -45,7 +52,7 @@ async function runTests() {
     });
   };
 
-  const openAIResult = await transcribeWithOpenAI(mockAudioBuffer, "audio/aac", {
+  const openAIResult = await transcribeWithOpenAI(mockAudioBuffer, "audio/m4a", {
     apiKey: "sk-test-mock-key-12345",
     fetchFn: mockFetch,
   });
@@ -58,7 +65,7 @@ async function runTests() {
   // Verify missing API key error
   try {
     delete process.env.OPENAI_API_KEY;
-    await transcribeWithOpenAI(mockAudioBuffer, "audio/aac", { apiKey: "" });
+    await transcribeWithOpenAI(mockAudioBuffer, "audio/m4a", { apiKey: "" });
     assert(false, "Throws error when OPENAI_API_KEY is missing");
   } catch (err: any) {
     assert(err.message.includes("OPENAI_API_KEY is not configured"), "Throws explicit error when OPENAI_API_KEY is missing");
@@ -69,7 +76,7 @@ async function runTests() {
   // ----------------------------------------------------
   console.log("\n--- SECTION 2: End-to-End Fallback Tests with Mock Server ---");
   const MOCK_OPENAI_PORT = 3999;
-  let mockOpenAIReceivedAudioMime = "";
+  let mockOpenAIReceivedAudioFilename = "";
   let mockOpenAIReceivedModel = "";
   let mockOpenAIReceivedLanguage = "";
 
@@ -88,7 +95,7 @@ async function runTests() {
           mockOpenAIReceivedLanguage = "az";
         }
         if (bodyStr.includes('filename="audio.m4a"')) {
-          mockOpenAIReceivedAudioMime = "audio/aac";
+          mockOpenAIReceivedAudioFilename = "audio.m4a";
         }
 
         res.writeHead(200, { "Content-Type": "application/json" });
@@ -102,15 +109,15 @@ async function runTests() {
 
   await new Promise<void>((resolve) => mockOpenAIServer.listen(MOCK_OPENAI_PORT, resolve));
 
-  // Test transcribeWithOpenAI pointing to mock server
-  const mockServerResult = await transcribeWithOpenAI(mockAudioBuffer, "audio/aac", {
+  // Test transcribeWithOpenAI pointing to mock server with audio/m4a
+  const mockServerResult = await transcribeWithOpenAI(mockAudioBuffer, "audio/m4a", {
     apiKey: "sk-test-key-valid",
     baseUrl: `http://localhost:${MOCK_OPENAI_PORT}`,
   });
   assert(mockServerResult === "Sabah saat 10-da Anara zəng et", "OpenAI mock server response parsed");
   assert(mockOpenAIReceivedModel === "gpt-4o-mini-transcribe", "OpenAI request sent gpt-4o-mini-transcribe model");
   assert(mockOpenAIReceivedLanguage === "az", "OpenAI request favored Azerbaijani ('az')");
-  assert(mockOpenAIReceivedAudioMime === "audio/aac", "OpenAI accepted audio/aac formatted as audio.m4a");
+  assert(mockOpenAIReceivedAudioFilename === "audio.m4a", "OpenAI uploaded with filename audio.m4a");
 
   mockOpenAIServer.close();
 
@@ -128,7 +135,7 @@ async function runTests() {
     const resD = await fetch(`${API_BASE}/api/transcribe-audio`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ base64Audio: "", mimeType: "audio/aac" }),
+      body: JSON.stringify({ base64Audio: "", mimeType: "audio/m4a" }),
     });
     const dataD = await resD.json();
     assert(resD.status === 400, "TEST D: Empty audio returns HTTP 400", `status=${resD.status}`);
@@ -147,7 +154,7 @@ async function runTests() {
       },
       body: JSON.stringify({
         base64Audio: sampleBase64,
-        mimeType: "audio/aac",
+        mimeType: "audio/m4a",
       }),
     });
     const dataB = await resB.json();
@@ -171,8 +178,8 @@ async function runTests() {
         "x-test-simulate-gemini": "503",
       },
       body: JSON.stringify({
-        audioBase64: sampleBase64, // testing alternative property name
-        mimeType: "audio/aac",
+        audioBase64: sampleBase64,
+        mimeType: "audio/m4a",
       }),
     });
     const dataC = await resC.json();
@@ -197,7 +204,7 @@ async function runTests() {
       },
       body: JSON.stringify({
         base64Audio: sampleBase64,
-        mimeType: "audio/aac",
+        mimeType: "audio/m4a",
       }),
     });
     const dataE = await resE.json();
@@ -208,7 +215,7 @@ async function runTests() {
     assert(false, "TEST E: Both providers fail", e.message);
   }
 
-  // TEST F: iPhone NativeVoiceRecorder input format compatibility (recordDataBase64 + audio/aac)
+  // TEST F: iPhone NativeVoiceRecorder input format compatibility (recordDataBase64 + audio/m4a)
   try {
     const resF = await fetch(`${API_BASE}/api/transcribe-audio`, {
       method: "POST",
@@ -219,12 +226,12 @@ async function runTests() {
       },
       body: JSON.stringify({
         recordDataBase64: sampleBase64, // iPhone plugin field
-        mimeType: "audio/aac",
+        mimeType: "audio/m4a",
       }),
     });
     const dataF = await resF.json();
     assert(resF.status === 503 && dataF.error === "transcription_unavailable",
-      "TEST F: iPhone NativeVoiceRecorder format (recordDataBase64 + audio/aac) recognized and normalized");
+      "TEST F: iPhone NativeVoiceRecorder format (recordDataBase64 + audio/m4a) recognized and normalized");
   } catch (e: any) {
     assert(false, "TEST F: iPhone NativeVoiceRecorder input format", e.message);
   }

@@ -151,7 +151,7 @@ export class NativeVoiceRecorderProvider implements SpeechRecognitionProvider {
         this.isStopping = false;
 
         const base64Audio = recordingData.value?.recordDataBase64 || '';
-        const mimeType = recordingData.value?.mimeType || 'audio/aac';
+        const mimeType = recordingData.value?.mimeType || (Capacitor.getPlatform() === 'ios' ? 'audio/m4a' : 'audio/aac');
         const duration = recordingData.value?.msDuration || 0;
 
         // 2. Normalize Base64 before sending (strip data URL prefix and whitespace)
@@ -161,6 +161,14 @@ export class NativeVoiceRecorderProvider implements SpeechRecognitionProvider {
           .trim();
 
         const prefixRemoved = base64Audio.length !== normalizedBase64.length;
+
+        if (Capacitor.getPlatform() === 'ios') {
+          const extension = mimeType.includes('m4a') ? 'm4a' : (mimeType.includes('mp4') ? 'mp4' : 'm4a');
+          const byteSize = Math.round((normalizedBase64.length * 3) / 4);
+          console.log(`[VOICE][iOS] recording extension: ${extension}`);
+          console.log(`[VOICE][iOS] recording byte size: ${byteSize}`);
+          console.log(`[VOICE][iOS] mimeType: ${mimeType}`);
+        }
 
         console.log('[NATIVE VOICE] mimeType:', mimeType);
         console.log('[NATIVE VOICE] raw base64 length:', base64Audio.length);

@@ -72,15 +72,14 @@ public class VoiceRecorder: CAPPlugin, CAPBridgedPlugin {
 
             let tempDir = FileManager.default.temporaryDirectory
             let timestamp = Int(Date().timeIntervalSince1970 * 1000)
-            let fileURL = tempDir.appendingPathComponent("recording-\(timestamp).aac")
+            let fileURL = tempDir.appendingPathComponent("recording-\(timestamp).m4a")
             self.audioFilePath = fileURL
 
             let settings: [String: Any] = [
                 AVFormatIDKey: Int(kAudioFormatMPEG4AAC),
-                AVSampleRateKey: 44100.0,
+                AVSampleRateKey: 44100,
                 AVNumberOfChannelsKey: 1,
-                AVEncoderAudioQualityKey: AVAudioQuality.high.rawValue,
-                AVEncoderBitRateKey: 64000
+                AVEncoderAudioQualityKey: AVAudioQuality.high.rawValue
             ]
 
             let recorder = try AVAudioRecorder(url: fileURL, settings: settings)
@@ -137,6 +136,13 @@ public class VoiceRecorder: CAPPlugin, CAPBridgedPlugin {
         do {
             let audioData = try Data(contentsOf: url)
             let base64String = audioData.base64EncodedString()
+            let recordingExtension = url.pathExtension
+            let byteSize = audioData.count
+            let returnedMimeType = "audio/m4a"
+
+            print("[VOICE][iOS] recording extension: \(recordingExtension)")
+            print("[VOICE][iOS] recording byte size: \(byteSize)")
+            print("[VOICE][iOS] mimeType: \(returnedMimeType)")
 
             // Remove temporary file
             try? FileManager.default.removeItem(at: url)
@@ -149,7 +155,7 @@ public class VoiceRecorder: CAPPlugin, CAPBridgedPlugin {
             let response: [String: Any] = [
                 "value": [
                     "recordDataBase64": base64String,
-                    "mimeType": "audio/aac",
+                    "mimeType": returnedMimeType,
                     "msDuration": durationMs
                 ]
             ]
