@@ -241,7 +241,7 @@ app.post("/api/ai-action", async (req, res) => {
 
     const simulateOpenAI = req.headers["x-test-simulate-openai"] || req.body.__testSimulateOpenAI;
     if (simulateOpenAI === "missing_key") {
-      console.error("[AI-ACTION] error: OPENAI_API_KEY is not configured");
+      console.log("[AI-ACTION] OPENAI_API_KEY is not configured (simulated)");
       return res.status(503).json({
         error: "ai_unavailable",
         message:
@@ -250,7 +250,7 @@ app.post("/api/ai-action", async (req, res) => {
     }
 
     if (simulateOpenAI === "503") {
-      console.error("[AI-ACTION] error: OpenAI API error (status 503): Service Unavailable (simulated)");
+      console.log("[AI-ACTION] OpenAI API error (status 503): Service Unavailable (simulated)");
       return res.status(503).json({
         error: "ai_unavailable",
         message: "OpenAI xidməti hazırda əlçatan deyil.",
@@ -259,7 +259,7 @@ app.post("/api/ai-action", async (req, res) => {
 
     const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey && simulateOpenAI !== "mock_success") {
-      console.error("[AI-ACTION] error: OPENAI_API_KEY is not configured");
+      console.log("[AI-ACTION] OPENAI_API_KEY is not configured");
       return res.status(503).json({
         error: "ai_unavailable",
         message:
@@ -506,7 +506,7 @@ app.post("/api/transcribe-audio", async (req, res) => {
 
     // Empty or invalid audio validation (return HTTP 400)
     if (!cleanBase64 || cleanBase64.length < 100 || !/^[A-Za-z0-9+/=]+$/.test(cleanBase64)) {
-      console.warn("[TRANSCRIBE] payload validation failed: empty or invalid audio data");
+      console.log("[TRANSCRIBE] payload validation info: empty or invalid audio data received");
       return res.status(400).json({
         error: "invalid_audio",
         message: "Səs məlumatı boşdur və ya düzgün formatda deyil.",
@@ -515,7 +515,7 @@ app.post("/api/transcribe-audio", async (req, res) => {
 
     const audioBuffer = Buffer.from(cleanBase64, "base64");
     if (audioBuffer.length === 0) {
-      console.warn("[TRANSCRIBE] payload validation failed: decoded audio buffer is empty");
+      console.log("[TRANSCRIBE] payload validation info: decoded audio buffer is empty");
       return res.status(400).json({
         error: "invalid_audio",
         message: "Səs məlumatı boşdur və ya düzgün formatda deyil.",
@@ -525,15 +525,27 @@ app.post("/api/transcribe-audio", async (req, res) => {
     // 2. Check test simulation flags or validate OpenAI API key
     const simulateOpenAI = req.headers["x-test-simulate-openai"] || req.body.__testSimulateOpenAI;
     if (simulateOpenAI === "503") {
-      throw new Error("OpenAI API error (status 503): Service Unavailable (simulated)");
+      const errMsg = "OpenAI API error (status 503): Service Unavailable (simulated)";
+      console.log(`[TRANSCRIBE] simulated service unavailable response returned`);
+      return res.status(503).json({
+        error: "transcription_unavailable",
+        message: "Səsin mətnə çevrilməsi hazırda mümkün deyil. Bir qədər sonra yenidən cəhd edin.",
+        details: errMsg,
+      });
     }
     if (simulateOpenAI === "400") {
-      throw new Error("OpenAI API error (status 400): Audio file might be corrupted or unsupported (simulated)");
+      const errMsg = "OpenAI API error (status 400): Audio file might be corrupted or unsupported (simulated)";
+      console.log(`[TRANSCRIBE] simulated rejected audio response returned`);
+      return res.status(400).json({
+        error: "transcription_rejected",
+        message: "Audio formatı qəbul edilmədi və ya fayl zədəlidir.",
+        details: errMsg,
+      });
     }
 
     const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey && simulateOpenAI !== "mock_success") {
-      console.error("[TRANSCRIBE] OpenAI error: OPENAI_API_KEY is not configured");
+      console.log("[TRANSCRIBE] OPENAI_API_KEY is not configured");
       return res.status(503).json({
         error: "transcription_unavailable",
         message: "OPENAI_API_KEY mühit dəyişəni təyin edilməyib. Zəhmət olmasa Settings menyusunda OPENAI_API_KEY əlavə edin.",
@@ -568,10 +580,9 @@ app.post("/api/transcribe-audio", async (req, res) => {
       throw new Error("OpenAI returned empty transcription");
     }
   } catch (err: any) {
-    console.error("[TRANSCRIBE] OpenAI status: failed");
-    console.error(`[TRANSCRIBE] OpenAI error: ${err?.message || err}`);
-
     const errMsg = err?.message || String(err);
+    console.log(`[TRANSCRIBE] request handling result: ${errMsg}`);
+
     const isAudioRejected =
       errMsg.includes("status 400") ||
       errMsg.toLowerCase().includes("corrupted") ||

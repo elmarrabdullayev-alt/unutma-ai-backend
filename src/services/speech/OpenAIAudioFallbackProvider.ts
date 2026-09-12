@@ -152,10 +152,22 @@ export class OpenAIAudioFallbackProvider implements SpeechRecognitionProvider {
           }
 
           const base64 = await this.blobToBase64(blob);
+          const normalizedBase64 = base64
+            .replace(/^data:.*?;base64,/, '')
+            .replace(/\s/g, '')
+            .trim();
+
+          if (!normalizedBase64 || normalizedBase64.length < 100 || !/^[A-Za-z0-9+/=]+$/.test(normalizedBase64)) {
+            console.log('[OpenAIAudioFallbackProvider] Audio recording was empty, too short, or invalid, skipping API call');
+            if (this.callbacks?.onEnd) this.callbacks.onEnd();
+            resolve('');
+            return;
+          }
+
           const transcriptionUrl = apiClient.buildUrl('/api/transcribe-audio');
           console.log(`[OpenAIAudioFallbackProvider] transcription URL=${transcriptionUrl}`);
 
-          const data = await apiClient.transcribeAudio(base64, blob.type || 'audio/webm');
+          const data = await apiClient.transcribeAudio(normalizedBase64, blob.type || 'audio/webm');
           console.log('[OpenAIAudioFallbackProvider] response status=200');
           console.log('[OpenAIAudioFallbackProvider] transcription received');
 
