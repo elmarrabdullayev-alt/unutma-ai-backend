@@ -88,6 +88,125 @@ function normalizeAzerbaijaniRecurrence(prompt: string, reminderItem: any): void
   }
 }
 
+/**
+ * Normalizes dueDateTime to ensure that the time in the user's timezone matches
+ * the user's intended explicit hour and dayparts (e.g. 18:00, "səhər 10", "günorta 2", "axşam 10", "gecə 1").
+ * Prevents the UTC offset mutation (e.g. 18:00 UTC becoming 22:00 in Asia/Baku).
+ */
+export function normalizeDueDateTimeForTimezone(
+  dueDateTime: string,
+  text: string,
+  timezone: string
+): string {
+  if (!dueDateTime) return dueDateTime;
+
+  const lower = text.toLowerCase();
+
+  // 1. Detect explicit hour and daypart intentions from text
+  let targetHour: number | null = null;
+  let targetMinute: number = 0;
+
+  const morningMatch = lower.match(/(?:səhər|seher)\s+(?:saat\s+)?(\d{1,2})(?::(\d{2}))?/i);
+  const afternoonMatch = lower.match(/(?:günorta|gunorta|nahar)\s+(?:saat\s+)?(\d{1,2})(?::(\d{2}))?/i);
+  const eveningMatch = lower.match(/(?:axşam|axsam|axşamüstü|axsamustu)\s+(?:saat\s+)?(\d{1,2})(?::(\d{2}))?/i);
+  const nightMatch = lower.match(/(?:gecə|gece)\s+(?:saat\s+)?(\d{1,2})(?::(\d{2}))?/i);
+
+  const exactHourMatch = lower.match(/(?:saat\s+)?(\d{1,2})(?::(\d{2}))?\s*(?:-|–)?\s*(?:da|də|de|ta|tə|yə|a|e|dək)?/i);
+
+  if (morningMatch && morningMatch[1]) {
+    const h = parseInt(morningMatch[1], 10);
+    targetHour = h <= 12 ? h : h - 12;
+    targetMinute = morningMatch[2] ? parseInt(morningMatch[2], 10) : 0;
+  } else if (afternoonMatch && afternoonMatch[1]) {
+    const h = parseInt(afternoonMatch[1], 10);
+    targetHour = h >= 1 && h <= 6 ? h + 12 : (h === 12 ? 12 : h);
+    targetMinute = afternoonMatch[2] ? parseInt(afternoonMatch[2], 10) : 0;
+  } else if (eveningMatch && eveningMatch[1]) {
+    const h = parseInt(eveningMatch[1], 10);
+    targetHour = h >= 1 && h <= 11 ? h + 12 : (h === 12 ? 0 : h);
+    targetMinute = eveningMatch[2] ? parseInt(eveningMatch[2], 10) : 0;
+  } else if (nightMatch && nightMatch[1]) {
+    const h = parseInt(nightMatch[1], 10);
+    targetHour = h >= 1 && h <= 6 ? h : (h === 12 ? 0 : (h === 11 ? 23 : h));
+    targetMinute = nightMatch[2] ? parseInt(nightMatch[2], 10) : 0;
+  } else if (
+    exactHourMatch &&
+    exactHourMatch[1] &&
+    (lower.includes('saat') || exactHourMatch[0].includes('də') || exactHourMatch[0].includes('da') || exactHourMatch[2])
+  ) {
+    const h = parseInt(exactHourMatch[1], 10);
+    if (h >= 0 && h <= 24) {
+      targetHour = h;
+      targetMinute = exactHourMatch[2] ? parseInt(exactHourMatch[2], 10) : 0;
+      if (/axşam|axsam/i.test(lower) && targetHour >= 1 && targetHour <= 11) {
+        targetHour += 12;
+      } else if (/günorta|gunorta/i.test(lower) && targetHour >= 1 && targetHour <= 6) {
+        targetHour += 12;
+      } else if (/gecə|gece/i.test(lower) && targetHour >= 1 && targetHour <= 6) {
+        // night 1-6 stays 1-6
+      } else if (/səhər|seher/i.test(lower) && targetHour > 12) {
+        targetHour -= 12;
+      } else if (targetHour >= 1 && targetHour <= 6 && !/gecə|gece/i.test(lower)) {
+        targetHour += 12;
+      }
+    }
+  }
+
+  // If no explicit target hour found, keep dueDateTime as is
+  if (targetHour === null) {
+    return dueDateTime;
+  }
+
+  // 2. Check what hour dueDateTime represents in the specified timezone
+  const baseDate = new Date(dueDateTime);
+  if (isNaN(baseDate.getTime())) return dueDateTime;
+
+  try {
+    const dtfTime = new Intl.DateTimeFormat('en-US', {
+      timeZone: timezone,
+      hour: 'numeric',
+      minute: 'numeric',
+      hour12: false,
+    });
+    const timeParts = dtfTime.formatToParts(baseDate);
+    let hInTz = Number(timeParts.find((p) => p.type === 'hour')?.value || 0);
+    if (hInTz === 24) hInTz = 0;
+    const minInTz = Number(timeParts.find((p) => p.type === 'minute')?.value || 0);
+
+    // If it already matches the target hour and minute in timezone, return as is
+    if (hInTz === targetHour && minInTz === targetMinute) {
+      return dueDateTime;
+    }
+
+    // Otherwise, calculate the exact UTC date that yields targetHour:targetMinute in timezone
+    const dtfDate = new Intl.DateTimeFormat('en-US', {
+      timeZone: timezone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    });
+    const dateParts = dtfDate.formatToParts(baseDate);
+    const y = dateParts.find((p) => p.type === 'year')?.value;
+    const m = dateParts.find((p) => p.type === 'month')?.value;
+    const d = dateParts.find((p) => p.type === 'day')?.value;
+
+    if (!y || !m || !d) return dueDateTime;
+
+    const guess = new Date(Date.UTC(Number(y), Number(m) - 1, Number(d), targetHour, targetMinute, 0));
+    const guessParts = dtfTime.formatToParts(guess);
+    let guessH = Number(guessParts.find((p) => p.type === 'hour')?.value || 0);
+    if (guessH === 24) guessH = 0;
+    const guessMin = Number(guessParts.find((p) => p.type === 'minute')?.value || 0);
+
+    const diffMs = ((guessH * 60 + guessMin) - (targetHour * 60 + targetMinute)) * 60 * 1000;
+    const corrected = new Date(guess.getTime() - diffMs);
+    return corrected.toISOString();
+  } catch (tzErr) {
+    console.warn('[SERVER-TZ] Timezone adjustment warning:', tzErr);
+    return dueDateTime;
+  }
+}
+
 // =========================================================================
 // API 1: PARSE VOICE/TEXT INTO STRUCTURED REMINDERS (OPENAI)
 // =========================================================================
@@ -135,6 +254,10 @@ Hazırkı cari vaxt: ${userNowFormatted} (ISO: ${now.toISOString()}).
    - "bu gün" -> Hazırkı gün (${now.toISOString().slice(0, 10)})
    - "sabah" -> Sabahkı gün (+1 gün)
    - "birigün" -> Birigün (+2 gün)
+   - "səhər 10" / "səhər saat 10" -> 10:00 (səhər saatı)
+   - "günorta 2" / "günorta saat 2" -> 14:00 (günorta saatı)
+   - "axşam 10" / "axşam saat 10" -> 22:00 (axşam saatı)
+   - "gecə 1" / "gecə saat 1" -> 01:00 (gecə saatı)
    - "bu axşam" -> Bu gün saat 20:00
    - "sabah səhər" -> Sabah saat 09:00 (inferredTime: true)
    - "sabah günorta" -> Sabah saat 13:00 / 14:00 (inferredTime: true)
@@ -196,11 +319,13 @@ Hazırkı cari vaxt: ${userNowFormatted} (ISO: ${now.toISOString()}).
     const rawReminders = Array.isArray(parsed.reminders) ? parsed.reminders : [];
 
     const reminders = rawReminders.map((item: any, idx: number) => {
+      const rawDue = item.dueDateTime || new Date(now.getTime() + 3600000).toISOString();
+      const normalizedDue = normalizeDueDateTimeForTimezone(rawDue, text, timezone);
       const mapped = {
         id: `extracted-${Date.now()}-${idx}`,
         title: item.title || text,
         description: item.description || "",
-        dueDateTime: item.dueDateTime || new Date(now.getTime() + 3600000).toISOString(),
+        dueDateTime: normalizedDue,
         category: item.category || "other",
         recurrence: item.recurrence || "none",
         priority: item.priority || "medium",
@@ -423,11 +548,13 @@ JSON CAVAB STRUKTURU:
 
     // Map remindersToCreate and post-process recurrence
     const formattedReminders = (remindersToCreate || []).map((r: any, idx: number) => {
+      const rawDue = r.dueDateTime || new Date(now.getTime() + 3600000).toISOString();
+      const normalizedDue = normalizeDueDateTimeForTimezone(rawDue, userPrompt, timezone);
       const item = {
         id: `extracted-${Date.now()}-${idx}`,
         title: r.title || userPrompt,
         description: r.description || "",
-        dueDateTime: r.dueDateTime || new Date(now.getTime() + 3600000).toISOString(),
+        dueDateTime: normalizedDue,
         category: r.category || "other",
         recurrence: r.recurrence || "none",
         recurrenceInterval: r.recurrenceInterval,

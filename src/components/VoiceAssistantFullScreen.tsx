@@ -29,7 +29,7 @@ import {
 } from '../types';
 import { CATEGORIES } from '../utils/categoryMeta';
 import { playMicStartSound, playSuccessSound, speakText } from '../utils/soundUtils';
-import { formatTimeOnly, formatDateAz, getRecurrenceLabelAz } from '../utils/dateUtils';
+import { formatTimeOnly, formatDateAz, getRecurrenceLabelAz, toDateTimeLocalInput } from '../utils/dateUtils';
 import { reminderService } from '../services/reminderService';
 import { speechManager } from '../services/speech/SpeechProviderManager';
 import { apiClient } from '../services/apiClient';
@@ -74,6 +74,29 @@ export const VoiceAssistantFullScreen: React.FC<VoiceAssistantFullScreenProps> =
   const [isProcessing, setIsProcessing] = useState(false);
   const [audioLevel, setAudioLevel] = useState(0);
   const [recordingSeconds, setRecordingSeconds] = useState(0);
+  const speechBeganRef = useRef(false);
+  const silenceTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  const clearSilenceTimer = () => {
+    if (silenceTimerRef.current) {
+      clearTimeout(silenceTimerRef.current);
+      silenceTimerRef.current = null;
+    }
+  };
+
+  const scheduleSilenceAutoStop = (detectedText?: string) => {
+    clearSilenceTimer();
+    silenceTimerRef.current = setTimeout(async () => {
+      if (isMountedRef.current) {
+        console.log('[VoiceAssistant] Auto-stopping: ~1.3s silence detected after speech began');
+        const finalRecorded = await stopListeningProcess();
+        const textToAnalyze = finalRecorded || detectedText || transcript || interimText;
+        if (textToAnalyze && textToAnalyze.trim()) {
+          handleAnalyzeText(textToAnalyze.trim());
+        }
+      }
+    }, 1300);
+  };
   const [recordingError, setRecordingError] = useState<string | null>(null);
   const [parsedReminders, setParsedReminders] = useState<EditableExtractedReminder[]>([]);
   const [parsedSummary, setParsedSummary] = useState('');
@@ -139,6 +162,8 @@ export const VoiceAssistantFullScreen: React.FC<VoiceAssistantFullScreenProps> =
   const startListeningProcess = async () => {
     try {
       setRecordingError(null);
+      clearSilenceTimer();
+      speechBeganRef.current = false;
       playMicStartSound();
       setIsListening(true);
 
@@ -146,6 +171,8 @@ export const VoiceAssistantFullScreen: React.FC<VoiceAssistantFullScreenProps> =
         onResult: (text, isFinal) => {
           if (isMountedRef.current) {
             if (isFinal) {
+              clearSilenceTimer();
+              speechBeganRef.current = false;
               setTranscript(text);
               setInterimText('');
               // If final text is received directly, analyze it
@@ -154,23 +181,39 @@ export const VoiceAssistantFullScreen: React.FC<VoiceAssistantFullScreenProps> =
               }
             } else {
               setInterimText(text);
+              if (text.trim().length > 0) {
+                speechBeganRef.current = true;
+                // Schedule auto-stop ~1.3s after user pauses speaking
+                scheduleSilenceAutoStop(text);
+              }
             }
           }
         },
         onAudioLevel: (level) => {
           if (isMountedRef.current) {
             setAudioLevel(level);
+            if (level > 0.15) {
+              speechBeganRef.current = true;
+              clearSilenceTimer();
+            } else if (speechBeganRef.current && !silenceTimerRef.current) {
+              // Level dropped below threshold after speech had begun
+              scheduleSilenceAutoStop();
+            }
           }
         },
         onError: (err) => {
           console.warn('[VoiceAssistant] Speech error:', err);
           if (isMountedRef.current) {
+            clearSilenceTimer();
+            speechBeganRef.current = false;
             setRecordingError(err.message || 'Səs qəbulu zamanı xəta baş verdi.');
             setIsListening(false);
           }
         },
         onEnd: () => {
           if (isMountedRef.current) {
+            clearSilenceTimer();
+            speechBeganRef.current = false;
             setIsListening(false);
           }
         },
@@ -178,6 +221,8 @@ export const VoiceAssistantFullScreen: React.FC<VoiceAssistantFullScreenProps> =
     } catch (err: any) {
       console.warn('[VoiceAssistant] Mic start error:', err);
       if (isMountedRef.current) {
+        clearSilenceTimer();
+        speechBeganRef.current = false;
         setIsListening(false);
         setRecordingError(err.message || 'Mikrofona qoşulmaq mümkün olmadı.');
       }
@@ -185,6 +230,8 @@ export const VoiceAssistantFullScreen: React.FC<VoiceAssistantFullScreenProps> =
   };
 
   const stopListeningProcess = async (): Promise<string> => {
+    clearSilenceTimer();
+    speechBeganRef.current = false;
     setIsListening(false);
     try {
       const finalRecorded = await speechManager.stopListening();
@@ -654,7 +701,7 @@ export const VoiceAssistantFullScreen: React.FC<VoiceAssistantFullScreenProps> =
               <div className="mt-7 w-full text-center">
                 {transcript || interimText ? (
                   <p className="text-sm font-semibold text-slate-100 italic bg-[#111728] p-3.5 rounded-2xl border border-white/10 shadow-lg">
-                    “{transcript} {interimText}”
+                    “{[transcript, interimText].filter(Boolean).join(' ').trim()}”
                   </p>
                 ) : (
                   <p className="text-xs text-slate-500 font-medium">
@@ -828,7 +875,7 @@ export const VoiceAssistantFullScreen: React.FC<VoiceAssistantFullScreenProps> =
                               <label className="text-[10px] font-bold uppercase text-slate-400">Tarix və Saat</label>
                               <input
                                 type="datetime-local"
-                                value={item.dueDateTime ? item.dueDateTime.slice(0, 16) : ''}
+                                value={item.dueDateTime ? toDateTimeLocalInput(item.dueDateTime) : ''}
                                 onChange={(e) => {
                                   if (e.target.value) {
                                     handleUpdateItem(item.id, {

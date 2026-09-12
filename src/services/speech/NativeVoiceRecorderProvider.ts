@@ -114,7 +114,19 @@ export class NativeVoiceRecorderProvider implements SpeechRecognitionProvider {
       }
       console.log('[NATIVE VOICE] recording started');
 
-      // 4. Simulate audio level pulsation for UI waveform
+      // 4. Attach silence auto-stop listener from native iOS VoiceRecorder
+      try {
+        (VoiceRecorder as any).addListener?.('silenceAutoStop', async () => {
+          console.log('[NATIVE VOICE] silenceAutoStop event received from native iOS VoiceRecorder');
+          if (this.isRecording && !this.isStopping) {
+            await this.stop();
+          }
+        });
+      } catch (listenerErr) {
+        // Ignore if not supported in current environment
+      }
+
+      // 5. Simulate audio level pulsation for UI waveform
       this.startAudioLevelSimulation();
     } catch (err: any) {
       this.isRecording = false;

@@ -30,6 +30,11 @@ public class VoiceRecorder: CAPPlugin, CAPBridgedPlugin {
     private var originalSessionOptions: AVAudioSession.CategoryOptions = []
     private var currentStatus: String = "NONE" // NONE, RECORDING, PAUSED
     private var recordingStartTime: Date?
+    private var silenceMeterTimer: Timer?
+    private var speechBegan: Bool = false
+    private var silenceBeganTime: Date?
+    private let speechThresholdDb: Float = -38.0
+    private let silenceAutoStopTimeoutSec: TimeInterval = 1.3
 
     @objc public func canDeviceVoiceRecord(_ call: CAPPluginCall) {
         call.resolve(["value": true])
@@ -94,16 +99,66 @@ public class VoiceRecorder: CAPPlugin, CAPBridgedPlugin {
             self.audioRecorder = recorder
             self.currentStatus = "RECORDING"
             self.recordingStartTime = Date()
+            self.speechBegan = false
+            self.silenceBeganTime = nil
+
+            DispatchQueue.main.async { [weak self] in
+                guard let self = self else { return }
+                self.silenceMeterTimer?.invalidate()
+                self.silenceMeterTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in
+                    self?.evaluateSilenceAutoStop()
+                }
+            }
 
             call.resolve(["value": true])
         } catch {
             self.audioRecorder = nil
             self.currentStatus = "NONE"
+            self.silenceMeterTimer?.invalidate()
+            self.silenceMeterTimer = nil
             call.reject("CANNOT_RECORD_ON_THIS_PHONE: \(error.localizedDescription)")
         }
     }
 
+    private func evaluateSilenceAutoStop() {
+        guard let recorder = self.audioRecorder, recorder.isRecording else {
+            self.silenceMeterTimer?.invalidate()
+            self.silenceMeterTimer = nil
+            return
+        }
+
+        recorder.updateMeters()
+        let avgPower = recorder.averagePower(forChannel: 0) // -160 dB to 0 dB
+
+        if avgPower > self.speechThresholdDb {
+            // Speech detected
+            if !self.speechBegan {
+                self.speechBegan = true
+                self.notifyListeners("speechStarted", data: ["power": avgPower])
+            }
+            self.silenceBeganTime = nil
+        } else if self.speechBegan {
+            // Speech was detected earlier, now below threshold
+            if self.silenceBeganTime == nil {
+                self.silenceBeganTime = Date()
+            } else if let silenceStart = self.silenceBeganTime,
+                      Date().timeIntervalSince(silenceStart) >= self.silenceAutoStopTimeoutSec {
+                print("[VOICE][iOS] auto-stopping: ~1.3s silence after speech")
+                self.silenceMeterTimer?.invalidate()
+                self.silenceMeterTimer = nil
+                self.notifyListeners("silenceAutoStop", data: [
+                    "silenceDuration": Date().timeIntervalSince(silenceStart)
+                ])
+            }
+        }
+    }
+
     @objc public func stopRecording(_ call: CAPPluginCall) {
+        self.silenceMeterTimer?.invalidate()
+        self.silenceMeterTimer = nil
+        self.speechBegan = false
+        self.silenceBeganTime = nil
+
         guard let recorder = audioRecorder else {
             call.reject("RECORDING_HAS_NOT_STARTED")
             return

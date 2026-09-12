@@ -120,8 +120,8 @@ export function hasExplicitCreateVerb(text: string): boolean {
 
 export function hasActionDirective(text: string): boolean {
   const l = text.toLowerCase();
-  const hasTimeIndicator = /(?:sabah|bu gün|bugün|birigün|biri gün|axşam|axsam|səhər|seher|günorta|gunorta|saat|\d+\s*[-–]?(?:də|da|ta|tə|de)|onda|ikidə|üçdə|dörddə|beşdə|hər|her|həftə|hefte)/i.test(l);
-  const hasActionKeyword = /(?:zəng|zeng|al|almaq|bax|yoxla|get|apar|gətir|getir|iç|ic|öyrən|oyren|ödə|ode|hazırla|hazirla|yaz|görüş|gorus|təmir|temir|təmizlə|temizle|maşın|masin|dərman|derman|çörək|corek|market|iş|is|həkim|hekim|iclas)/i.test(l);
+  const hasTimeIndicator = /(?:sabah|bu gün|bugün|birigün|biri gün|axşam|axsam|səhər|seher|günorta|gunorta|gecə|gece|saat|\d+\s*[-–]?(?:də|da|ta|tə|de)|onda|ikidə|üçdə|dörddə|beşdə|hər|her|həftə|hefte)/i.test(l);
+  const hasActionKeyword = /(?:zəng|zeng|al|almaq|bax|yoxla|get|getmək|getmeliyem|getməliyəm|apar|gətir|getir|iç|ic|öyrən|oyren|ödə|ode|hazırla|hazirla|yaz|oxu|oxumaq|yat|yatmaq|evə|eve|ev|görüş|gorus|təmir|temir|təmizlə|temizle|maşın|masin|dərman|derman|çörək|corek|market|iş|is|həkim|hekim|iclas|et|etmək)/i.test(l);
   return hasTimeIndicator && hasActionKeyword;
 }
 
@@ -531,8 +531,8 @@ export class IntelligentRouter {
     }
 
     // 3. Split by spoken time transitions without punctuation
-    // Must NOT split after recurrence phrases (e.g. "hər 2/3/5 gündən bir", "hər gün", etc.)
-    const timeTransitionRegex = /(?<=\S\s+)(?<!saat\s+)(?<!\b(?:hər|her)\s+(?:\d+|bir|iki|üç|uc|dörd|dord|beş|bes|altı|alti|yeddi|səkkiz|sekkiz|doqquz|on)\s+(?:gündən|gunden|həftədən|hefteden|aydan|ildən|ilden)\s+bir\s+)(?<!\b(?:hər|her)\s+(?:gün|gun|həftə|hefte|ay|il|səhər|seher|axşam|axsam)\s+)(?<!\b(?:gündən|gunden|həftədən|hefteden|aydan|ildən|ilden)\s+bir\s+)(?<!\bbir\s+)(?<!\b(?:hər|her)\s+)(?=(?:saat\s+\d+|saat\s+(?:bir|iki|üç|dörd|beş|altı|yeddi|səkkiz|doqquz|on)|\d+\s*[-–]?(?:də|da|de|ta|tə)\s+|(?:bir|iki|üç|dörd|beş|altı|yeddi|səkkiz|doqquz|on)\s*[-–]?(?:də|da|de|ta|tə)\s+|axşam|axsam|günorta|gunorta|səhər|seher|gecə|gece)\b)/giu;
+    // Must NOT split after recurrence phrases or daypart/date prefixes (e.g. "axşam 10-da", "bu gün saat 18:00", "hər gün", etc.)
+    const timeTransitionRegex = /(?<=\S\s+)(?<!saat\s+)(?<!\b(?:bu\s+gün|bugün|sabah|birigün|axşam|axsam|günorta|gunorta|səhər|seher|gecə|gece)\s+)(?<!\b(?:hər|her)\s+(?:\d+|bir|iki|üç|uc|dörd|dord|beş|bes|altı|alti|yeddi|səkkiz|sekkiz|doqquz|on)\s+(?:gündən|gunden|həftədən|hefteden|aydan|ildən|ilden)\s+bir\s+)(?<!\b(?:hər|her)\s+(?:gün|gun|həftə|hefte|ay|il|səhər|seher|axşam|axsam)\s+)(?<!\b(?:gündən|gunden|həftədən|hefteden|aydan|ildən|ilden)\s+bir\s+)(?<!\bbir\s+)(?<!\b(?:hər|her)\s+)(?=(?:saat\s+\d+|saat\s+(?:bir|iki|üç|dörd|beş|altı|yeddi|səkkiz|doqquz|on)|\d+\s*[-–]?(?:də|da|de|ta|tə)\s+|(?:bir|iki|üç|dörd|beş|altı|yeddi|səkkiz|doqquz|on)\s*[-–]?(?:də|da|de|ta|tə)\s+|axşam|axsam|günorta|gunorta|səhər|seher|gecə|gece)\b)/giu;
     const rawParts = text.split(timeTransitionRegex).map((s) => s.trim().replace(/\.+$/, '')).filter(Boolean);
 
     // Safeguard: If any segment is an incomplete recurrence phrase (e.g. "hər 3 gündən bir"), re-attach to the next segment
@@ -708,14 +708,41 @@ export class IntelligentRouter {
     let targetMinutes = 0;
     let timeConfidence: 'exact' | 'inferred' = 'inferred';
 
-    // Match exact hours like "saat 10-da", "saat 15:30-da", "saat 10:00", "14:00-da", "saat 8-də", "saat 9-da", "2-də", "2 də"
+    // Daypart + hour patterns:
+    // Examples: "səhər 10", "günorta 2", "axşam 10", "gecə 1", "səhər saat 10-da", "axşam saat 8-də"
+    const morningMatch = textForTimeSearch.match(/(?:səhər|seher)\s+(?:saat\s+)?(?:(\d{1,2})(?::(\d{2}))?|(onda|ikidə|üçdə|dörddə|beşdə|bir|iki|üç|dörd|beş|altı|yeddi|səkkiz|doqquz|on))(?:\s*[-–]?(?:də|da|de|ta|tə))?/i);
+    const afternoonMatch = textForTimeSearch.match(/(?:günorta|gunorta|nahar)\s+(?:saat\s+)?(?:(\d{1,2})(?::(\d{2}))?|(onda|ikidə|üçdə|dörddə|beşdə|bir|iki|üç|dörd|beş|altı|yeddi|səkkiz|doqquz|on))(?:\s*[-–]?(?:də|da|de|ta|tə))?/i);
+    const eveningMatch = textForTimeSearch.match(/(?:axşam|axsam|axşamüstü|axsamustu)\s+(?:saat\s+)?(?:(\d{1,2})(?::(\d{2}))?|(onda|ikidə|üçdə|dörddə|beşdə|bir|iki|üç|dörd|beş|altı|yeddi|səkkiz|doqquz|on))(?:\s*[-–]?(?:də|da|de|ta|tə))?/i);
+    const nightMatch = textForTimeSearch.match(/(?:gecə|gece)\s+(?:saat\s+)?(?:(\d{1,2})(?::(\d{2}))?|(onda|ikidə|üçdə|dörddə|beşdə|bir|iki|üç|dörd|beş|altı|yeddi|səkkiz|doqquz|on))(?:\s*[-–]?(?:də|da|de|ta|tə))?/i);
+
+    // Match exact hours like "saat 10-da", "saat 15:30-da", "saat 10:00", "14:00-da", "saat 8-də", "saat 9-da", "2-də", "2 də", "saat 18:00"
     const exactTimeMatch = textForTimeSearch.match(/(?:saat\s+)?(\d{1,2})(?::(\d{2}))?\s*(?:-|–)?\s*(?:da|də|de|ta|tə|yə|a|e|dək)?/i);
     const hourVal = exactTimeMatch && exactTimeMatch[1] ? parseInt(exactTimeMatch[1], 10) : null;
 
     // Spoken number words: "saat onda", "saat ikidə", "onda", "ikidə"
     const wordMatch = textForTimeSearch.match(/(?:saat\s+)?(onda|ikidə|üçdə|dörddə|beşdə|bir|iki|üç|dörd|beş|altı|yeddi|səkkiz|doqquz|on)(?:\s*[-–]?(?:də|da|de|ta|tə))?/i);
 
-    if (
+    if (morningMatch) {
+      const h = morningMatch[1] ? parseInt(morningMatch[1], 10) : (morningMatch[3] ? AZ_WORD_NUMBERS[morningMatch[3]] : 9);
+      targetHours = h <= 12 ? h : h - 12;
+      targetMinutes = morningMatch[2] ? parseInt(morningMatch[2], 10) : 0;
+      timeConfidence = 'exact';
+    } else if (afternoonMatch) {
+      const h = afternoonMatch[1] ? parseInt(afternoonMatch[1], 10) : (afternoonMatch[3] ? AZ_WORD_NUMBERS[afternoonMatch[3]] : 2);
+      targetHours = h >= 1 && h <= 6 ? h + 12 : (h === 12 ? 12 : h);
+      targetMinutes = afternoonMatch[2] ? parseInt(afternoonMatch[2], 10) : 0;
+      timeConfidence = 'exact';
+    } else if (eveningMatch) {
+      const h = eveningMatch[1] ? parseInt(eveningMatch[1], 10) : (eveningMatch[3] ? AZ_WORD_NUMBERS[eveningMatch[3]] : 8);
+      targetHours = h >= 1 && h <= 11 ? h + 12 : (h === 12 ? 0 : h);
+      targetMinutes = eveningMatch[2] ? parseInt(eveningMatch[2], 10) : 0;
+      timeConfidence = 'exact';
+    } else if (nightMatch) {
+      const h = nightMatch[1] ? parseInt(nightMatch[1], 10) : (nightMatch[3] ? AZ_WORD_NUMBERS[nightMatch[3]] : 1);
+      targetHours = h >= 1 && h <= 6 ? h : (h === 12 ? 0 : (h === 11 ? 23 : h));
+      targetMinutes = nightMatch[2] ? parseInt(nightMatch[2], 10) : 0;
+      timeConfidence = 'exact';
+    } else if (
       hourVal !== null &&
       hourVal >= 0 &&
       hourVal <= 24 &&
@@ -725,14 +752,31 @@ export class IntelligentRouter {
       targetMinutes = exactTimeMatch?.[2] ? parseInt(exactTimeMatch[2], 10) : 0;
       timeConfidence = 'exact';
 
-      // Natural speech: hours 1 to 6 default to afternoon unless night is specified
-      if (targetHours >= 1 && targetHours <= 6 && !/gecə|gece/i.test(lower)) {
+      // Check dayparts
+      if (/axşam|axsam/i.test(lower) && targetHours >= 1 && targetHours <= 11) {
+        targetHours += 12;
+      } else if (/günorta|gunorta/i.test(lower) && targetHours >= 1 && targetHours <= 6) {
+        targetHours += 12;
+      } else if (/gecə|gece/i.test(lower) && targetHours >= 1 && targetHours <= 6) {
+        // night stays 1-6
+      } else if (/səhər|seher/i.test(lower) && targetHours > 12) {
+        targetHours -= 12;
+      } else if (targetHours >= 1 && targetHours <= 6 && !/gecə|gece/i.test(lower)) {
+        // Natural speech: hours 1 to 6 default to afternoon unless night is specified
         targetHours += 12;
       }
     } else if (wordMatch && wordMatch[1] && AZ_WORD_NUMBERS[wordMatch[1]]) {
       targetHours = AZ_WORD_NUMBERS[wordMatch[1]];
       timeConfidence = 'exact';
-      if (targetHours >= 1 && targetHours <= 6 && !/gecə|gece/i.test(lower)) {
+      if (/axşam|axsam/i.test(lower) && targetHours >= 1 && targetHours <= 11) {
+        targetHours += 12;
+      } else if (/günorta|gunorta/i.test(lower) && targetHours >= 1 && targetHours <= 6) {
+        targetHours += 12;
+      } else if (/gecə|gece/i.test(lower) && targetHours >= 1 && targetHours <= 6) {
+        // night stays
+      } else if (/səhər|seher/i.test(lower) && targetHours > 12) {
+        targetHours -= 12;
+      } else if (targetHours >= 1 && targetHours <= 6 && !/gecə|gece/i.test(lower)) {
         targetHours += 12;
       }
     } else if (/axşam|axşamüstü|axsam/i.test(lower)) {
