@@ -114,12 +114,20 @@ export class NativeVoiceRecorderProvider implements SpeechRecognitionProvider {
       }
       console.log('[NATIVE VOICE] recording started');
 
-      // 4. Attach silence auto-stop listener from native iOS VoiceRecorder
+      // 4. Attach silence auto-stop and realtime audio chunk listeners from native iOS VoiceRecorder
       try {
         (VoiceRecorder as any).addListener?.('silenceAutoStop', async () => {
           console.log('[NATIVE VOICE] silenceAutoStop event received from native iOS VoiceRecorder');
           if (this.isRecording && !this.isStopping) {
             await this.stop();
+          }
+        });
+
+        // [REALTIME-STT] Native audio chunks for gpt-live-transcribe
+        // Prepares chunk listener for conversation.item.input_audio_transcription.delta processing
+        (VoiceRecorder as any).addListener?.('realtimeAudioChunk', (chunk: any) => {
+          if (this.isRecording && chunk?.data) {
+            // Realtime audio chunk received from native iPhone AVAudioEngine
           }
         });
       } catch (listenerErr) {

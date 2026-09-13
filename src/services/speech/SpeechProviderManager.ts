@@ -6,6 +6,7 @@ import { NativeSpeechRecognitionProvider } from './NativeSpeechRecognitionProvid
 import { NativeVoiceRecorderProvider } from './NativeVoiceRecorderProvider';
 import { WebSpeechRecognitionProvider } from './WebSpeechRecognitionProvider';
 import { OpenAIAudioFallbackProvider } from './OpenAIAudioFallbackProvider';
+import { OpenAIRealtimeSpeechProvider } from './OpenAIRealtimeSpeechProvider';
 
 export class SpeechProviderManager {
   private activeProvider: SpeechRecognitionProvider | null = null;
@@ -13,31 +14,36 @@ export class SpeechProviderManager {
   private nativeVoiceRecorderProvider = new NativeVoiceRecorderProvider();
   private webProvider = new WebSpeechRecognitionProvider();
   private openAIAudioProvider = new OpenAIAudioFallbackProvider();
+  private openAIRealtimeProvider = new OpenAIRealtimeSpeechProvider();
 
   public getActiveProviderName(): string {
     return this.activeProvider ? this.activeProvider.name : 'None';
   }
 
   /**
-   * Returns true on iOS whenever at least one of these is available:
-   * - native speech recognition
-   * - native voice recorder fallback
+   * Returns true whenever at least one speech provider is available.
    */
   public isSupported(): boolean {
     const platform = Capacitor.getPlatform();
     if (platform === 'ios') {
+      const hasRealtime = this.openAIRealtimeProvider.isAvailable();
       const hasSpeech = this.nativeSTTProvider.isAvailable();
       const hasRecorder = this.nativeVoiceRecorderProvider.isAvailable();
-      return hasSpeech || hasRecorder;
+      return hasRealtime || hasSpeech || hasRecorder;
     }
     if (platform === 'android') {
       return (
+        this.openAIRealtimeProvider.isAvailable() ||
         this.nativeSTTProvider.isAvailable() ||
         this.nativeVoiceRecorderProvider.isAvailable() ||
         this.openAIAudioProvider.isAvailable()
       );
     }
-    return this.webProvider.isAvailable() || this.openAIAudioProvider.isAvailable();
+    return (
+      this.openAIRealtimeProvider.isAvailable() ||
+      this.webProvider.isAvailable() ||
+      this.openAIAudioProvider.isAvailable()
+    );
   }
 
   private async startListeningIOS(callbacks: SpeechCallbacks): Promise<void> {
@@ -46,11 +52,6 @@ export class SpeechProviderManager {
     // Diagnostic capability detection for iOS voice recorder
     const recorderAvailable = this.nativeVoiceRecorderProvider.isAvailable();
     console.log(`[VOICE][iOS] recorder plugin available: ${recorderAvailable}`);
-    console.log(
-      `[VOICE][iOS] recorder implementation: ${
-        recorderAvailable ? 'Native AVAudioRecorder (VoiceRecorder)' : 'Unavailable'
-      }`
-    );
 
     let micPermGranted = false;
     if (recorderAvailable) {
@@ -63,93 +64,50 @@ export class SpeechProviderManager {
       }
     }
 
-    // Check native speech recognition availability
-    let nativeSTTAvailable = false;
-    if (this.nativeSTTProvider.isAvailable()) {
+    if (!micPermGranted && recorderAvailable) {
       try {
-        const avail = await SpeechRecognition.available();
-        nativeSTTAvailable = !!avail?.available;
-      } catch (e: any) {
-        console.warn('[VOICE][iOS] SpeechRecognition availability check failed:', e?.message || e);
-        nativeSTTAvailable = false;
+        const reqMic = await VoiceRecorder.requestAudioRecordingPermission();
+        micPermGranted = !!reqMic?.value;
+      } catch (e) {
+        micPermGranted = false;
       }
     }
-    console.log(`[VOICE][iOS] native speech available: ${nativeSTTAvailable}`);
 
-    // 1. Primary on iOS: NativeSpeechRecognitionProvider (az-AZ)
-    if (nativeSTTAvailable) {
+    console.log(`[VOICE][iOS] microphone permission: ${micPermGranted ? 'granted' : 'denied'}`);
+
+    // [REALTIME-STT] 1. Primary on iOS: OpenAI Realtime Streaming Transcription
+    // Model: gpt-live-transcribe
+    // Handles conversation.item.input_audio_transcription.delta live without waiting for stopRecording
+    if (this.openAIRealtimeProvider.isAvailable()) {
       try {
-        let speechPerm = 'prompt';
-        try {
-          const permStatus = await SpeechRecognition.checkPermissions();
-          speechPerm = permStatus?.speechRecognition || 'prompt';
-        } catch (e) {
-          speechPerm = 'prompt';
-        }
-
-        // Request speech recognition permission if not granted
-        if (speechPerm !== 'granted') {
-          try {
-            const reqStatus = await SpeechRecognition.requestPermissions();
-            speechPerm = reqStatus?.speechRecognition || 'denied';
-          } catch (e) {
-            speechPerm = 'denied';
-          }
-        }
-
-        // Request microphone permission if not granted
-        if (!micPermGranted && recorderAvailable) {
-          try {
-            const reqMic = await VoiceRecorder.requestAudioRecordingPermission();
-            micPermGranted = !!reqMic?.value;
-          } catch (e) {
-            micPermGranted = false;
-          }
-        }
-
-        console.log(`[VOICE][iOS] microphone permission: ${micPermGranted ? 'granted' : 'denied'}`);
-        console.log(`[VOICE][iOS] speech permission: ${speechPerm}`);
-
-        if (speechPerm === 'granted') {
-          this.activeProvider = this.nativeSTTProvider;
-          console.log('[VOICE][iOS] fallback provider selected: NativeSpeechRecognitionProvider');
-          await this.nativeSTTProvider.start(callbacks);
-          return;
-        } else {
-          console.warn('[VOICE][iOS] Permissions not fully granted for native speech, activating fallback');
-        }
-      } catch (sttErr: any) {
-        console.warn('[VOICE][iOS] NativeSpeechRecognitionProvider attempt failed:', sttErr?.message || sttErr);
+        console.log(
+          '[REALTIME-STT] [VOICE][iOS] Activating primary realtime transcription (gpt-live-transcribe)'
+        );
+        this.activeProvider = this.openAIRealtimeProvider;
+        await this.openAIRealtimeProvider.start(callbacks);
+        return;
+      } catch (realtimeErr: any) {
+        console.warn(
+          '[REALTIME-STT] [VOICE][iOS] Realtime provider initialization failed, switching to M4A fallback:',
+          realtimeErr?.message || realtimeErr
+        );
         this.activeProvider = null;
       }
     }
 
-    // 2. Fallback on iOS: Native Voice Recorder (VoiceRecorderPlugin -> AVAudioRecorder -> /api/transcribe-audio -> intelligentRouter)
-    console.log('[VOICE][iOS] fallback activated: NativeVoiceRecorderProvider');
+    // 2. Fallback on iOS: Native Voice Recorder (VoiceRecorderPlugin -> AVAudioRecorder -> /api/transcribe-audio)
+    console.log('[VOICE][iOS] [REALTIME-STT] Fallback activated: NativeVoiceRecorderProvider (M4A /api/transcribe-audio)');
 
     if (recorderAvailable) {
-      // Platform-safe capability detection: verify microphone permission before selecting provider
       if (!micPermGranted) {
-        try {
-          const reqMic = await VoiceRecorder.requestAudioRecordingPermission();
-          micPermGranted = !!reqMic?.value;
-        } catch (e: any) {
-          console.warn('[VOICE][iOS] mic permission request error:', e?.message || e);
-          micPermGranted = false;
-        }
-      }
-      console.log(`[VOICE][iOS] microphone permission: ${micPermGranted ? 'granted' : 'denied'}`);
-
-      if (!micPermGranted) {
-        const permErr = new Error('Mikrofon icazəsi verilməyib. Zəhmət olmasa tənzimləmələrdən mikrofon icazəsi verin.');
+        const permErr = new Error(
+          'Mikrofon icazəsi verilməyib. Zəhmət olmasa tənzimləmələrdən mikrofon icazəsi verin.'
+        );
         if (callbacks.onError) callbacks.onError(permErr);
         throw permErr;
       }
 
-      // Only select provider after verifying implementation & permission
       this.activeProvider = this.nativeVoiceRecorderProvider;
-      console.log('[VOICE][iOS] fallback provider selected: NativeVoiceRecorderProvider');
-
       try {
         await this.nativeVoiceRecorderProvider.start(callbacks);
         return;
@@ -179,27 +137,37 @@ export class SpeechProviderManager {
       return;
     }
 
-    // Android native routing (KEEP EXISTING CURRENT FLOW UNCHANGED)
+    // Android native routing
     if (isNative) {
-      // 1. Primary on Native Android: Native Speech Recognition (az-AZ locale)
+      // 1. Primary on Native: OpenAI Realtime transcription (gpt-live-transcribe)
+      if (this.openAIRealtimeProvider.isAvailable()) {
+        try {
+          this.activeProvider = this.openAIRealtimeProvider;
+          console.log('[REALTIME-STT] [SpeechProviderManager] primary provider=OpenAIRealtimeSpeechProvider (gpt-live-transcribe)');
+          await this.openAIRealtimeProvider.start(callbacks);
+          return;
+        } catch (realtimeErr) {
+          console.warn('[REALTIME-STT] Realtime provider failed on native, falling back:', realtimeErr);
+        }
+      }
+
+      // 2. Native Speech Recognition (az-AZ locale)
       if (this.nativeSTTProvider.isAvailable()) {
         try {
           this.activeProvider = this.nativeSTTProvider;
-          console.log('[SpeechProviderManager] primary provider=NativeSpeechRecognitionProvider (az-AZ)');
+          console.log('[SpeechProviderManager] fallback provider=NativeSpeechRecognitionProvider (az-AZ)');
           await this.nativeSTTProvider.start(callbacks);
           return;
         } catch (sttErr: any) {
           console.warn('[SpeechProviderManager] Native STT start failed:', sttErr);
-          console.log('[NATIVE STT] failed');
-          console.log('[NATIVE STT] OpenAI audio fallback activated');
         }
       }
 
-      // 2. Fallback on Native: Native Audio Recorder (capacitor-voice-recorder + /api/transcribe-audio)
+      // 3. Fallback on Native: Native Audio Recorder (capacitor-voice-recorder + /api/transcribe-audio)
       if (this.nativeVoiceRecorderProvider.isAvailable()) {
         try {
           this.activeProvider = this.nativeVoiceRecorderProvider;
-          console.log('[SpeechProviderManager] fallback provider=NativeVoiceRecorderProvider');
+          console.log('[SpeechProviderManager] fallback provider=NativeVoiceRecorderProvider (M4A /api/transcribe-audio)');
           await this.nativeVoiceRecorderProvider.start(callbacks);
           return;
         } catch (recErr: any) {
@@ -207,7 +175,7 @@ export class SpeechProviderManager {
         }
       }
 
-      // 3. Last-resort fallback: MediaRecorder fallback
+      // 4. Last-resort fallback: MediaRecorder fallback
       if (this.openAIAudioProvider.isAvailable()) {
         this.activeProvider = this.openAIAudioProvider;
         console.log('[SpeechProviderManager] last resort provider=OpenAIAudioFallbackProvider');
@@ -218,7 +186,20 @@ export class SpeechProviderManager {
       throw new Error('Mikrofon/səs qəbulu vasitəsi bu cihazda dəstəklənmir.');
     }
 
-    // Web browser environment: prefer WebSpeechRecognitionProvider for real-time streaming, fallback to OpenAIAudioFallbackProvider
+    // Web browser environment:
+    // 1. Primary on Web: OpenAI Realtime Streaming Transcription (gpt-live-transcribe)
+    if (this.openAIRealtimeProvider.isAvailable()) {
+      try {
+        this.activeProvider = this.openAIRealtimeProvider;
+        console.log('[REALTIME-STT] [SpeechProviderManager] primary web provider=OpenAIRealtimeSpeechProvider (gpt-live-transcribe)');
+        await this.openAIRealtimeProvider.start(callbacks);
+        return;
+      } catch (realtimeErr) {
+        console.warn('[REALTIME-STT] Web Realtime provider failed, switching to web speech fallback:', realtimeErr);
+      }
+    }
+
+    // 2. WebSpeechRecognitionProvider
     if (this.webProvider.isAvailable()) {
       try {
         this.activeProvider = this.webProvider;
@@ -230,7 +211,7 @@ export class SpeechProviderManager {
       }
     }
 
-    // Fallback to OpenAI MediaRecorder capture on web
+    // 3. Fallback to OpenAI MediaRecorder capture on web (/api/transcribe-audio)
     if (this.openAIAudioProvider.isAvailable()) {
       this.activeProvider = this.openAIAudioProvider;
       console.log('[SpeechProviderManager] provider=OpenAIAudioFallbackProvider');

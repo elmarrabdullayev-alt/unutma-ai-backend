@@ -73,6 +73,26 @@ export class ApiClient {
     return `${base}${normalizedPath}`;
   }
 
+  /**
+   * Builds the WebSocket URL for realtime audio streaming and transcription.
+   * [REALTIME-STT] Returns ws:// or wss:// endpoint URL.
+   */
+  public getWebSocketUrl(path: string = '/api/realtime-stt'): string {
+    const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+    const base = this.getBaseUrl();
+    if (base) {
+      const wsBase = base.replace(/^https:\/\//i, 'wss://').replace(/^http:\/\//i, 'ws://');
+      return `${wsBase}${normalizedPath}`;
+    }
+
+    if (typeof window !== 'undefined' && window.location) {
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      return `${protocol}//${window.location.host}${normalizedPath}`;
+    }
+
+    return `ws://localhost:3000${normalizedPath}`;
+  }
+
   private async request<T>(
     endpoint: string,
     options: RequestInit = {},

@@ -168,19 +168,24 @@ export const VoiceAssistantFullScreen: React.FC<VoiceAssistantFullScreenProps> =
       playMicStartSound();
       setIsListening(true);
 
+      // [REALTIME-STT] Initiate live audio streaming with OpenAI Realtime
+      // Model: gpt-live-transcribe
+      // Updates interimText immediately upon conversation.item.input_audio_transcription.delta
       await speechManager.startListening({
         onResult: (text, isFinal) => {
           if (isMountedRef.current) {
             if (isFinal) {
+              // Final transcript only triggers AI action
               clearSilenceTimer();
               speechBeganRef.current = false;
               setTranscript(text);
               setInterimText('');
-              // If final text is received directly, analyze it
+              console.log('[REALTIME-STT] Final transcript received, triggering action:', text);
               if (text.trim()) {
                 handleAnalyzeText(text.trim());
               }
             } else {
+              // Live delta updates the same transcript text block immediately while speaking
               setInterimText(text);
               if (text.trim().length > 0) {
                 speechBeganRef.current = true;
