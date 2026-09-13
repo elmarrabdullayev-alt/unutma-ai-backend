@@ -22,6 +22,9 @@ async function main() {
     console.log("\n>>> Running Audio Transcription Tests...");
     await runCommand("npx", ["tsx", "tests/transcription.test.ts"]);
 
+    console.log("\n>>> Running Notification Sound Tests...");
+    await runCommand("npx", ["tsx", "tests/notification_sound.test.ts"]);
+
     console.log("\n==================================================");
     console.log("ALL TESTS COMPLETED SUCCESSFULLY");
     console.log("==================================================");

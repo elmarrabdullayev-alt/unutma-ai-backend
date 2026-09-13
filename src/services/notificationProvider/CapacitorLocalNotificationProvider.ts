@@ -24,7 +24,7 @@ export class CapacitorLocalNotificationProvider implements NotificationProvider 
     if (!this.isAvailable()) return;
 
     try {
-      // 1. Setup Android Notification Channel with high priority and alarm sound
+      // 1. Setup Android Notification Channel with high priority and default sound
       if (Capacitor.getPlatform() === 'android') {
         await LocalNotifications.createChannel({
           id: 'unutma_reminders_channel',
@@ -32,7 +32,6 @@ export class CapacitorLocalNotificationProvider implements NotificationProvider 
           description: 'Dəqiq vaxtlı səsli və vizual xatırlatma siqnalları',
           importance: 5, // High / Max
           visibility: 1, // Public on lock screen
-          sound: 'reminder_alarm.wav',
           vibration: true,
           lights: true,
           lightColor: '#7C3AED',
@@ -96,6 +95,7 @@ export class CapacitorLocalNotificationProvider implements NotificationProvider 
     if (!this.isAvailable()) return 'denied';
     try {
       const status = await LocalNotifications.requestPermissions();
+      console.log(`[NOTIFICATION] permission status: ${status.display}`);
       if (status.display === 'granted') {
         return 'granted';
       }
@@ -110,6 +110,7 @@ export class CapacitorLocalNotificationProvider implements NotificationProvider 
     if (!this.isAvailable()) return 'denied';
     try {
       const status = await LocalNotifications.checkPermissions();
+      console.log(`[NOTIFICATION] permission status: ${status.display}`);
       if (status.display === 'granted') {
         return 'granted';
       }
@@ -172,6 +173,7 @@ export class CapacitorLocalNotificationProvider implements NotificationProvider 
       every = 'year';
     }
 
+    // Normal reminder notification schema with default iOS notification sound explicitly set
     const notifSchema: LocalNotificationSchema = {
       id: intId,
       title: `🔔 Unutma AI: ${reminder.title}`,
@@ -186,7 +188,7 @@ export class CapacitorLocalNotificationProvider implements NotificationProvider 
       },
       channelId: 'unutma_reminders_channel',
       actionTypeId: 'REMINDER_ACTIONS',
-      sound: 'reminder_alarm.wav',
+      sound: 'default',
       extra: {
         reminderId: reminder.id,
         reminderData: reminder,
@@ -194,10 +196,19 @@ export class CapacitorLocalNotificationProvider implements NotificationProvider 
     };
 
     try {
+      console.log(`[NOTIFICATION] scheduling reminder: "${reminder.title}" (id: ${reminder.id}) at ${dueTime.toISOString()}`);
+      console.log('[NOTIFICATION] sound: default');
+      try {
+        const permStatus = await LocalNotifications.checkPermissions();
+        console.log(`[NOTIFICATION] permission status: ${permStatus.display}`);
+      } catch {
+        // Safe check ignore
+      }
+
       await LocalNotifications.schedule({
         notifications: [notifSchema],
       });
-      console.log(`[CapacitorNotifications] Scheduled exact native alarm for "${reminder.title}" at ${dueTime.toISOString()}`);
+      console.log(`[CapacitorNotifications] Scheduled exact native alarm for "${reminder.title}" at ${dueTime.toISOString()} with sound: default`);
     } catch (e) {
       console.error('[CapacitorNotifications] Schedule error:', e);
     }

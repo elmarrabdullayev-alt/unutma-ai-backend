@@ -1,4 +1,5 @@
 import React from 'react';
+import { motion } from 'motion/react';
 import {
   X,
   Check,
@@ -59,14 +60,26 @@ export const RoutineReviewModal: React.FC<RoutineReviewModalProps> = ({
   };
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-black/85 backdrop-blur-md animate-fade-in"
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.2 }}
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-black/85 backdrop-blur-md"
       style={{
         paddingTop: 'max(env(safe-area-inset-top, 0px), 12px)',
         paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 12px)',
       }}
+      onClick={onClose}
     >
-      <div className="w-full max-w-md max-h-[90vh] flex flex-col rounded-3xl bg-[#0F1523] border border-violet-500/40 shadow-2xl overflow-hidden text-white animate-scale-up">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.94, y: 10 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.94, y: 10 }}
+        transition={{ duration: 0.22, ease: [0.25, 1, 0.5, 1] }}
+        onClick={(e) => e.stopPropagation()}
+        className="w-full max-w-md max-h-[90vh] flex flex-col rounded-3xl bg-[#0F1523] border border-violet-500/40 shadow-2xl overflow-hidden text-white"
+      >
         {/* Header */}
         <div className="p-4 border-b border-white/10 flex items-center justify-between bg-[#131A2D]">
           <div className="flex items-center gap-3">
@@ -81,13 +94,15 @@ export const RoutineReviewModal: React.FC<RoutineReviewModalProps> = ({
             </div>
           </div>
 
-          <button
+          <motion.button
+            whileTap={{ scale: 0.98 }}
+            whileHover={{ scale: 1.02 }}
             onClick={onClose}
             aria-label="Bağla"
-            className="h-11 w-11 -mr-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 flex items-center justify-center transition-all active:scale-95 shrink-0"
+            className="h-11 w-11 -mr-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 flex items-center justify-center transition-colors shrink-0"
           >
             <X className="h-4 w-4" />
-          </button>
+          </motion.button>
         </div>
 
         {/* Routine Summary Card */}
@@ -161,28 +176,32 @@ export const RoutineReviewModal: React.FC<RoutineReviewModalProps> = ({
 
         {/* 3 Explicit Actions: Ləğv et, Dəyiş, Təsdiq et */}
         <div className="p-4 border-t border-white/10 bg-[#121828] flex items-center gap-2">
-          <button
+          <motion.button
+            whileTap={{ scale: 0.98 }}
             onClick={onClose}
-            className="flex-1 py-3 rounded-2xl bg-white/5 hover:bg-white/10 text-slate-300 font-bold text-xs transition-all active:scale-95"
+            className="flex-1 py-3 rounded-2xl bg-white/5 hover:bg-white/10 text-slate-300 font-bold text-xs transition-colors"
           >
             Ləğv et
-          </button>
-          <button
+          </motion.button>
+          <motion.button
+            whileTap={{ scale: 0.98 }}
             onClick={() => onEdit(proposal)}
-            className="flex-1 py-3 rounded-2xl bg-[#1C253B] hover:bg-[#25304E] text-violet-300 font-bold text-xs border border-violet-500/20 flex items-center justify-center gap-1.5 transition-all active:scale-95"
+            className="flex-1 py-3 rounded-2xl bg-[#1C253B] hover:bg-[#25304E] text-violet-300 font-bold text-xs border border-violet-500/20 flex items-center justify-center gap-1.5 transition-colors"
           >
             <Pencil className="h-3.5 w-3.5" />
             <span>Dəyiş</span>
-          </button>
-          <button
+          </motion.button>
+          <motion.button
+            whileTap={{ scale: 0.98 }}
+            whileHover={{ scale: 1.02 }}
             onClick={handleConfirm}
-            className="flex-[1.4] py-3 rounded-2xl bg-violet-600 hover:bg-violet-500 text-white font-black text-xs shadow-lg flex items-center justify-center gap-1.5 transition-all active:scale-95"
+            className="flex-[1.4] py-3 rounded-2xl bg-violet-600 hover:bg-violet-500 text-white font-black text-xs shadow-lg flex items-center justify-center gap-1.5 transition-colors"
           >
             <Check className="h-4 w-4 stroke-[3]" />
             <span>Təsdiq et</span>
-          </button>
+          </motion.button>
         </div>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 };

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import {
   Mic,
   MicOff,
@@ -586,8 +587,12 @@ export const VoiceAssistantFullScreen: React.FC<VoiceAssistantFullScreenProps> =
   if (!isOpen) return null;
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex flex-col bg-[#080C15] text-slate-50 animate-fade-in overflow-y-auto"
+    <motion.div
+      initial={{ opacity: 0, scale: 0.98 }}
+      animate={{ opacity: 1, scale: 1 }}
+      exit={{ opacity: 0, scale: 0.98 }}
+      transition={{ duration: 0.22, ease: [0.25, 1, 0.5, 1] }}
+      className="fixed inset-0 z-50 flex flex-col bg-[#080C15] text-slate-50 overflow-y-auto"
       style={{
         paddingTop: 'max(env(safe-area-inset-top, 0px), 12px)',
         paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 16px)',
@@ -604,17 +609,19 @@ export const VoiceAssistantFullScreen: React.FC<VoiceAssistantFullScreenProps> =
           </span>
         </div>
 
-        <button
+        <motion.button
+          whileTap={{ scale: 0.98 }}
+          whileHover={{ scale: 1.02 }}
           id="close-voice-assistant-fullscreen"
           onClick={() => {
             stopListeningProcess();
             onClose();
           }}
           aria-label="Bağla"
-          className="flex h-11 w-11 items-center justify-center rounded-full bg-white/10 text-slate-300 hover:text-white active:scale-95 transition-all shrink-0"
+          className="flex h-11 w-11 items-center justify-center rounded-full bg-white/10 text-slate-300 hover:text-white transition-colors shrink-0"
         >
           <X className="h-4 w-4" />
-        </button>
+        </motion.button>
       </div>
 
       {/* Main Container */}
@@ -739,11 +746,13 @@ export const VoiceAssistantFullScreen: React.FC<VoiceAssistantFullScreenProps> =
               </div>
 
               {/* Confirm / Parse Trigger Button */}
-              <button
+              <motion.button
+                whileTap={{ scale: 0.98 }}
+                whileHover={{ scale: 1.01 }}
                 id="voice-screen-analyze-btn"
                 onClick={() => handleAnalyzeText()}
                 disabled={isProcessing || (!transcript.trim() && !interimText.trim())}
-                className="flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-tr from-violet-600 to-indigo-600 py-3.5 text-sm font-bold text-white shadow-xl shadow-violet-500/30 border border-white/10 hover:brightness-110 active:scale-98 disabled:opacity-40 transition-all"
+                className="flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-tr from-violet-600 to-indigo-600 py-3.5 text-sm font-bold text-white shadow-xl shadow-violet-500/30 border border-white/10 hover:brightness-110 disabled:opacity-40 transition-all"
               >
                 {isProcessing ? (
                   <>
@@ -757,7 +766,7 @@ export const VoiceAssistantFullScreen: React.FC<VoiceAssistantFullScreenProps> =
                     <ArrowRight className="h-4 w-4 ml-0.5" />
                   </>
                 )}
-              </button>
+              </motion.button>
             </div>
           </>
         )}
@@ -1065,6 +1074,6 @@ export const VoiceAssistantFullScreen: React.FC<VoiceAssistantFullScreenProps> =
           </div>
         )}
       </div>
-    </div>
+    </motion.div>
   );
 };

@@ -17,7 +17,7 @@ const config: CapacitorConfig = {
     LocalNotifications: {
       smallIcon: 'ic_stat_unutma_reminder',
       iconColor: '#7C3AED',
-      sound: 'reminder_alarm.wav',
+      presentationOptions: ['badge', 'sound', 'banner', 'list'],
     },
     SplashScreen: {
       launchShowDuration: 1500,

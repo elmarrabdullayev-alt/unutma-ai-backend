@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import {
   ArrowLeft,
   CheckCircle2,
@@ -76,7 +77,13 @@ export const ProgressDashboard: React.FC<ProgressDashboardProps> = ({
   const hasHistory = data.hasAnyHistory;
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-[#090D16] text-white overflow-hidden animate-in fade-in duration-200">
+    <motion.div
+      initial={{ opacity: 0, x: 20 }}
+      animate={{ opacity: 1, x: 0 }}
+      exit={{ opacity: 0, x: 20 }}
+      transition={{ duration: 0.22, ease: [0.25, 1, 0.5, 1] }}
+      className="fixed inset-0 z-50 flex flex-col bg-[#090D16] text-white overflow-hidden"
+    >
       {/* Top Header Bar */}
       <div
         className="flex items-center justify-between border-b border-white/5 bg-[#0C111E]/95 px-4 pb-3.5 backdrop-blur-xl shrink-0"
@@ -85,14 +92,16 @@ export const ProgressDashboard: React.FC<ProgressDashboardProps> = ({
         }}
       >
         <div className="flex items-center gap-3">
-          <button
+          <motion.button
+            whileTap={{ scale: 0.98 }}
+            whileHover={{ scale: 1.02 }}
             onClick={onClose}
             aria-label="Geri"
-            className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-xl bg-white/5 text-slate-300 border border-white/10 hover:bg-white/10 active:scale-95 transition-all shrink-0"
+            className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-xl bg-white/5 text-slate-300 border border-white/10 hover:bg-white/10 transition-colors shrink-0"
             title="Geri"
           >
             <ArrowLeft className="h-4 w-4" />
-          </button>
+          </motion.button>
           <div>
             <h1 className="text-base font-black tracking-tight text-white">İrəliləyişin</h1>
             <p className="text-[10px] font-medium text-slate-400">Kiçik addımlar böyük nəticələr yaradır.</p>
@@ -309,6 +318,6 @@ export const ProgressDashboard: React.FC<ProgressDashboardProps> = ({
           onDismiss={handleDismissMilestone}
         />
       )}
-    </div>
+    </motion.div>
   );
 };

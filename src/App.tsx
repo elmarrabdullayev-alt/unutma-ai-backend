@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import { Sparkles } from 'lucide-react';
+import { screenVariants } from './utils/motion';
 import { Reminder, UserProfile } from './types';
 import { HomeScreen } from './components/HomeScreen';
 import { CalendarScreen } from './components/CalendarScreen';
@@ -291,78 +293,116 @@ export default function App() {
             </div>
           )}
 
-          {/* Dynamic Native Mobile Screens */}
+          {/* Dynamic Native Mobile Screens with Fluid Transitions */}
           <main className="flex-1 pb-36 pt-2 overflow-y-auto">
-            {currentTab === 'home' && (
-              <HomeScreen
-                reminders={reminders}
-                userProfile={userProfile}
-                onNavigateToProfile={() => setCurrentTab('profile')}
-                onToggleComplete={handleToggleComplete}
-                onDelete={handleDeleteReminder}
-                onEdit={(r) => setEditingReminder(r)}
-                onSnooze={handleSnooze}
-                onOpenVoice={() => setIsVoiceFullScreenOpen(true)}
-                onOpenManualAdd={() => setIsManualModalOpen(true)}
-                onOpenFocus={handleOpenFocus}
-                onOpenPlanner={() => {
-                  setDailyPlanInitialProposal(null);
-                  setIsDailyPlanModalOpen(true);
-                }}
-                onOpenProgress={() => setIsProgressDashboardOpen(true)}
-                onOpenRoutineSession={(routine) => setActiveRoutineSession(routine)}
-                onOpenCreateRoutine={(initialType) => {
-                  setEditingRoutine(null);
-                  setEditorInitialProposal(null);
-                  setEditorInitialType(initialType);
-                  setIsRoutineEditorOpen(true);
-                }}
-                activeFocusSession={activeFocusSession}
-                notificationPermission={notificationPermission}
-                onRequestNotificationPermission={handleRequestNotification}
-              />
-            )}
+            <AnimatePresence mode="wait" initial={false}>
+              {currentTab === 'home' && (
+                <motion.div
+                  key="tab-home"
+                  variants={screenVariants}
+                  initial="initial"
+                  animate="animate"
+                  exit="exit"
+                  className="w-full"
+                >
+                  <HomeScreen
+                    reminders={reminders}
+                    userProfile={userProfile}
+                    onNavigateToProfile={() => setCurrentTab('profile')}
+                    onToggleComplete={handleToggleComplete}
+                    onDelete={handleDeleteReminder}
+                    onEdit={(r) => setEditingReminder(r)}
+                    onSnooze={handleSnooze}
+                    onOpenVoice={() => setIsVoiceFullScreenOpen(true)}
+                    onOpenManualAdd={() => setIsManualModalOpen(true)}
+                    onOpenFocus={handleOpenFocus}
+                    onOpenPlanner={() => {
+                      setDailyPlanInitialProposal(null);
+                      setIsDailyPlanModalOpen(true);
+                    }}
+                    onOpenProgress={() => setIsProgressDashboardOpen(true)}
+                    onOpenRoutineSession={(routine) => setActiveRoutineSession(routine)}
+                    onOpenCreateRoutine={(initialType) => {
+                      setEditingRoutine(null);
+                      setEditorInitialProposal(null);
+                      setEditorInitialType(initialType);
+                      setIsRoutineEditorOpen(true);
+                    }}
+                    activeFocusSession={activeFocusSession}
+                    notificationPermission={notificationPermission}
+                    onRequestNotificationPermission={handleRequestNotification}
+                  />
+                </motion.div>
+              )}
 
-            {currentTab === 'calendar' && (
-              <CalendarScreen
-                reminders={reminders}
-                onToggleComplete={handleToggleComplete}
-                onDelete={handleDeleteReminder}
-                onEdit={(r) => setEditingReminder(r)}
-                onSnooze={handleSnooze}
-                onFocus={handleOpenFocus}
-                onOpenVoice={() => setIsVoiceFullScreenOpen(true)}
-                onOpenManualAdd={() => setIsManualModalOpen(true)}
-              />
-            )}
+              {currentTab === 'calendar' && (
+                <motion.div
+                  key="tab-calendar"
+                  variants={screenVariants}
+                  initial="initial"
+                  animate="animate"
+                  exit="exit"
+                  className="w-full"
+                >
+                  <CalendarScreen
+                    reminders={reminders}
+                    onToggleComplete={handleToggleComplete}
+                    onDelete={handleDeleteReminder}
+                    onEdit={(r) => setEditingReminder(r)}
+                    onSnooze={handleSnooze}
+                    onFocus={handleOpenFocus}
+                    onOpenVoice={() => setIsVoiceFullScreenOpen(true)}
+                    onOpenManualAdd={() => setIsManualModalOpen(true)}
+                  />
+                </motion.div>
+              )}
 
-            {currentTab === 'ai' && (
-              <AiAssistantScreen
-                reminders={reminders}
-                onOpenVoice={() => setIsVoiceFullScreenOpen(true)}
-                onOpenDailyPlanner={(proposal) => {
-                  setDailyPlanInitialProposal(proposal || null);
-                  setIsDailyPlanModalOpen(true);
-                }}
-                onOpenRoutineReview={(proposal) => {
-                  setRoutineProposalForReview(proposal);
-                }}
-                onRemindersCreated={(newReminders) => {
-                  setToastMessage(`${newReminders.length} xatırlatma əlavə edildi.`);
-                }}
-              />
-            )}
+              {currentTab === 'ai' && (
+                <motion.div
+                  key="tab-ai"
+                  variants={screenVariants}
+                  initial="initial"
+                  animate="animate"
+                  exit="exit"
+                  className="w-full"
+                >
+                  <AiAssistantScreen
+                    reminders={reminders}
+                    onOpenVoice={() => setIsVoiceFullScreenOpen(true)}
+                    onOpenDailyPlanner={(proposal) => {
+                      setDailyPlanInitialProposal(proposal || null);
+                      setIsDailyPlanModalOpen(true);
+                    }}
+                    onOpenRoutineReview={(proposal) => {
+                      setRoutineProposalForReview(proposal);
+                    }}
+                    onRemindersCreated={(newReminders) => {
+                      setToastMessage(`${newReminders.length} xatırlatma əlavə edildi.`);
+                    }}
+                  />
+                </motion.div>
+              )}
 
-            {currentTab === 'profile' && (
-              <ProfileScreen
-                reminders={reminders}
-                notificationPermission={notificationPermission}
-                onRequestNotificationPermission={handleRequestNotification}
-                onImportReminders={handleImportReminders}
-                onReplayOnboarding={handleReplayOnboarding}
-                onOpenProgress={() => setIsProgressDashboardOpen(true)}
-              />
-            )}
+              {currentTab === 'profile' && (
+                <motion.div
+                  key="tab-profile"
+                  variants={screenVariants}
+                  initial="initial"
+                  animate="animate"
+                  exit="exit"
+                  className="w-full"
+                >
+                  <ProfileScreen
+                    reminders={reminders}
+                    notificationPermission={notificationPermission}
+                    onRequestNotificationPermission={handleRequestNotification}
+                    onImportReminders={handleImportReminders}
+                    onReplayOnboarding={handleReplayOnboarding}
+                    onOpenProgress={() => setIsProgressDashboardOpen(true)}
+                  />
+                </motion.div>
+              )}
+            </AnimatePresence>
           </main>
 
           {/* 4-Destination Native Fixed Bottom Nav with Glowing AI Mic */}

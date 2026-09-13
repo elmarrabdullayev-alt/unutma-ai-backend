@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
+import { motion, AnimatePresence } from 'motion/react';
 import {
   Check,
   Clock,
@@ -198,18 +199,14 @@ export const MobileReminderCard: React.FC<MobileReminderCardProps> = ({
         )}
 
         <div className={`flex items-center gap-2.5 ${isNowVariant ? 'py-2 px-3 pl-3.5' : 'p-3.5 pl-4'}`}>
-          {/* Completion checkbox with 44px min touch area:
-              - Inactive state: empty circle
-              - Completed state: checkmark inside circle
-              - Uses soft green / success accent
-              - Never deletes! Calls onToggleComplete only.
-          */}
-          <button
+          {/* Completion checkbox with 44px min touch area */}
+          <motion.button
+            whileTap={{ scale: 0.98 }}
             id={`toggle-complete-mobile-${reminder.id}`}
             onClick={handleComplete}
             className={`flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center ${
               isNowVariant ? '-ml-2' : '-ml-1.5'
-            } rounded-full active:scale-90 transition-transform`}
+            } rounded-full transition-transform`}
             title={isCompleted ? 'Aktiv et' : 'Tamamla'}
             aria-label={isCompleted ? 'Aktiv et' : 'Tamamla'}
           >
@@ -228,7 +225,7 @@ export const MobileReminderCard: React.FC<MobileReminderCardProps> = ({
                 }`}
               />
             </div>
-          </button>
+          </motion.button>
 
           {/* Reminder Information */}
           <div className="flex-1 min-w-0 pr-1">
@@ -310,45 +307,47 @@ export const MobileReminderCard: React.FC<MobileReminderCardProps> = ({
 
           {/* Trailing actions: TTS voice button & 3-dot menu */}
           <div className="flex items-center gap-0.5 shrink-0">
-            <button
+            <motion.button
+              whileTap={{ scale: 0.98 }}
+              whileHover={{ scale: 1.02 }}
               id={`speak-btn-mobile-${reminder.id}`}
               onClick={handleSpeak}
-              className={`flex min-h-[44px] min-w-[44px] items-center justify-center rounded-xl text-slate-400 hover:text-violet-300 active:scale-95 transition-colors ${
+              className={`flex min-h-[44px] min-w-[44px] items-center justify-center rounded-xl text-slate-400 hover:text-violet-300 transition-colors ${
                 isNowVariant ? '-mr-1' : ''
               }`}
               title="Səsləndir"
               aria-label="Səsləndir"
             >
               <Volume2 className={`${isNowVariant ? 'h-3.5 w-3.5' : 'h-4 w-4'}`} />
-            </button>
+            </motion.button>
 
-            <button
+            <motion.button
+              whileTap={{ scale: 0.98 }}
+              whileHover={{ scale: 1.02 }}
               ref={buttonRef}
               id={`options-btn-mobile-${reminder.id}`}
               onClick={handleOpenMenu}
-              className={`flex min-h-[44px] min-w-[44px] items-center justify-center rounded-xl active:scale-95 transition-colors ${
+              className={`flex min-h-[44px] min-w-[44px] items-center justify-center rounded-xl transition-colors ${
                 isNowVariant ? '-mr-1' : ''
               } ${showMenu ? 'text-white bg-white/10' : 'text-slate-400 hover:text-white'}`}
               title="Əməliyyatlar"
               aria-label="Əməliyyatlar"
             >
               <MoreHorizontal className={`${isNowVariant ? 'h-3.5 w-3.5' : 'h-4 w-4'}`} />
-            </button>
+            </motion.button>
           </div>
         </div>
       </div>
 
-      {/* PORTAL-BASED 3-DOT ACTION MENU:
-          - Renders directly to document.body
-          - Completely bypasses parent overflow-hidden
-          - Always above cards and bottom navigation with high z-index
-          - Opens upward if near screen bottom
-      */}
+      {/* PORTAL-BASED 3-DOT ACTION MENU */}
       {showMenu &&
         createPortal(
-          <>
+          <AnimatePresence>
             {/* Transparent backdrop for outside dismiss */}
-            <div
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
               className="fixed inset-0 z-[9998] bg-black/20"
               onClick={(e) => {
                 e.stopPropagation();
@@ -356,7 +355,11 @@ export const MobileReminderCard: React.FC<MobileReminderCardProps> = ({
               }}
             />
 
-            <div
+            <motion.div
+              initial={{ opacity: 0, scale: 0.92, y: menuPosition.shouldOpenUpward ? 6 : -6 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.92 }}
+              transition={{ duration: 0.16, ease: [0.25, 1, 0.5, 1] }}
               ref={menuRef}
               style={{
                 position: 'fixed',
@@ -364,7 +367,7 @@ export const MobileReminderCard: React.FC<MobileReminderCardProps> = ({
                 ...(menuPosition.top !== undefined ? { top: `${menuPosition.top}px` } : {}),
                 ...(menuPosition.bottom !== undefined ? { bottom: `${menuPosition.bottom}px` } : {}),
               }}
-              className={`z-[9999] w-52 rounded-2xl border border-white/10 bg-[#0F1420]/98 p-1.5 shadow-2xl backdrop-blur-xl animate-scale-in text-slate-200 ${
+              className={`z-[9999] w-52 rounded-2xl border border-white/10 bg-[#0F1420]/98 p-1.5 shadow-2xl backdrop-blur-xl text-slate-200 ${
                 menuPosition.shouldOpenUpward ? 'origin-bottom-right' : 'origin-top-right'
               }`}
               onClick={(e) => e.stopPropagation()}
@@ -376,7 +379,7 @@ export const MobileReminderCard: React.FC<MobileReminderCardProps> = ({
                   setShowMenu(false);
                   onEdit(reminder);
                 }}
-                className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-xs text-slate-200 hover:bg-slate-800/80 hover:text-white transition-colors text-left"
+                className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-xs text-slate-200 hover:bg-slate-800/80 hover:text-white active:scale-[0.98] transition-all text-left"
               >
                 <Edit2 className="h-3.5 w-3.5 text-violet-400 shrink-0" />
                 <span>Redaktə et</span>
@@ -391,7 +394,7 @@ export const MobileReminderCard: React.FC<MobileReminderCardProps> = ({
                       setShowMenu(false);
                       onEdit(reminder);
                     }}
-                    className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-xs text-slate-200 hover:bg-slate-800/80 hover:text-white transition-colors text-left"
+                    className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-xs text-slate-200 hover:bg-slate-800/80 hover:text-white active:scale-[0.98] transition-all text-left"
                   >
                     <Clock className="h-3.5 w-3.5 text-amber-400 shrink-0" />
                     <span>Vaxtı dəyiş</span>
@@ -404,7 +407,7 @@ export const MobileReminderCard: React.FC<MobileReminderCardProps> = ({
                       setShowMenu(false);
                       onEdit(reminder);
                     }}
-                    className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-xs text-slate-200 hover:bg-slate-800/80 hover:text-white transition-colors text-left"
+                    className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-xs text-slate-200 hover:bg-slate-800/80 hover:text-white active:scale-[0.98] transition-all text-left"
                   >
                     <Repeat className="h-3.5 w-3.5 text-indigo-400 shrink-0" />
                     <span>Təkrarlanmanı dəyiş</span>
@@ -417,7 +420,7 @@ export const MobileReminderCard: React.FC<MobileReminderCardProps> = ({
                       setShowMenu(false);
                       handleComplete(e);
                     }}
-                    className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-xs text-emerald-400 hover:bg-emerald-500/10 transition-colors text-left"
+                    className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-xs text-emerald-400 hover:bg-emerald-500/10 active:scale-[0.98] transition-all text-left"
                   >
                     <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
                     <span>Tamamlandı kimi işarələ</span>
@@ -431,7 +434,7 @@ export const MobileReminderCard: React.FC<MobileReminderCardProps> = ({
                         setShowMenu(false);
                         onFocus(reminder);
                       }}
-                      className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-xs text-violet-300 hover:bg-violet-950/40 transition-colors text-left"
+                      className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-xs text-violet-300 hover:bg-violet-950/40 active:scale-[0.98] transition-all text-left"
                     >
                       <Flame className="h-3.5 w-3.5 text-violet-400 shrink-0" />
                       <span>Fokuslan</span>
@@ -447,7 +450,7 @@ export const MobileReminderCard: React.FC<MobileReminderCardProps> = ({
                       setShowMenu(false);
                       handleComplete(e);
                     }}
-                    className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-xs text-violet-300 hover:bg-violet-950/40 transition-colors text-left"
+                    className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-xs text-violet-300 hover:bg-violet-950/40 active:scale-[0.98] transition-all text-left"
                   >
                     <RotateCcw className="h-3.5 w-3.5 text-violet-400 shrink-0" />
                     <span>Aktiv et</span>
@@ -457,39 +460,39 @@ export const MobileReminderCard: React.FC<MobileReminderCardProps> = ({
 
               <div className="my-1 border-t border-white/5" />
 
-              {/* Action 5: Sil (Triggers explicit confirmation dialog) */}
+              {/* Action 5: Sil */}
               <button
                 id={`delete-mobile-btn-${reminder.id}`}
                 onClick={() => {
                   setShowMenu(false);
                   setShowDeleteConfirm(true);
                 }}
-                className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-xs text-rose-400 hover:bg-rose-500/10 transition-colors text-left"
+                className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-xs text-rose-400 hover:bg-rose-500/10 active:scale-[0.98] transition-all text-left"
               >
                 <Trash2 className="h-3.5 w-3.5 text-rose-400 shrink-0" />
                 <span>Sil</span>
               </button>
-            </div>
-          </>,
+            </motion.div>
+          </AnimatePresence>,
           document.body
         )}
 
-      {/* EXPLICIT DELETE CONFIRMATION MODAL:
-          - Does not delete immediately
-          - Shows prompt: "Bu xatırlatmanı silmək istəyirsiniz?"
-          - Buttons: "Ləğv et" (Cancel) & "Sil" (Destructive Red)
-      */}
+      {/* EXPLICIT DELETE CONFIRMATION MODAL */}
       {showDeleteConfirm &&
         createPortal(
           <div
-            className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in"
+            className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
             onClick={(e) => {
               e.stopPropagation();
               setShowDeleteConfirm(false);
             }}
           >
-            <div
-              className="w-full max-w-xs rounded-2xl border border-white/10 bg-[#121828] p-5 shadow-2xl text-center animate-scale-in"
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 8 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              transition={{ duration: 0.18, ease: [0.25, 1, 0.5, 1] }}
+              className="w-full max-w-xs rounded-2xl border border-white/10 bg-[#121828] p-5 shadow-2xl text-center"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-rose-500/15 text-rose-400 border border-rose-500/25 mx-auto mb-3">
@@ -502,14 +505,16 @@ export const MobileReminderCard: React.FC<MobileReminderCardProps> = ({
                 "{reminder.title}"
               </p>
               <div className="flex items-center gap-2.5">
-                <button
+                <motion.button
+                  whileTap={{ scale: 0.97 }}
                   id="cancel-delete-btn"
                   onClick={() => setShowDeleteConfirm(false)}
                   className="flex-1 min-h-[44px] py-2.5 px-3 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 text-slate-300 font-semibold text-xs transition-colors"
                 >
                   Ləğv et
-                </button>
-                <button
+                </motion.button>
+                <motion.button
+                  whileTap={{ scale: 0.97 }}
                   id="confirm-delete-btn"
                   onClick={() => {
                     setShowDeleteConfirm(false);
@@ -518,9 +523,9 @@ export const MobileReminderCard: React.FC<MobileReminderCardProps> = ({
                   className="flex-1 min-h-[44px] py-2.5 px-3 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs shadow-md shadow-rose-600/30 transition-colors"
                 >
                   Sil
-                </button>
+                </motion.button>
               </div>
-            </div>
+            </motion.div>
           </div>,
           document.body
         )}

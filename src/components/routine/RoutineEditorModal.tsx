@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { motion } from 'motion/react';
 import {
   X,
   Plus,
@@ -240,26 +241,40 @@ export const RoutineEditorModal: React.FC<RoutineEditorModalProps> = ({
   };
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-black/85 backdrop-blur-md animate-fade-in"
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.2 }}
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-black/85 backdrop-blur-md"
       style={{
         paddingTop: 'max(env(safe-area-inset-top, 0px), 12px)',
         paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 12px)',
       }}
+      onClick={onClose}
     >
-      <div className="w-full max-w-md max-h-[92vh] flex flex-col rounded-3xl bg-[#0F1523] border border-violet-500/30 shadow-2xl overflow-hidden text-white animate-scale-up">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.94, y: 10 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.94, y: 10 }}
+        transition={{ duration: 0.22, ease: [0.25, 1, 0.5, 1] }}
+        onClick={(e) => e.stopPropagation()}
+        className="w-full max-w-md max-h-[92vh] flex flex-col rounded-3xl bg-[#0F1523] border border-violet-500/30 shadow-2xl overflow-hidden text-white"
+      >
         {/* Header */}
         <div className="p-4 border-b border-white/10 flex items-center justify-between bg-[#131A2D]">
           <h2 className="text-base font-black text-white tracking-tight">
             {editingRoutine ? 'Rutini redaktə et' : 'Yeni rutin yarat'}
           </h2>
-          <button
+          <motion.button
+            whileTap={{ scale: 0.98 }}
+            whileHover={{ scale: 1.02 }}
             onClick={onClose}
             aria-label="Bağla"
-            className="h-11 w-11 -mr-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 flex items-center justify-center transition-all active:scale-95 shrink-0"
+            className="h-11 w-11 -mr-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 flex items-center justify-center transition-colors shrink-0"
           >
             <X className="h-4 w-4" />
-          </button>
+          </motion.button>
         </div>
 
         {/* Form Body */}
@@ -499,34 +514,38 @@ export const RoutineEditorModal: React.FC<RoutineEditorModalProps> = ({
         {/* Footer Actions */}
         <div className="p-4 border-t border-white/10 bg-[#121828] flex items-center justify-between gap-2">
           {editingRoutine ? (
-            <button
+            <motion.button
+              whileTap={{ scale: 0.98 }}
               type="button"
               onClick={handleDelete}
-              className="py-3 px-3.5 rounded-2xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 font-bold text-xs flex items-center gap-1 transition-all active:scale-95"
+              className="py-3 px-3.5 rounded-2xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 font-bold text-xs flex items-center gap-1 transition-colors"
             >
               <Trash2 className="h-3.5 w-3.5" />
               <span>Sil</span>
-            </button>
+            </motion.button>
           ) : (
-            <button
+            <motion.button
+              whileTap={{ scale: 0.98 }}
               type="button"
               onClick={onClose}
-              className="py-3 px-4 rounded-2xl bg-white/5 hover:bg-white/10 text-slate-300 font-bold text-xs transition-all active:scale-95"
+              className="py-3 px-4 rounded-2xl bg-white/5 hover:bg-white/10 text-slate-300 font-bold text-xs transition-colors"
             >
               Ləğv et
-            </button>
+            </motion.button>
           )}
 
-          <button
+          <motion.button
+            whileTap={{ scale: 0.98 }}
+            whileHover={{ scale: 1.02 }}
             type="button"
             onClick={handleSave}
-            className="flex-1 py-3 rounded-2xl bg-violet-600 hover:bg-violet-500 text-white font-black text-xs shadow-lg flex items-center justify-center gap-1.5 transition-all active:scale-95"
+            className="flex-1 py-3 rounded-2xl bg-violet-600 hover:bg-violet-500 text-white font-black text-xs shadow-lg flex items-center justify-center gap-1.5 transition-colors"
           >
             <Save className="h-4 w-4" />
             <span>Yadda saxla</span>
-          </button>
+          </motion.button>
         </div>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 };

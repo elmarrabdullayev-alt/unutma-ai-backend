@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import { X, Sparkles, Plus, Loader2 } from 'lucide-react';
 import { Reminder, ReminderCategory, ReminderPriority, ReminderRecurrence } from '../types';
 import { CATEGORIES } from '../utils/categoryMeta';
@@ -67,25 +68,37 @@ export const ManualAddModal: React.FC<ManualAddModalProps> = ({
   };
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in"
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.2 }}
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md"
       style={{
         paddingTop: 'max(env(safe-area-inset-top, 0px), 16px)',
         paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 16px)',
       }}
+      onClick={onClose}
     >
-      <div
+      <motion.div
+        initial={{ opacity: 0, scale: 0.94, y: 10 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.94, y: 10 }}
+        transition={{ duration: 0.22, ease: [0.25, 1, 0.5, 1] }}
+        onClick={(e) => e.stopPropagation()}
         id="manual-add-modal"
         className="relative w-full max-w-md rounded-3xl border border-white/10 bg-gradient-to-b from-[#111827] to-[#0F172A] p-6 shadow-2xl text-slate-50"
       >
-        <button
+        <motion.button
+          whileTap={{ scale: 0.98 }}
+          whileHover={{ scale: 1.02 }}
           id="close-manual-modal-btn"
           onClick={onClose}
           aria-label="Bağla"
-          className="absolute right-3.5 top-3.5 flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full bg-slate-800/80 text-slate-400 hover:bg-slate-700 hover:text-white transition-colors active:scale-95 shrink-0"
+          className="absolute right-3.5 top-3.5 flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full bg-slate-800/80 text-slate-400 hover:bg-slate-700 hover:text-white transition-colors shrink-0"
         >
           <X className="h-4 w-4" />
-        </button>
+        </motion.button>
 
         <div className="flex items-center gap-2 mb-3">
           <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-violet-500/15 text-violet-400 border border-violet-500/30">
@@ -117,11 +130,13 @@ export const ManualAddModal: React.FC<ManualAddModalProps> = ({
             </p>
           )}
 
-          <button
+          <motion.button
+            whileTap={{ scale: 0.98 }}
+            whileHover={{ scale: 1.01 }}
             id="submit-manual-parse-btn"
             type="submit"
             disabled={isAiProcessing || !naturalText.trim()}
-            className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-tr from-violet-600 to-indigo-600 py-3 text-xs font-bold text-white hover:brightness-110 disabled:opacity-40 transition-all shadow-md shadow-violet-500/20 active:scale-98 border border-white/10"
+            className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-tr from-violet-600 to-indigo-600 py-3 text-xs font-bold text-white hover:brightness-110 disabled:opacity-40 transition-all shadow-md shadow-violet-500/20 border border-white/10"
           >
             {isAiProcessing ? (
               <>
@@ -134,9 +149,9 @@ export const ManualAddModal: React.FC<ManualAddModalProps> = ({
                 Yadda saxla
               </>
             )}
-          </button>
+          </motion.button>
         </form>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 };

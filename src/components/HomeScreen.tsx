@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import {
   Bell,
   Plus,
@@ -11,6 +12,11 @@ import {
 import { Reminder, UserProfile, FocusSession, Routine, RoutineType } from '../types';
 import { MobileReminderCard } from './MobileReminderCard';
 import { RoutineHomeSection } from './routine/RoutineHomeSection';
+import {
+  staggerContainerVariants,
+  staggerCardVariants,
+  reminderCardItemVariants,
+} from '../utils/motion';
 import {
   getGreetingAz,
   getFormattedTodayAz,
@@ -106,9 +112,14 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   const streakCount = routineService.getStreakData().currentStreak || progressData.streakSummary.currentStreak;
 
   return (
-    <div className="w-full px-4 pt-2 pb-6 space-y-7">
+    <motion.div
+      variants={staggerContainerVariants}
+      initial="hidden"
+      animate="visible"
+      className="w-full px-4 pt-2 pb-6 space-y-7"
+    >
       {/* 1. Header — Clean & Spacious, No Card Container */}
-      <div className="flex items-start justify-between gap-3 pt-1">
+      <motion.div variants={staggerCardVariants} className="flex items-start justify-between gap-3 pt-1">
         <div className="min-w-0 flex-1">
           <h1 className="text-2xl font-bold tracking-tight text-white truncate">
             {greeting}
@@ -127,39 +138,48 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
         {/* Action icons */}
         <div className="flex items-center gap-2 shrink-0 pt-0.5">
           {notificationPermission !== 'granted' && (
-            <button
+            <motion.button
+              whileTap={{ scale: 0.98 }}
+              whileHover={{ scale: 1.02 }}
               onClick={onRequestNotificationPermission}
-              className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-500/10 text-amber-400 border border-amber-500/20 active:scale-95 transition-all"
+              className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-500/10 text-amber-400 border border-amber-500/20 transition-colors"
               title="Bildirişləri aktivləşdir"
             >
               <Bell className="h-4 w-4" />
-            </button>
+            </motion.button>
           )}
 
-          <button
+          <motion.button
+            whileTap={{ scale: 0.98 }}
+            whileHover={{ scale: 1.02 }}
             onClick={onOpenManualAdd}
-            className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#131929] text-slate-300 border border-white/10 hover:text-white hover:border-white/20 active:scale-95 transition-all"
+            className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#131929] text-slate-300 border border-white/10 hover:text-white hover:border-white/20 transition-colors"
             title="Əlavə et"
           >
             <Plus className="h-4 w-4" />
-          </button>
+          </motion.button>
 
           {onNavigateToProfile && (
-            <button
+            <motion.button
+              whileTap={{ scale: 0.98 }}
+              whileHover={{ scale: 1.02 }}
               onClick={onNavigateToProfile}
-              className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-tr from-violet-600 to-indigo-600 text-white font-bold text-xs border border-violet-400/30 active:scale-95 transition-all shadow-sm"
+              className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-tr from-violet-600 to-indigo-600 text-white font-bold text-xs border border-violet-400/30 transition-all shadow-sm"
               title="Profil"
             >
               {initials}
-            </button>
+            </motion.button>
           )}
         </div>
-      </div>
+      </motion.div>
 
       {/* 2. Primary AI Action: "Günümü planla" */}
-      <div
+      <motion.div
+        variants={staggerCardVariants}
+        whileTap={{ scale: 0.985 }}
+        whileHover={{ scale: 1.01 }}
         onClick={() => onOpenPlanner?.()}
-        className="flex items-center justify-between p-4 rounded-2xl bg-gradient-to-r from-violet-950/40 via-[#131929] to-indigo-950/30 border border-violet-500/25 hover:border-violet-500/40 cursor-pointer active:scale-[0.99] transition-all group shadow-sm"
+        className="flex items-center justify-between p-4 rounded-2xl bg-gradient-to-r from-violet-950/40 via-[#131929] to-indigo-950/30 border border-violet-500/25 hover:border-violet-500/40 cursor-pointer transition-colors group shadow-sm"
       >
         <div className="flex items-center gap-3.5 min-w-0 flex-1">
           <div className="h-10 w-10 rounded-xl bg-gradient-to-tr from-violet-600 to-indigo-600 flex items-center justify-center text-white shadow-sm shrink-0 group-hover:scale-105 transition-transform">
@@ -176,61 +196,67 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
           <span>Başla</span>
           <span className="text-xs">→</span>
         </div>
-      </div>
+      </motion.div>
 
       {/* 3. Focus Mode — Secondary Action */}
-      {activeFocusSession ? (
-        <div
-          onClick={() => onOpenFocus?.()}
-          className="flex items-center justify-between p-3.5 rounded-2xl bg-[#121828] border border-violet-500/30 cursor-pointer active:scale-[0.99] transition-all group"
-        >
-          <div className="flex items-center gap-3 min-w-0 flex-1">
-            <div className="h-8 w-8 rounded-xl bg-violet-500/20 border border-violet-500/30 flex items-center justify-center text-violet-300 shrink-0">
-              <Flame className="h-4 w-4 text-violet-300 animate-pulse" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-1.5">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-violet-300">
-                  Fokus Aktivdir
-                </span>
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+      <motion.div variants={staggerCardVariants}>
+        {activeFocusSession ? (
+          <motion.div
+            whileTap={{ scale: 0.985 }}
+            whileHover={{ scale: 1.01 }}
+            onClick={() => onOpenFocus?.()}
+            className="flex items-center justify-between p-3.5 rounded-2xl bg-[#121828] border border-violet-500/30 cursor-pointer transition-colors group"
+          >
+            <div className="flex items-center gap-3 min-w-0 flex-1">
+              <div className="h-8 w-8 rounded-xl bg-violet-500/20 border border-violet-500/30 flex items-center justify-center text-violet-300 shrink-0">
+                <Flame className="h-4 w-4 text-violet-300 animate-pulse" />
               </div>
-              <p className="text-xs font-medium text-white truncate mt-0.5">
-                {activeFocusSession.taskTitle}
-              </p>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-violet-300">
+                    Fokus Aktivdir
+                  </span>
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                </div>
+                <p className="text-xs font-medium text-white truncate mt-0.5">
+                  {activeFocusSession.taskTitle}
+                </p>
+              </div>
             </div>
-          </div>
-          <div className="flex items-center gap-1 text-xs font-semibold text-violet-400 group-hover:text-violet-300 pl-2">
-            <span>Davam et</span>
-            <span>→</span>
-          </div>
-        </div>
-      ) : (
-        <div
-          onClick={() => onOpenFocus?.()}
-          className="flex items-center justify-between p-3.5 rounded-2xl bg-[#101625] border border-white/[0.06] hover:border-white/10 cursor-pointer active:scale-[0.99] transition-all group"
-        >
-          <div className="flex items-center gap-3 min-w-0 flex-1">
-            <div className="h-8 w-8 rounded-xl bg-violet-500/10 text-violet-400 flex items-center justify-center shrink-0">
-              <Flame className="h-4 w-4 text-violet-400" />
+            <div className="flex items-center gap-1 text-xs font-semibold text-violet-400 group-hover:text-violet-300 pl-2">
+              <span>Davam et</span>
+              <span>→</span>
             </div>
-            <div className="min-w-0 flex-1">
-              <h3 className="text-xs font-bold text-slate-200 tracking-tight">Fokuslan</h3>
-              <p className="text-[11px] text-slate-400 truncate mt-0.5">
-                Bir iş seç və diqqətini yalnız ona ver.
-              </p>
+          </motion.div>
+        ) : (
+          <motion.div
+            whileTap={{ scale: 0.985 }}
+            whileHover={{ scale: 1.01 }}
+            onClick={() => onOpenFocus?.()}
+            className="flex items-center justify-between p-3.5 rounded-2xl bg-[#101625] border border-white/[0.06] hover:border-white/10 cursor-pointer transition-colors group"
+          >
+            <div className="flex items-center gap-3 min-w-0 flex-1">
+              <div className="h-8 w-8 rounded-xl bg-violet-500/10 text-violet-400 flex items-center justify-center shrink-0">
+                <Flame className="h-4 w-4 text-violet-400" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <h3 className="text-xs font-bold text-slate-200 tracking-tight">Fokuslan</h3>
+                <p className="text-[11px] text-slate-400 truncate mt-0.5">
+                  Bir iş seç və diqqətini yalnız ona ver.
+                </p>
+              </div>
             </div>
-          </div>
-          <div className="text-xs font-semibold text-slate-400 group-hover:text-violet-300 flex items-center gap-1 transition-colors pl-2">
-            <span>Başla</span>
-            <span>→</span>
-          </div>
-        </div>
-      )}
+            <div className="text-xs font-semibold text-slate-400 group-hover:text-violet-300 flex items-center gap-1 transition-colors pl-2">
+              <span>Başla</span>
+              <span>→</span>
+            </div>
+          </motion.div>
+        )}
+      </motion.div>
 
-      {/* 4. Smart "İNDİ" Section — Visibly Smaller & Calmer (positioned after Fokuslan and before Rutinlərim) */}
+      {/* 4. Smart "İNDİ" Section — Visibly Smaller & Calmer */}
       {nearDueReminders.length > 0 && (
-        <section className="space-y-1.5">
+        <motion.section variants={staggerCardVariants} className="space-y-1.5">
           <div className="flex items-center justify-between px-0.5">
             <div className="flex items-center gap-1.5">
               <span className="h-1.5 w-1.5 rounded-full bg-rose-400" />
@@ -244,30 +270,44 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
           </div>
 
           <div className="space-y-1.5">
-            {nearDueReminders.map((r) => (
-              <MobileReminderCard
-                key={r.id}
-                reminder={r}
-                variant="now"
-                onToggleComplete={onToggleComplete}
-                onDelete={onDelete}
-                onEdit={onEdit}
-                onSnooze={onSnooze}
-                onFocus={onOpenFocus}
-              />
-            ))}
+            <AnimatePresence initial={false}>
+              {nearDueReminders.map((r) => (
+                <motion.div
+                  key={r.id}
+                  variants={reminderCardItemVariants}
+                  initial="initial"
+                  animate="animate"
+                  exit="exit"
+                  layout
+                >
+                  <MobileReminderCard
+                    reminder={r}
+                    variant="now"
+                    onToggleComplete={onToggleComplete}
+                    onDelete={onDelete}
+                    onEdit={onEdit}
+                    onSnooze={onSnooze}
+                    onFocus={onOpenFocus}
+                  />
+                </motion.div>
+              ))}
+            </AnimatePresence>
           </div>
-        </section>
+        </motion.section>
       )}
 
-      {/* 5. Routines — Equal Height & Component Structure Cards */}
-      <RoutineHomeSection
-        onOpenRoutineSession={(routine) => onOpenRoutineSession?.(routine)}
-        onOpenCreateRoutine={(initialType) => onOpenCreateRoutine?.(initialType)}
-      />
+      {/* 5. Routines */}
+      <motion.div variants={staggerCardVariants}>
+        <RoutineHomeSection
+          onOpenRoutineSession={(routine) => onOpenRoutineSession?.(routine)}
+          onOpenCreateRoutine={(initialType) => onOpenCreateRoutine?.(initialType)}
+        />
+      </motion.div>
 
       {/* 6. Weekly Progress — Compact Row */}
-      <div
+      <motion.div
+        variants={staggerCardVariants}
+        whileTap={{ scale: 0.99 }}
         onClick={() => onOpenProgress?.()}
         className="flex items-center justify-between py-2 px-1 text-xs cursor-pointer group hover:text-white transition-colors"
       >
@@ -293,10 +333,10 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
           <span>Ətraflı bax</span>
           <span>→</span>
         </div>
-      </div>
+      </motion.div>
 
       {/* 7. Active / Completed Reminders */}
-      <div className="space-y-4 pt-1">
+      <motion.div variants={staggerCardVariants} className="space-y-4 pt-1">
         {/* Cleaner, thinner segmented control */}
         <div className="flex bg-[#0D121F] p-0.5 rounded-xl border border-white/[0.06]">
           <button
@@ -335,18 +375,28 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
                 </div>
 
                 <div className="space-y-2">
-                  {overdueReminders.map((r) => (
-                    <MobileReminderCard
-                      key={r.id}
-                      reminder={r}
-                      variant="overdue"
-                      onToggleComplete={onToggleComplete}
-                      onDelete={onDelete}
-                      onEdit={onEdit}
-                      onSnooze={onSnooze}
-                      onFocus={onOpenFocus}
-                    />
-                  ))}
+                  <AnimatePresence initial={false}>
+                    {overdueReminders.map((r) => (
+                      <motion.div
+                        key={r.id}
+                        variants={reminderCardItemVariants}
+                        initial="initial"
+                        animate="animate"
+                        exit="exit"
+                        layout
+                      >
+                        <MobileReminderCard
+                          reminder={r}
+                          variant="overdue"
+                          onToggleComplete={onToggleComplete}
+                          onDelete={onDelete}
+                          onEdit={onEdit}
+                          onSnooze={onSnooze}
+                          onFocus={onOpenFocus}
+                        />
+                      </motion.div>
+                    ))}
+                  </AnimatePresence>
                 </div>
               </div>
             )}
@@ -362,18 +412,28 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
                 </div>
 
                 <div className="space-y-2">
-                  {otherTodayNowReminders.map((r) => (
-                    <MobileReminderCard
-                      key={r.id}
-                      reminder={r}
-                      variant="now"
-                      onToggleComplete={onToggleComplete}
-                      onDelete={onDelete}
-                      onEdit={onEdit}
-                      onSnooze={onSnooze}
-                      onFocus={onOpenFocus}
-                    />
-                  ))}
+                  <AnimatePresence initial={false}>
+                    {otherTodayNowReminders.map((r) => (
+                      <motion.div
+                        key={r.id}
+                        variants={reminderCardItemVariants}
+                        initial="initial"
+                        animate="animate"
+                        exit="exit"
+                        layout
+                      >
+                        <MobileReminderCard
+                          reminder={r}
+                          variant="now"
+                          onToggleComplete={onToggleComplete}
+                          onDelete={onDelete}
+                          onEdit={onEdit}
+                          onSnooze={onSnooze}
+                          onFocus={onOpenFocus}
+                        />
+                      </motion.div>
+                    ))}
+                  </AnimatePresence>
                 </div>
               </div>
             )}
@@ -388,18 +448,28 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
                 </div>
 
                 <div className="space-y-2">
-                  {laterReminders.map((r) => (
-                    <MobileReminderCard
-                      key={r.id}
-                      reminder={r}
-                      variant="later"
-                      onToggleComplete={onToggleComplete}
-                      onDelete={onDelete}
-                      onEdit={onEdit}
-                      onSnooze={onSnooze}
-                      onFocus={onOpenFocus}
-                    />
-                  ))}
+                  <AnimatePresence initial={false}>
+                    {laterReminders.map((r) => (
+                      <motion.div
+                        key={r.id}
+                        variants={reminderCardItemVariants}
+                        initial="initial"
+                        animate="animate"
+                        exit="exit"
+                        layout
+                      >
+                        <MobileReminderCard
+                          reminder={r}
+                          variant="later"
+                          onToggleComplete={onToggleComplete}
+                          onDelete={onDelete}
+                          onEdit={onEdit}
+                          onSnooze={onSnooze}
+                          onFocus={onOpenFocus}
+                        />
+                      </motion.div>
+                    ))}
+                  </AnimatePresence>
                 </div>
               </div>
             )}
@@ -423,17 +493,27 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
         {filterMode === 'completed' && (
           <div className="space-y-2">
             {completedReminders.length > 0 ? (
-              completedReminders.map((r) => (
-                <MobileReminderCard
-                  key={r.id}
-                  reminder={r}
-                  onToggleComplete={onToggleComplete}
-                  onDelete={onDelete}
-                  onEdit={onEdit}
-                  onSnooze={onSnooze}
-                  onFocus={onOpenFocus}
-                />
-              ))
+              <AnimatePresence initial={false}>
+                {completedReminders.map((r) => (
+                  <motion.div
+                    key={r.id}
+                    variants={reminderCardItemVariants}
+                    initial="initial"
+                    animate="animate"
+                    exit="exit"
+                    layout
+                  >
+                    <MobileReminderCard
+                      reminder={r}
+                      onToggleComplete={onToggleComplete}
+                      onDelete={onDelete}
+                      onEdit={onEdit}
+                      onSnooze={onSnooze}
+                      onFocus={onOpenFocus}
+                    />
+                  </motion.div>
+                ))}
+              </AnimatePresence>
             ) : (
               <div className="py-12 text-center">
                 <CheckCircle2 className="h-9 w-9 text-slate-600 mx-auto mb-2" />
@@ -444,7 +524,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
             )}
           </div>
         )}
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 };

@@ -168,7 +168,7 @@ class FocusService {
                   allowWhileIdle: true,
                 },
                 channelId: 'unutma_reminders_channel',
-                sound: 'reminder_alarm.wav',
+                sound: 'default',
               },
             ],
           });

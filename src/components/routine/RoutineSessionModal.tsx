@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { motion } from 'motion/react';
 import {
   X,
   Check,
@@ -80,14 +81,26 @@ export const RoutineSessionModal: React.FC<RoutineSessionModalProps> = ({
   const streakData = routineService.getStreakData();
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-black/85 backdrop-blur-md animate-fade-in"
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.2 }}
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-black/85 backdrop-blur-md"
       style={{
         paddingTop: 'max(env(safe-area-inset-top, 0px), 12px)',
         paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 12px)',
       }}
+      onClick={onClose}
     >
-      <div className="w-full max-w-md max-h-[92vh] flex flex-col rounded-3xl bg-[#0F1523] border border-violet-500/30 shadow-2xl overflow-hidden text-white animate-scale-up">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.94, y: 10 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.94, y: 10 }}
+        transition={{ duration: 0.22, ease: [0.25, 1, 0.5, 1] }}
+        onClick={(e) => e.stopPropagation()}
+        className="w-full max-w-md max-h-[92vh] flex flex-col rounded-3xl bg-[#0F1523] border border-violet-500/30 shadow-2xl overflow-hidden text-white"
+      >
         {/* Header */}
         <div className="p-4 border-b border-white/10 flex items-center justify-between bg-[#131A2D]">
           <div className="flex items-center gap-3 min-w-0">
@@ -118,21 +131,25 @@ export const RoutineSessionModal: React.FC<RoutineSessionModalProps> = ({
           </div>
 
           <div className="flex items-center gap-1.5 shrink-0">
-            <button
+            <motion.button
+              whileTap={{ scale: 0.98 }}
+              whileHover={{ scale: 1.02 }}
               onClick={() => onEditRoutine(routine)}
               aria-label="Rutini redaktə et"
-              className="h-11 w-11 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 flex items-center justify-center transition-all active:scale-95 shrink-0"
+              className="h-11 w-11 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 flex items-center justify-center transition-colors shrink-0"
               title="Rutini redaktə et"
             >
               <Pencil className="h-4 w-4" />
-            </button>
-            <button
+            </motion.button>
+            <motion.button
+              whileTap={{ scale: 0.98 }}
+              whileHover={{ scale: 1.02 }}
               onClick={onClose}
               aria-label="Bağla"
-              className="h-11 w-11 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 flex items-center justify-center transition-all active:scale-95 shrink-0"
+              className="h-11 w-11 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 flex items-center justify-center transition-colors shrink-0"
             >
               <X className="h-4 w-4" />
-            </button>
+            </motion.button>
           </div>
         </div>
 
@@ -239,23 +256,26 @@ export const RoutineSessionModal: React.FC<RoutineSessionModalProps> = ({
         {/* Footer Actions */}
         <div className="p-4 border-t border-white/10 bg-[#121828] flex items-center gap-2">
           {isAllDone ? (
-            <button
+            <motion.button
+              whileTap={{ scale: 0.98 }}
+              whileHover={{ scale: 1.02 }}
               onClick={onClose}
-              className="flex-1 py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs shadow-lg flex items-center justify-center gap-1.5 transition-all active:scale-95"
+              className="flex-1 py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs shadow-lg flex items-center justify-center gap-1.5 transition-colors"
             >
               <CheckCircle2 className="h-4 w-4" />
               <span>Əladır, bağla</span>
-            </button>
+            </motion.button>
           ) : (
-            <button
+            <motion.button
+              whileTap={{ scale: 0.98 }}
               onClick={onClose}
-              className="flex-1 py-3 rounded-2xl bg-violet-600 hover:bg-violet-500 text-white font-bold text-xs shadow-md transition-all active:scale-95"
+              className="flex-1 py-3 rounded-2xl bg-violet-600 hover:bg-violet-500 text-white font-bold text-xs shadow-md transition-colors"
             >
               Davam etmək üçün saxla
-            </button>
+            </motion.button>
           )}
         </div>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 };
