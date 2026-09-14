@@ -115,19 +115,23 @@ export function normalizeDueDateTimeForTimezone(
 
   if (morningMatch && morningMatch[1]) {
     const h = parseInt(morningMatch[1], 10);
-    targetHour = h <= 12 ? h : h - 12;
+    // "səhər" = AM. Explicit 24-hour time must never be changed.
+    targetHour = h;
     targetMinute = morningMatch[2] ? parseInt(morningMatch[2], 10) : 0;
   } else if (afternoonMatch && afternoonMatch[1]) {
     const h = parseInt(afternoonMatch[1], 10);
-    targetHour = h >= 1 && h <= 6 ? h + 12 : (h === 12 ? 12 : h);
+    // "günorta" converts 1–5 to 13–17. Explicit 24-hour time must never be changed.
+    targetHour = h >= 1 && h <= 5 ? h + 12 : h;
     targetMinute = afternoonMatch[2] ? parseInt(afternoonMatch[2], 10) : 0;
   } else if (eveningMatch && eveningMatch[1]) {
     const h = parseInt(eveningMatch[1], 10);
+    // "axşam" = PM (converts 1–11 to 13–23). Explicit 24-hour time must never be changed.
     targetHour = h >= 1 && h <= 11 ? h + 12 : (h === 12 ? 0 : h);
     targetMinute = eveningMatch[2] ? parseInt(eveningMatch[2], 10) : 0;
   } else if (nightMatch && nightMatch[1]) {
     const h = parseInt(nightMatch[1], 10);
-    targetHour = h >= 1 && h <= 6 ? h : (h === 12 ? 0 : (h === 11 ? 23 : h));
+    // "gecə" keeps 1–4 as 01–04. Explicit 24-hour time must never be changed.
+    targetHour = h >= 1 && h <= 4 ? h : (h === 12 ? 0 : (h === 11 ? 23 : h));
     targetMinute = nightMatch[2] ? parseInt(nightMatch[2], 10) : 0;
   } else if (
     exactHourMatch &&
@@ -138,16 +142,18 @@ export function normalizeDueDateTimeForTimezone(
     if (h >= 0 && h <= 24) {
       targetHour = h;
       targetMinute = exactHourMatch[2] ? parseInt(exactHourMatch[2], 10) : 0;
-      if (/axşam|axsam/i.test(lower) && targetHour >= 1 && targetHour <= 11) {
-        targetHour += 12;
-      } else if (/günorta|gunorta/i.test(lower) && targetHour >= 1 && targetHour <= 6) {
-        targetHour += 12;
-      } else if (/gecə|gece/i.test(lower) && targetHour >= 1 && targetHour <= 6) {
-        // night 1-6 stays 1-6
-      } else if (/səhər|seher/i.test(lower) && targetHour > 12) {
-        targetHour -= 12;
-      } else if (targetHour >= 1 && targetHour <= 6 && !/gecə|gece/i.test(lower)) {
-        targetHour += 12;
+      // Explicit 24-hour time must never be changed (hours >= 12 preserved)
+      if (targetHour >= 1 && targetHour <= 11) {
+        if (/axşam|axsam/i.test(lower)) {
+          // "axşam" = PM
+          targetHour += 12;
+        } else if (/günorta|gunorta/i.test(lower) && targetHour <= 5) {
+          // "günorta" converts 1–5 to 13–17
+          targetHour += 12;
+        } else if (/gecə|gece/i.test(lower) && targetHour <= 4) {
+          // "gecə" keeps 1–4 as 01–04
+        }
+        // Bare 1–11 hours with no daypart = AM (targetHour unchanged)
       }
     }
   }

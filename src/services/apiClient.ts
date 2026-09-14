@@ -111,7 +111,15 @@ export class ApiClient {
         let errMessage = `HTTP Xətası ${response.status}`;
         try {
           const errData = await response.json();
-          if (errData && errData.error) errMessage = errData.error;
+          if (errData) {
+            if (typeof errData.message === 'string' && errData.message.trim()) {
+              errMessage = errData.message;
+            } else if (errData.error && typeof errData.error === 'object' && typeof errData.error.message === 'string' && errData.error.message.trim()) {
+              errMessage = errData.error.message;
+            } else if (typeof errData.error === 'string' && errData.error.trim()) {
+              errMessage = errData.error;
+            }
+          }
         } catch (e) {}
         throw new Error(errMessage);
       }
