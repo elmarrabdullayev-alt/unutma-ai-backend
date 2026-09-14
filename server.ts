@@ -844,9 +844,11 @@ wss.on("connection", (clientWs: WebSocket, request: http.IncomingMessage) => {
   // Upstream OpenAI Realtime endpoint
   const upstreamUrl =
     process.env.OPENAI_REALTIME_URL ||
-    "wss://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview";
+    "wss://api.openai.com/v1/realtime";
 
-  console.log(`[REALTIME-STT] Connecting to OpenAI Realtime upstream: ${upstreamUrl}`);
+  console.log(
+    `[REALTIME-STT] Connecting to OpenAI Realtime GA transcription upstream: ${upstreamUrl}`
+  );
 
   let isUpstreamOpen = false;
   const pendingBufferQueue: string[] = [];
@@ -854,29 +856,37 @@ wss.on("connection", (clientWs: WebSocket, request: http.IncomingMessage) => {
   const upstreamWs = new WebSocket(upstreamUrl, {
     headers: {
       Authorization: `Bearer ${apiKey}`,
-      "OpenAI-Beta": "realtime=v1",
     },
   });
 
   upstreamWs.on("open", () => {
     isUpstreamOpen = true;
-    console.log("[REALTIME-STT] Connected to OpenAI Realtime upstream. Configuring session with model: gpt-live-transcribe");
 
-    // Configure session for input audio transcription using model: gpt-live-transcribe
+    console.log(
+      "[REALTIME-STT] Connected to OpenAI Realtime GA. Configuring transcription session."
+    );
+
     const sessionUpdate = {
       type: "session.update",
       session: {
-        modalities: ["text"],
-        input_audio_format: "pcm16",
-        input_audio_transcription: {
-          model: "gpt-live-transcribe",
-        },
-        turn_detection: {
-          type: "server_vad",
-          threshold: 0.5,
-          prefix_padding_ms: 300,
-          silence_duration_ms: 700,
-          create_response: false,
+        type: "transcription",
+        audio: {
+          input: {
+            format: {
+              type: "audio/pcm",
+              rate: 24000,
+            },
+            transcription: {
+              model: "gpt-live-transcribe",
+              languages: ["az"],
+            },
+            turn_detection: {
+              type: "server_vad",
+              threshold: 0.5,
+              prefix_padding_ms: 300,
+              silence_duration_ms: 700,
+            },
+          },
         },
       },
     };
