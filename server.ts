@@ -844,7 +844,7 @@ wss.on("connection", (clientWs: WebSocket, request: http.IncomingMessage) => {
   // Upstream OpenAI Realtime endpoint
   const upstreamUrl =
     process.env.OPENAI_REALTIME_URL ||
-    "wss://api.openai.com/v1/realtime";
+    "wss://api.openai.com/v1/realtime?model=gpt-live-transcribe";
 
   console.log(
     `[REALTIME-STT] Connecting to OpenAI Realtime GA transcription upstream: ${upstreamUrl}`
