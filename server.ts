@@ -1,9 +1,7 @@
 import express from "express";
-import http from "http";
 import path from "path";
 import { createServer as createViteServer } from "vite";
 import dotenv from "dotenv";
-import WebSocket, { WebSocketServer } from "ws";
 import { transcribeWithOpenAI } from "./src/server/openaiAudio";
 import {
   callOpenAIChatCompletion,
@@ -816,227 +814,8 @@ ${JSON.stringify(req.body.reminders || [], null, 2)}
 app.post("/api/ask-assistant", handleChatWithOpenAI);
 app.post("/api/chat", handleChatWithOpenAI);
 
-// =========================================================================
-// [REALTIME-STT] OPENAI REALTIME TRANSCRIPTION GATEWAY
-// Model: gpt-live-transcribe
-// Handles: conversation.item.input_audio_transcription.delta
-// Server-side WebSocket relay keeping OPENAI_API_KEY secure.
-// Streams 16-bit PCM 24kHz audio chunks to OpenAI Realtime API.
-// =========================================================================
-const wss = new WebSocketServer({ noServer: true });
-
-wss.on("connection", (clientWs: WebSocket, request: http.IncomingMessage) => {
-  console.log("[REALTIME-STT] Client connected to OpenAI Realtime STT gateway");
-
-  const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) {
-    console.error("[REALTIME-STT] Missing OPENAI_API_KEY server-side");
-    clientWs.send(
-      JSON.stringify({
-        type: "error",
-        error: "OPENAI_API_KEY server-side konfiqurasiya olunmayıb.",
-      })
-    );
-    clientWs.close(1008, "Missing OPENAI_API_KEY");
-    return;
-  }
-
-  // Upstream OpenAI Realtime endpoint
-  const upstreamUrl =
-    process.env.OPENAI_REALTIME_URL ||
-    "wss://api.openai.com/v1/realtime?model=gpt-realtime-1.5";
-
-  console.log(
-    `[REALTIME-STT] Connecting to OpenAI Realtime GA transcription upstream: ${upstreamUrl}`
-  );
-
-  let isUpstreamOpen = false;
-  const pendingBufferQueue: string[] = [];
-
-  const upstreamWs = new WebSocket(upstreamUrl, {
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-    },
-  });
-
-  upstreamWs.on("open", () => {
-    isUpstreamOpen = true;
-
-    console.log(
-      "[REALTIME-STT] Connected to OpenAI Realtime GA. Configuring transcription session."
-    );
-
-    const sessionUpdate = {
-      type: "session.update",
-      session: {
-        type: "transcription",
-        audio: {
-          input: {
-            format: {
-              type: "audio/pcm",
-              rate: 24000,
-            },
-            transcription: {
-              model: "gpt-live-transcribe",
-              languages: ["az"],
-            },
-          },
-        },
-      },
-    };
-
-    upstreamWs.send(JSON.stringify(sessionUpdate));
-
-    // Flush any pending audio chunks received before upstream was ready
-    while (pendingBufferQueue.length > 0) {
-      const chunk = pendingBufferQueue.shift();
-      if (chunk && upstreamWs.readyState === WebSocket.OPEN) {
-        upstreamWs.send(chunk);
-      }
-    }
-
-    if (clientWs.readyState === WebSocket.OPEN) {
-      clientWs.send(
-        JSON.stringify({
-          type: "session.ready",
-          model: "gpt-live-transcribe",
-        })
-      );
-    }
-  });
-
-  // Handle messages from upstream OpenAI Realtime
-  upstreamWs.on("message", (data: WebSocket.RawData) => {
-    try {
-      const event = JSON.parse(data.toString());
-
-      // [REALTIME-STT] Handle conversation.item.input_audio_transcription.delta
-      if (event.type === "conversation.item.input_audio_transcription.delta") {
-        console.log(
-          `[REALTIME-STT] [gpt-live-transcribe] conversation.item.input_audio_transcription.delta: "${event.delta}"`
-        );
-        if (clientWs.readyState === WebSocket.OPEN) {
-          clientWs.send(JSON.stringify(event));
-        }
-      } else if (event.type === "conversation.item.input_audio_transcription.completed") {
-        console.log(
-          `[REALTIME-STT] [gpt-live-transcribe] Final transcript completed: "${event.transcript}"`
-        );
-        if (clientWs.readyState === WebSocket.OPEN) {
-          clientWs.send(JSON.stringify(event));
-        }
-      } else if (
-        event.type === "input_audio_buffer.speech_started" ||
-        event.type === "input_audio_buffer.speech_stopped"
-      ) {
-        if (clientWs.readyState === WebSocket.OPEN) {
-          clientWs.send(JSON.stringify(event));
-        }
-      } else if (event.type === "error") {
-        console.warn("[REALTIME-STT] OpenAI Realtime upstream error:", event.error);
-        if (clientWs.readyState === WebSocket.OPEN) {
-          clientWs.send(JSON.stringify(event));
-        }
-      }
-    } catch (err) {
-      console.error("[REALTIME-STT] Error parsing upstream message:", err);
-    }
-  });
-
-  upstreamWs.on("error", (err: Error) => {
-    console.warn("[REALTIME-STT] Upstream connection error:", err.message);
-    if (clientWs.readyState === WebSocket.OPEN) {
-      clientWs.send(
-        JSON.stringify({
-          type: "error",
-          error: "Realtime audio upstream error: " + err.message,
-        })
-      );
-    }
-  });
-
-  upstreamWs.on("close", () => {
-    console.log("[REALTIME-STT] Upstream connection closed");
-    if (clientWs.readyState === WebSocket.OPEN) {
-      clientWs.close();
-    }
-  });
-
-  // Forward audio chunks from client to upstream OpenAI Realtime
-  clientWs.on("message", (data: WebSocket.RawData, isBinary: boolean) => {
-    try {
-      let payload = "";
-      if (isBinary) {
-        // Only real binary WebSocket frames are treated as raw PCM.
-        const rawBuffer = Buffer.isBuffer(data)
-          ? data
-          : Array.isArray(data)
-            ? Buffer.concat(data)
-            : Buffer.from(data as ArrayBuffer);
-
-        payload = JSON.stringify({
-          type: "input_audio_buffer.append",
-          audio: rawBuffer.toString("base64"),
-        });
-      } else {
-        // Text WebSocket frames may still arrive as Buffer objects in ws.
-        // Decode them as UTF-8 JSON instead of treating them as raw audio.
-        const text = Buffer.isBuffer(data)
-          ? data.toString("utf8")
-          : Array.isArray(data)
-            ? Buffer.concat(data).toString("utf8")
-            : Buffer.from(data as ArrayBuffer).toString("utf8");
-        // Check if JSON event
-        if (text.startsWith("{")) {
-          const parsed = JSON.parse(text);
-          if (parsed.type === "input_audio_buffer.append") {
-            payload = text;
-          } else if (parsed.type === "input_audio_buffer.commit") {
-            payload = text;
-          }
-        } else {
-          // Plain base64 string
-          payload = JSON.stringify({
-            type: "input_audio_buffer.append",
-            audio: text,
-          });
-        }
-      }
-
-      if (payload) {
-        if (isUpstreamOpen && upstreamWs.readyState === WebSocket.OPEN) {
-          upstreamWs.send(payload);
-        } else if (pendingBufferQueue.length < 100) {
-          pendingBufferQueue.push(payload);
-        }
-      }
-    } catch (e) {
-      console.error("[REALTIME-STT] Error handling client audio chunk:", e);
-    }
-  });
-
-  clientWs.on("close", () => {
-    console.log("[REALTIME-STT] Client disconnected");
-    if (upstreamWs.readyState === WebSocket.OPEN) {
-      upstreamWs.close();
-    }
-  });
-});
-
 // Production and dev server
 async function startServer() {
-  const server = http.createServer(app);
-
-  // Attach WebSocket upgrade listener for /api/realtime-stt
-  server.on("upgrade", (request: http.IncomingMessage, socket, head) => {
-    const url = new URL(request.url || "", `http://${request.headers.host || "localhost"}`);
-    if (url.pathname === "/api/realtime-stt") {
-      wss.handleUpgrade(request, socket, head, (ws) => {
-        wss.emit("connection", ws, request);
-      });
-    }
-  });
-
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
       server: { middlewareMode: true },
@@ -1051,7 +830,7 @@ async function startServer() {
     });
   }
 
-  server.listen(PORT, "0.0.0.0", () => {
+  app.listen(PORT, "0.0.0.0", () => {
     console.log(`Unutma AI server running on http://localhost:${PORT}`);
   });
 }

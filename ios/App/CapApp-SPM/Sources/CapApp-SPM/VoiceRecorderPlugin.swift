@@ -21,10 +21,7 @@ public class VoiceRecorder: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "stopRecording", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "pauseRecording", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "resumeRecording", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "getCurrentStatus", returnType: CAPPluginReturnPromise),
-        // [REALTIME-STT] Dedicated streaming methods for gpt-live-transcribe
-        CAPPluginMethod(name: "startRealtimeAudioStreaming", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "stopRealtimeAudioStreaming", returnType: CAPPluginReturnPromise)
+        CAPPluginMethod(name: "getCurrentStatus", returnType: CAPPluginReturnPromise)
     ]
 
     private var audioRecorder: AVAudioRecorder?
@@ -38,11 +35,6 @@ public class VoiceRecorder: CAPPlugin, CAPBridgedPlugin {
     private var silenceBeganTime: Date?
     private let speechThresholdDb: Float = -38.0
     private let silenceAutoStopTimeoutSec: TimeInterval = 1.3
-
-    // [REALTIME-STT] AVAudioEngine for streaming live 16-bit PCM chunks to gpt-live-transcribe
-    // Allows processing conversation.item.input_audio_transcription.delta while user is speaking
-    private var audioEngine: AVAudioEngine?
-    private var isRealtimeStreaming: Bool = false
 
     @objc public func canDeviceVoiceRecord(_ call: CAPPluginCall) {
         call.resolve(["value": true])
@@ -250,80 +242,5 @@ public class VoiceRecorder: CAPPlugin, CAPBridgedPlugin {
 
     @objc public func getCurrentStatus(_ call: CAPPluginCall) {
         call.resolve(["status": currentStatus])
-    }
-
-    // =========================================================================
-    // [REALTIME-STT] Native iOS Real-time Audio Stream Implementation
-    // Streams PCM 16-bit 24kHz audio chunks to frontend WebSocket listener
-    // Configured for OpenAI Realtime model: gpt-live-transcribe
-    // Downstream receives: conversation.item.input_audio_transcription.delta
-    // =========================================================================
-    @objc public func startRealtimeAudioStreaming(_ call: CAPPluginCall) {
-        let session = AVAudioSession.sharedInstance()
-        guard session.recordPermission == .granted else {
-            call.reject("MISSING_PERMISSION")
-            return
-        }
-
-        do {
-            try session.setCategory(.playAndRecord, mode: .measurement, options: [.defaultToSpeaker, .allowBluetooth])
-            try session.setActive(true, options: .notifyOthersOnDeactivation)
-
-            let engine = AVAudioEngine()
-            let inputNode = engine.inputNode
-            let bus = 0
-            let inputFormat = inputNode.outputFormat(forBus: bus)
-
-            print("[REALTIME-STT] Native iOS AVAudioEngine starting tap for gpt-live-transcribe")
-
-            // Install tap on microphone input node
-            inputNode.installTap(onBus: bus, bufferSize: 2048, format: inputFormat) { [weak self] (buffer, _) in
-                guard let self = self, self.isRealtimeStreaming else { return }
-                guard let channelData = buffer.floatChannelData?[0] else { return }
-                let frameCount = Int(buffer.frameLength)
-                guard frameCount > 0 else { return }
-
-                // Convert float samples to 16-bit linear PCM (Little Endian)
-                var pcmData = Data(count: frameCount * 2)
-                pcmData.withUnsafeMutableBytes { rawBuffer in
-                    guard let pcmPointer = rawBuffer.bindMemory(to: Int16.self).baseAddress else { return }
-                    for i in 0..<frameCount {
-                        let sample = channelData[i]
-                        let clamped = max(-1.0, min(1.0, sample))
-                        pcmPointer[i] = Int16(clamped * 32767.0)
-                    }
-                }
-
-                let base64Chunk = pcmData.base64EncodedString()
-                // Emit realtime audio chunk to JavaScript listeners
-                // Downstream handler feeds OpenAI Realtime -> conversation.item.input_audio_transcription.delta
-                self.notifyListeners("realtimeAudioChunk", data: [
-                    "data": base64Chunk,
-                    "format": "pcm16",
-                    "sampleRate": inputFormat.sampleRate
-                ])
-            }
-
-            engine.prepare()
-            try engine.start()
-
-            self.audioEngine = engine
-            self.isRealtimeStreaming = true
-            call.resolve(["value": true, "model": "gpt-live-transcribe"])
-        } catch {
-            print("[REALTIME-STT] Failed to start native AVAudioEngine: \(error.localizedDescription)")
-            call.reject("STREAM_START_FAILED: \(error.localizedDescription)")
-        }
-    }
-
-    @objc public func stopRealtimeAudioStreaming(_ call: CAPPluginCall) {
-        self.isRealtimeStreaming = false
-        if let engine = self.audioEngine {
-            engine.inputNode.removeTap(onBus: 0)
-            engine.stop()
-            self.audioEngine = nil
-            print("[REALTIME-STT] Native iOS AVAudioEngine stopped")
-        }
-        call.resolve(["value": true])
     }
 }
