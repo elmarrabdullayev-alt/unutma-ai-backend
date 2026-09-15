@@ -969,17 +969,29 @@ wss.on("connection", (clientWs: WebSocket, request: http.IncomingMessage) => {
   });
 
   // Forward audio chunks from client to upstream OpenAI Realtime
-  clientWs.on("message", (data: WebSocket.RawData) => {
+  clientWs.on("message", (data: WebSocket.RawData, isBinary: boolean) => {
     try {
       let payload = "";
-      if (Buffer.isBuffer(data)) {
-        // Raw binary PCM data
+      if (isBinary) {
+        // Only real binary WebSocket frames are treated as raw PCM.
+        const rawBuffer = Buffer.isBuffer(data)
+          ? data
+          : Array.isArray(data)
+            ? Buffer.concat(data)
+            : Buffer.from(data as ArrayBuffer);
+
         payload = JSON.stringify({
           type: "input_audio_buffer.append",
-          audio: data.toString("base64"),
+          audio: rawBuffer.toString("base64"),
         });
       } else {
-        const text = data.toString();
+        // Text WebSocket frames may still arrive as Buffer objects in ws.
+        // Decode them as UTF-8 JSON instead of treating them as raw audio.
+        const text = Buffer.isBuffer(data)
+          ? data.toString("utf8")
+          : Array.isArray(data)
+            ? Buffer.concat(data).toString("utf8")
+            : Buffer.from(data as ArrayBuffer).toString("utf8");
         // Check if JSON event
         if (text.startsWith("{")) {
           const parsed = JSON.parse(text);
