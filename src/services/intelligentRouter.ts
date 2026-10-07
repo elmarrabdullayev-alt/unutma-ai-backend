@@ -724,22 +724,25 @@ export class IntelligentRouter {
 
     if (morningMatch) {
       const h = morningMatch[1] ? parseInt(morningMatch[1], 10) : (morningMatch[3] ? AZ_WORD_NUMBERS[morningMatch[3]] : 9);
-      // Explicit 24-hour values must remain unchanged.
+      // "səhər" = AM. Explicit 24-hour time must never be changed.
       targetHours = h;
       targetMinutes = morningMatch[2] ? parseInt(morningMatch[2], 10) : 0;
       timeConfidence = 'exact';
     } else if (afternoonMatch) {
       const h = afternoonMatch[1] ? parseInt(afternoonMatch[1], 10) : (afternoonMatch[3] ? AZ_WORD_NUMBERS[afternoonMatch[3]] : 2);
-      targetHours = h >= 1 && h <= 5 ? h + 12 : (h === 12 ? 12 : h);
+      // "günorta" converts 1–5 to 13–17. Explicit 24-hour time must never be changed.
+      targetHours = h >= 1 && h <= 5 ? h + 12 : h;
       targetMinutes = afternoonMatch[2] ? parseInt(afternoonMatch[2], 10) : 0;
       timeConfidence = 'exact';
     } else if (eveningMatch) {
       const h = eveningMatch[1] ? parseInt(eveningMatch[1], 10) : (eveningMatch[3] ? AZ_WORD_NUMBERS[eveningMatch[3]] : 8);
+      // "axşam" = PM (converts 1–11 to 13–23). Explicit 24-hour time must never be changed.
       targetHours = h >= 1 && h <= 11 ? h + 12 : (h === 12 ? 0 : h);
       targetMinutes = eveningMatch[2] ? parseInt(eveningMatch[2], 10) : 0;
       timeConfidence = 'exact';
     } else if (nightMatch) {
       const h = nightMatch[1] ? parseInt(nightMatch[1], 10) : (nightMatch[3] ? AZ_WORD_NUMBERS[nightMatch[3]] : 1);
+      // "gecə" keeps 1–4 as 01–04. Explicit 24-hour time must never be changed.
       targetHours = h >= 1 && h <= 4 ? h : (h === 12 ? 0 : (h === 11 ? 23 : h));
       targetMinutes = nightMatch[2] ? parseInt(nightMatch[2], 10) : 0;
       timeConfidence = 'exact';
@@ -753,27 +756,35 @@ export class IntelligentRouter {
       targetMinutes = exactTimeMatch?.[2] ? parseInt(exactTimeMatch[2], 10) : 0;
       timeConfidence = 'exact';
 
-      // Check dayparts
-      if (/axşam|axsam/i.test(lower) && targetHours >= 1 && targetHours <= 11) {
-        targetHours += 12;
-      } else if (/günorta|gunorta/i.test(lower) && targetHours >= 1 && targetHours <= 5) {
-        targetHours += 12;
-      } else if (/gecə|gece/i.test(lower) && targetHours >= 1 && targetHours <= 4) {
-        // Night 1-4 stays 01:00-04:00.
+      // Explicit 24-hour time must never be changed (hours >= 12 preserved)
+      if (targetHours >= 1 && targetHours <= 11) {
+        if (/axşam|axsam/i.test(lower)) {
+          // "axşam" = PM
+          targetHours += 12;
+        } else if (/günorta|gunorta/i.test(lower) && targetHours <= 5) {
+          // "günorta" converts 1–5 to 13–17
+          targetHours += 12;
+        } else if (/gecə|gece/i.test(lower) && targetHours <= 4) {
+          // "gecə" keeps 1–4 as 01–04
+        }
+        // Bare 1–11 hours with no daypart = AM (targetHours unchanged)
       }
-      // Bare hours 1-11 default to AM.
-      // Explicit 24-hour values are never modified.
     } else if (wordMatch && wordMatch[1] && AZ_WORD_NUMBERS[wordMatch[1]]) {
       targetHours = AZ_WORD_NUMBERS[wordMatch[1]];
       timeConfidence = 'exact';
-      if (/axşam|axsam/i.test(lower) && targetHours >= 1 && targetHours <= 11) {
-        targetHours += 12;
-      } else if (/günorta|gunorta/i.test(lower) && targetHours >= 1 && targetHours <= 5) {
-        targetHours += 12;
-      } else if (/gecə|gece/i.test(lower) && targetHours >= 1 && targetHours <= 4) {
-        // Night 1-4 stays 01:00-04:00.
+      // Explicit 24-hour time must never be changed
+      if (targetHours >= 1 && targetHours <= 11) {
+        if (/axşam|axsam/i.test(lower)) {
+          // "axşam" = PM
+          targetHours += 12;
+        } else if (/günorta|gunorta/i.test(lower) && targetHours <= 5) {
+          // "günorta" converts 1–5 to 13–17
+          targetHours += 12;
+        } else if (/gecə|gece/i.test(lower) && targetHours <= 4) {
+          // "gecə" keeps 1–4 as 01–04
+        }
+        // Bare 1–11 hours with no daypart = AM (targetHours unchanged)
       }
-      // Bare spoken hours default to AM.
     } else if (/axşam|axşamüstü|axsam/i.test(lower)) {
       targetHours = 20;
       targetMinutes = 0;

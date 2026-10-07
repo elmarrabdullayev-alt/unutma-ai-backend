@@ -15,6 +15,7 @@ export class NativeVoiceRecorderProvider implements SpeechRecognitionProvider {
   private callbacks: SpeechCallbacks | null = null;
   private audioLevelInterval: number | null = null;
   private currentAudioLevel = 0;
+  private silenceListenerHandle: { remove: () => Promise<void> | void } | null = null;
 
   public isAvailable(): boolean {
     if (!Capacitor.isNativePlatform()) {
@@ -55,6 +56,19 @@ export class NativeVoiceRecorderProvider implements SpeechRecognitionProvider {
     }
   }
 
+  private async removeSilenceListener(): Promise<void> {
+    if (this.silenceListenerHandle) {
+      try {
+        if (typeof this.silenceListenerHandle.remove === 'function') {
+          await this.silenceListenerHandle.remove();
+        }
+      } catch (e) {
+        console.warn('[NATIVE VOICE] Error removing silenceAutoStop listener:', e);
+      }
+      this.silenceListenerHandle = null;
+    }
+  }
+
   public async start(callbacks: SpeechCallbacks): Promise<void> {
     this.callbacks = callbacks;
     this.activeStopPromise = null;
@@ -64,6 +78,9 @@ export class NativeVoiceRecorderProvider implements SpeechRecognitionProvider {
       console.warn('[NATIVE VOICE] Already recording, ignoring start request');
       return;
     }
+
+    // 1. Remove any previous silenceAutoStop listener before starting to prevent duplicates
+    await this.removeSilenceListener();
 
     if (!this.isAvailable()) {
       if (platform === 'ios') {
@@ -76,7 +93,7 @@ export class NativeVoiceRecorderProvider implements SpeechRecognitionProvider {
     }
 
     try {
-      // 1. Permission check and request
+      // 2. Permission check and request
       const hasPerm = await VoiceRecorder.hasAudioRecordingPermission();
       console.log('[NATIVE VOICE] permission status:', hasPerm?.value);
 
@@ -91,7 +108,7 @@ export class NativeVoiceRecorderProvider implements SpeechRecognitionProvider {
         }
       }
 
-      // 2. Check current status in case previous recording was dangling
+      // 3. Check current status in case previous recording was dangling
       try {
         const status = await VoiceRecorder.getCurrentStatus();
         if (status?.status === 'RECORDING') {
@@ -102,7 +119,30 @@ export class NativeVoiceRecorderProvider implements SpeechRecognitionProvider {
         console.warn('[NATIVE VOICE] Error checking recording status:', statusErr);
       }
 
-      // 3. Start native recording
+      // 4. Register silenceAutoStop listener BEFORE starting recording so early events are never lost
+      try {
+        if (typeof (VoiceRecorder as any).addListener === 'function') {
+          this.silenceListenerHandle = await (VoiceRecorder as any).addListener(
+            'silenceAutoStop',
+            async (eventData?: any) => {
+              console.log('[NATIVE VOICE] silenceAutoStop event received from native iOS VoiceRecorder', eventData);
+              // Ensure stop() is called strictly ONCE, preserving isStopping and activeStopPromise
+              if (this.isRecording && !this.isStopping && !this.activeStopPromise) {
+                try {
+                  await this.stop();
+                } catch (stopErr) {
+                  console.warn('[NATIVE VOICE] Error executing stop after silenceAutoStop:', stopErr);
+                }
+              }
+            }
+          );
+          console.log('[NATIVE VOICE] silenceAutoStop listener successfully registered before recording');
+        }
+      } catch (listenerErr) {
+        console.warn('[NATIVE VOICE] Could not attach silenceAutoStop listener before recording:', listenerErr);
+      }
+
+      // 5. Start native recording
       const startResult = await VoiceRecorder.startRecording();
       if (!startResult?.value) {
         throw new Error('Native səs yazma başladıla bilmədi.');
@@ -114,21 +154,10 @@ export class NativeVoiceRecorderProvider implements SpeechRecognitionProvider {
       }
       console.log('[NATIVE VOICE] recording started');
 
-      // 4. Attach silence auto-stop listener from native iOS VoiceRecorder
-      try {
-        (VoiceRecorder as any).addListener?.('silenceAutoStop', async () => {
-          console.log('[NATIVE VOICE] silenceAutoStop event received from native iOS VoiceRecorder');
-          if (this.isRecording && !this.isStopping) {
-            await this.stop();
-          }
-        });
-      } catch (listenerErr) {
-        // Ignore if not supported in current environment
-      }
-
-      // 5. Simulate audio level pulsation for UI waveform
+      // 6. Simulate audio level pulsation for UI waveform
       this.startAudioLevelSimulation();
     } catch (err: any) {
+      await this.removeSilenceListener();
       this.isRecording = false;
       this.stopAudioLevelSimulation();
       if (platform === 'ios') {
@@ -149,11 +178,15 @@ export class NativeVoiceRecorderProvider implements SpeechRecognitionProvider {
 
     if (!this.isRecording) {
       console.log('[NATIVE VOICE] Not recording, returning empty');
+      await this.removeSilenceListener();
       return '';
     }
 
     this.stopAudioLevelSimulation();
     this.isStopping = true;
+
+    // Immediately remove silence listener to avoid trailing duplicate triggers
+    await this.removeSilenceListener();
 
     this.activeStopPromise = (async () => {
       try {
@@ -220,6 +253,7 @@ export class NativeVoiceRecorderProvider implements SpeechRecognitionProvider {
         throw new Error(localizedError);
       } finally {
         this.activeStopPromise = null;
+        await this.removeSilenceListener();
       }
     })();
 

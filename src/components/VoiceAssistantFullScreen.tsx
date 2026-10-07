@@ -12,7 +12,6 @@ import {
   Clock,
   ArrowRight,
   RefreshCw,
-  Volume2,
   AlertCircle,
   AlertTriangle,
   Repeat,
@@ -174,6 +173,7 @@ export const VoiceAssistantFullScreen: React.FC<VoiceAssistantFullScreenProps> =
             if (isFinal) {
               clearSilenceTimer();
               speechBeganRef.current = false;
+              setIsListening(false);
               setTranscript(text);
               setInterimText('');
               // If final text is received directly, analyze it
@@ -1037,16 +1037,6 @@ export const VoiceAssistantFullScreen: React.FC<VoiceAssistantFullScreenProps> =
                 <p className="text-xs text-slate-200 leading-relaxed whitespace-pre-wrap">
                   {assistantSpokenResponse}
                 </p>
-
-                <div className="mt-3 flex items-center justify-end">
-                  <button
-                    onClick={() => assistantSpokenResponse && speakText(assistantSpokenResponse)}
-                    className="inline-flex items-center gap-1 text-[11px] font-bold text-violet-400 hover:text-violet-300"
-                  >
-                    <Volume2 className="h-3.5 w-3.5" />
-                    Təkrar səsləndir
-                  </button>
-                </div>
               </div>
             </div>
 
