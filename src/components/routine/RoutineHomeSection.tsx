@@ -2,12 +2,8 @@ import React, { useState, useEffect } from 'react';
 import {
   Sunrise,
   Moon,
-  Sun,
-  Sparkles,
   Flame,
-  Plus,
-  ChevronRight,
-  Clock,
+  CheckCircle2,
 } from 'lucide-react';
 import { Routine, RoutineType } from '../../types';
 import { routineService } from '../../services/routineService';
@@ -32,125 +28,115 @@ export const RoutineHomeSection: React.FC<RoutineHomeSectionProps> = ({
     return unsub;
   }, []);
 
-  const today = new Date();
-  const todayRoutines = routineService.getTodayRoutines(today);
-  const activeRoutines = todayRoutines.length > 0 ? todayRoutines : routines.filter((r) => r.isActive);
+  // Morning and Evening routine lookup
+  const morningRoutine = routines.find((r) => r.type === 'morning') || routines[0];
+  const eveningRoutine = routines.find((r) => r.type === 'evening') || routines[1];
 
-  // Calculate progress for all active routines
-  const routinesWithProgress = activeRoutines.map((routine) => ({
-    routine,
-    progress: routineService.getRoutineProgress(routine),
-  }));
-
-  const getRoutineIcon = (routine: Routine) => {
-    if (routine.type === 'morning') return <Sunrise className="h-4 w-4 text-amber-300" />;
-    if (routine.type === 'evening') return <Moon className="h-4 w-4 text-indigo-300" />;
-    if (routine.type === 'afternoon') return <Sun className="h-4 w-4 text-amber-300" />;
-    return <Sparkles className="h-4 w-4 text-violet-300" />;
-  };
-
-  // Unified Routine Card Component:
-  // Guarantees identical dimensions, padding, button size, icon size, and typography for both "Səhər rutini" and "Axşam rutini"
-  const renderRoutineCard = (item: typeof routinesWithProgress[0]) => {
-    const { routine, progress } = item;
-    const isComplete = progress.isCompleted;
-
-    return (
-      <div
-        key={routine.id}
-        id={`routine-card-${routine.id}`}
-        onClick={() => onOpenRoutineSession(routine)}
-        className="p-3.5 rounded-2xl bg-[#111726] border border-white/[0.06] hover:border-violet-500/30 cursor-pointer active:scale-[0.99] transition-all shadow-sm group"
-      >
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2.5 min-w-0 flex-1">
-            <div className="h-8 w-8 rounded-xl bg-white/5 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-              {getRoutineIcon(routine)}
-            </div>
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-2">
-                <h3 className="text-xs font-bold text-white tracking-tight truncate">
-                  {routine.title}
-                </h3>
-                <span className="flex items-center gap-0.5 text-[10px] text-slate-400 font-medium shrink-0">
-                  <Clock className="h-2.5 w-2.5" />
-                  {routine.startTime}
-                </span>
-              </div>
-              <p className="text-[11px] text-slate-400 mt-0.5">
-                {progress.completed} / {progress.total} tamamlandı
-              </p>
-            </div>
-          </div>
-
-          <button
-            className={`h-7 px-3 rounded-xl text-[11px] font-semibold flex items-center gap-1 transition-all shrink-0 ${
-              isComplete
-                ? 'bg-white/10 text-emerald-300 hover:bg-white/15'
-                : 'bg-violet-600 group-hover:bg-violet-500 text-white shadow-sm'
-            }`}
-          >
-            <span>{isComplete ? 'Bax' : progress.completed > 0 ? 'Davam et' : 'Başla'}</span>
-            <ChevronRight className="h-3 w-3" />
-          </button>
-        </div>
-
-        {/* Progress bar */}
-        <div className="mt-2.5 h-1 w-full rounded-full bg-white/5 overflow-hidden">
-          <div
-            className={`h-full rounded-full transition-all duration-300 ${
-              isComplete
-                ? 'bg-emerald-500'
-                : 'bg-gradient-to-r from-violet-500 to-indigo-400'
-            }`}
-            style={{ width: `${isComplete ? 100 : progress.percent}%` }}
-          />
-        </div>
-      </div>
-    );
-  };
+  const targetRoutines = [
+    { type: 'morning' as RoutineType, defaultTitle: 'Səhər rutini', routine: morningRoutine },
+    { type: 'evening' as RoutineType, defaultTitle: 'Axşam rutini', routine: eveningRoutine },
+  ];
 
   return (
     <section className="space-y-2.5">
       {/* Section Header */}
       <div className="flex items-center justify-between px-0.5">
         <div className="flex items-center gap-2">
-          <h2 className="text-xs font-bold uppercase tracking-wider text-slate-400">
+          <h2 className="text-xs font-semibold uppercase tracking-wider text-[#94A3B8]">
             Rutinlərim
           </h2>
 
           {streakData.currentStreak > 0 && (
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-400 text-[10px] font-semibold">
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-400 text-[10px] font-medium">
               <Flame className="h-2.5 w-2.5 fill-amber-400/20" />
               <span>{streakData.currentStreak} gün</span>
             </span>
           )}
         </div>
-
-        <button
-          onClick={() => onOpenCreateRoutine()}
-          className="inline-flex items-center gap-1 text-[11px] font-semibold text-violet-400 hover:text-violet-300 active:scale-95 transition-all"
-        >
-          <Plus className="h-3.5 w-3.5" />
-          <span>Yeni rutin</span>
-        </button>
       </div>
 
-      {/* Routine Cards List - Equal height and component structure */}
-      <div className="space-y-2">
-        {activeRoutines.length === 0 ? (
-          <div className="p-3.5 rounded-2xl bg-[#111726] border border-white/[0.06] text-center space-y-2">
-            <p className="text-xs text-slate-400 font-medium">Hələ heç bir rutin yaradılmayıb.</p>
-            <button
-              onClick={() => onOpenCreateRoutine('morning')}
-              className="px-3 py-1.5 rounded-xl bg-violet-600 hover:bg-violet-500 text-white text-xs font-semibold transition-all shadow-sm"
+      {/* Səhər və Axşam rutinləri: İki kompakt kart yan-yana */}
+      <div className="grid grid-cols-2 gap-2.5 sm:gap-3">
+        {targetRoutines.map(({ type, defaultTitle, routine }) => {
+          const isMorning = type === 'morning';
+          const title = routine?.title || defaultTitle;
+          const progress = routine
+            ? routineService.getRoutineProgress(routine)
+            : { completed: 0, total: 3, percent: 0, isCompleted: false };
+          const isComplete = progress.isCompleted;
+
+          return (
+            <div
+              key={type}
+              id={`routine-card-${type}`}
+              onClick={() => {
+                if (routine) {
+                  onOpenRoutineSession(routine);
+                } else {
+                  onOpenCreateRoutine(type);
+                }
+              }}
+              className="p-3.5 rounded-[18px] bg-[#121827] border border-white/[0.06] hover:border-[#7C3AED]/30 cursor-pointer active:scale-[0.98] transition-all flex flex-col justify-between group min-h-[102px]"
             >
-              + Səhər rutini yarat
-            </button>
-          </div>
-        ) : (
-          routinesWithProgress.map(renderRoutineCard)
-        )}
+              {/* İkon və Vaxt */}
+              <div className="flex items-center justify-between">
+                <div
+                  className={`h-8 w-8 rounded-xl flex items-center justify-center shrink-0 ${
+                    isMorning
+                      ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+                      : 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20'
+                  }`}
+                >
+                  {isMorning ? (
+                    <Sunrise className="h-4 w-4" />
+                  ) : (
+                    <Moon className="h-4 w-4" />
+                  )}
+                </div>
+
+                {routine?.startTime && (
+                  <span className="text-[10px] text-[#94A3B8] font-normal">
+                    {routine.startTime}
+                  </span>
+                )}
+              </div>
+
+              {/* Rutin adı və Tamamlanma Göstəricisi */}
+              <div className="mt-2.5 space-y-1.5">
+                <h3 className="text-xs font-semibold text-[#F5F6FA] tracking-tight truncate">
+                  {title}
+                </h3>
+
+                <div className="flex items-center justify-between text-[11px] text-[#94A3B8]">
+                  {isComplete ? (
+                    <span className="inline-flex items-center gap-1 text-[#10B981] font-medium text-[10px]">
+                      <CheckCircle2 className="h-3 w-3" />
+                      Tamamlandı
+                    </span>
+                  ) : (
+                    <span className="text-[10px] text-[#94A3B8]">
+                      {progress.completed}/{progress.total} tamamlandı
+                    </span>
+                  )}
+                </div>
+
+                {/* Zərif Tamamlanma Zolağı */}
+                <div className="h-1 w-full rounded-full bg-white/[0.06] overflow-hidden">
+                  <div
+                    className={`h-full rounded-full transition-all duration-300 ${
+                      isComplete
+                        ? 'bg-[#10B981]'
+                        : isMorning
+                        ? 'bg-gradient-to-r from-amber-400 to-amber-300'
+                        : 'bg-gradient-to-r from-[#7C3AED] to-[#A78BFA]'
+                    }`}
+                    style={{ width: `${isComplete ? 100 : progress.percent}%` }}
+                  />
+                </div>
+              </div>
+            </div>
+          );
+        })}
       </div>
     </section>
   );

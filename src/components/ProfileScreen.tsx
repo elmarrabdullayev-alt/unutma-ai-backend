@@ -190,19 +190,19 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
       </div>
 
       {/* Profile Card Summary with Initials Avatar */}
-      <div className="flex items-center gap-3.5 rounded-2xl border border-white/5 bg-[#121828] p-3.5 shadow-sm">
-        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-tr from-violet-600 to-indigo-600 text-white font-black text-base shadow-md">
+      <div className="flex items-center gap-3.5 rounded-[20px] border border-white/[0.06] bg-[#121827] p-4 shadow-sm">
+        <div className="flex h-12 w-12 items-center justify-center rounded-[16px] bg-gradient-to-tr from-[#7C3AED] to-[#A78BFA] text-white font-bold text-base shadow-md">
           {initials}
         </div>
         <div className="flex-1 min-w-0">
-          <h2 className="text-sm font-bold text-white truncate">{fullName}</h2>
-          <p className="text-xs text-slate-400">
+          <h2 className="text-sm font-semibold text-[#F5F6FA] truncate">{fullName}</h2>
+          <p className="text-xs text-[#94A3B8]">
             {profile?.gender ? GENDER_LABELS[profile.gender] : 'İstifadəçi'} • Ümumi {totalCount} xatırlatma
           </p>
         </div>
         <button
           onClick={handleOpenEdit}
-          className="flex h-9 w-9 items-center justify-center rounded-xl bg-violet-500/10 text-violet-400 border border-violet-500/20 active:scale-95 transition-transform"
+          className="flex h-9 w-9 items-center justify-center rounded-[12px] bg-[#7C3AED]/15 text-[#A78BFA] border border-[#7C3AED]/25 active:scale-95 transition-transform"
           title="Şəxsi məlumatları redaktə et"
         >
           <Edit3 className="h-4 w-4" />
@@ -212,32 +212,32 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
       {/* SECTION 1: ŞƏXSİ MƏLUMATLAR */}
       <div className="space-y-1.5">
         <div className="flex items-center justify-between px-1">
-          <h3 className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400">
+          <h3 className="text-[11px] font-semibold uppercase tracking-wider text-[#94A3B8]">
             Şəxsi məlumatlar
           </h3>
           <button
             onClick={handleOpenEdit}
-            className="text-[11px] font-bold text-violet-400 hover:text-violet-300 transition-colors"
+            className="text-[11px] font-medium text-[#A78BFA] hover:text-[#C4B5FD] transition-colors"
           >
             Redaktə et
           </button>
         </div>
 
-        <div className="rounded-2xl border border-white/5 bg-[#101524] overflow-hidden divide-y divide-white/5">
+        <div className="rounded-[18px] border border-white/[0.06] bg-[#121827] overflow-hidden divide-y divide-white/[0.04]">
           {/* Ad və Soyad */}
           <div className="flex items-center justify-between p-3.5">
             <div className="flex items-center gap-3">
-              <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-slate-800 text-slate-300">
+              <div className="flex h-8 w-8 items-center justify-center rounded-[12px] bg-white/[0.04] text-[#94A3B8]">
                 <User className="h-4 w-4" />
               </div>
               <div>
-                <p className="text-xs font-semibold text-white">Ad və Soyad</p>
-                <p className="text-[10px] text-slate-400">{fullName}</p>
+                <p className="text-xs font-medium text-[#F5F6FA]">Ad və Soyad</p>
+                <p className="text-[10px] text-[#94A3B8]">{fullName}</p>
               </div>
             </div>
             <button
               onClick={handleOpenEdit}
-              className="text-xs font-bold text-violet-400 hover:text-violet-300"
+              className="text-xs font-medium text-[#A78BFA] hover:text-[#C4B5FD]"
             >
               Dəyiş
             </button>
@@ -246,19 +246,19 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
           {/* Cinsiyyət */}
           <div className="flex items-center justify-between p-3.5">
             <div className="flex items-center gap-3">
-              <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-purple-500/15 text-purple-400">
+              <div className="flex h-8 w-8 items-center justify-center rounded-[12px] bg-[#7C3AED]/15 text-[#A78BFA]">
                 <Heart className="h-4 w-4" />
               </div>
               <div>
-                <p className="text-xs font-semibold text-white">Cinsiyyət</p>
-                <p className="text-[10px] text-slate-400">
+                <p className="text-xs font-medium text-[#F5F6FA]">Cinsiyyət</p>
+                <p className="text-[10px] text-[#94A3B8]">
                   {profile?.gender ? GENDER_LABELS[profile.gender] : 'Demək istəmirəm'}
                 </p>
               </div>
             </div>
             <button
               onClick={handleOpenEdit}
-              className="text-xs font-bold text-violet-400 hover:text-violet-300"
+              className="text-xs font-medium text-[#A78BFA] hover:text-[#C4B5FD]"
             >
               Dəyiş
             </button>
@@ -267,19 +267,19 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
           {/* Doğum Tarixi */}
           <div className="flex items-center justify-between p-3.5">
             <div className="flex items-center gap-3">
-              <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-500/15 text-emerald-400">
+              <div className="flex h-8 w-8 items-center justify-center rounded-[12px] bg-[#10B981]/15 text-[#10B981]">
                 <Calendar className="h-4 w-4" />
               </div>
               <div>
-                <p className="text-xs font-semibold text-white">Doğum tarixi</p>
-                <p className="text-[10px] text-slate-400">
+                <p className="text-xs font-medium text-[#F5F6FA]">Doğum tarixi</p>
+                <p className="text-[10px] text-[#94A3B8]">
                   {formatBirthDate(profile?.birthDate)}
                 </p>
               </div>
             </div>
             <button
               onClick={handleOpenEdit}
-              className="text-xs font-bold text-violet-400 hover:text-violet-300"
+              className="text-xs font-medium text-[#A78BFA] hover:text-[#C4B5FD]"
             >
               Dəyiş
             </button>
@@ -290,26 +290,26 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
       {/* SECTION: İRƏLİLƏYİŞİM */}
       {onOpenProgress && (
         <div className="space-y-1.5">
-          <h3 className="px-1 text-[11px] font-extrabold uppercase tracking-wider text-slate-400">
+          <h3 className="px-1 text-[11px] font-semibold uppercase tracking-wider text-[#94A3B8]">
             İrəliləyişim
           </h3>
-          <div className="rounded-2xl border border-white/5 bg-[#101524] overflow-hidden">
+          <div className="rounded-[18px] border border-white/[0.06] bg-[#121827] overflow-hidden">
             <button
               onClick={onOpenProgress}
-              className="flex w-full items-center justify-between p-3.5 hover:bg-slate-800/40 text-left transition-colors group"
+              className="flex w-full items-center justify-between p-3.5 hover:bg-white/[0.04] text-left transition-colors group"
             >
               <div className="flex items-center gap-3">
-                <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-violet-500/15 text-violet-400 group-hover:scale-105 transition-transform">
+                <div className="flex h-8 w-8 items-center justify-center rounded-[12px] bg-[#7C3AED]/15 text-[#A78BFA] group-hover:scale-105 transition-transform">
                   <TrendingUp className="h-4 w-4" />
                 </div>
                 <div>
-                  <p className="text-xs font-semibold text-white">İrəliləyişim</p>
-                  <p className="text-[10px] text-slate-400">
+                  <p className="text-xs font-medium text-[#F5F6FA]">İrəliləyişim</p>
+                  <p className="text-[10px] text-[#94A3B8]">
                     Ardıcıl günlər, rutin və fokus nəticələrin.
                   </p>
                 </div>
               </div>
-              <ChevronRight className="h-4 w-4 text-slate-500 group-hover:text-violet-400 transition-colors" />
+              <ChevronRight className="h-4 w-4 text-[#94A3B8] group-hover:text-[#A78BFA] transition-colors" />
             </button>
           </div>
         </div>
@@ -318,36 +318,36 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
       {/* SECTION A: BİLDİRİŞLƏR */}
       <div className="space-y-1.5">
         <div className="px-1">
-          <h3 className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400">
+          <h3 className="text-[11px] font-semibold uppercase tracking-wider text-[#94A3B8]">
             Bildirişlər
           </h3>
-          <p className="text-[10px] text-slate-400 mt-0.5">
+          <p className="text-[10px] text-[#94A3B8] mt-0.5">
             Xatırlatmaları vaxtında almaq üçün bildiriş ayarlarını idarə et.
           </p>
         </div>
 
-        <div className="rounded-2xl border border-white/5 bg-[#101524] overflow-hidden divide-y divide-white/5">
+        <div className="rounded-[18px] border border-white/[0.06] bg-[#121827] overflow-hidden divide-y divide-white/[0.04]">
           <div className="flex items-center justify-between p-3.5">
             <div className="flex items-center gap-3">
-              <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-indigo-500/15 text-indigo-400">
+              <div className="flex h-8 w-8 items-center justify-center rounded-[12px] bg-[#7C3AED]/15 text-[#A78BFA]">
                 <Bell className="h-4 w-4" />
               </div>
               <div>
-                <p className="text-xs font-semibold text-white">Bildirişlər</p>
-                <p className="text-[10px] text-slate-400">
+                <p className="text-xs font-medium text-[#F5F6FA]">Bildirişlər</p>
+                <p className="text-[10px] text-[#94A3B8]">
                   {notificationPermission === 'granted' ? 'Aktivdir' : 'İcazə tələb olunur'}
                 </p>
               </div>
             </div>
 
             {notificationPermission === 'granted' ? (
-              <span className="flex items-center gap-1 text-[11px] font-bold text-emerald-400">
+              <span className="flex items-center gap-1 text-[11px] font-medium text-[#10B981]">
                 <Check className="h-3.5 w-3.5" /> Aktiv
               </span>
             ) : (
               <button
                 onClick={onRequestNotificationPermission}
-                className="rounded-xl bg-violet-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-violet-500 active:scale-95"
+                className="rounded-[12px] bg-[#7C3AED] px-3 py-1.5 text-xs font-medium text-white hover:bg-[#6D28D9] active:scale-95"
               >
                 İcazə ver
               </button>
@@ -356,18 +356,18 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
 
           <div className="flex items-center justify-between p-3.5">
             <div className="flex items-center gap-3">
-              <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-violet-500/15 text-violet-400">
+              <div className="flex h-8 w-8 items-center justify-center rounded-[12px] bg-[#7C3AED]/15 text-[#A78BFA]">
                 <Volume2 className="h-4 w-4" />
               </div>
               <div>
-                <p className="text-xs font-semibold text-white">Səs effektləri</p>
-                <p className="text-[10px] text-slate-400">Bildirişlərdə və tətbiqdə səs</p>
+                <p className="text-xs font-medium text-[#F5F6FA]">Səs effektləri</p>
+                <p className="text-[10px] text-[#94A3B8]">Bildirişlərdə və tətbiqdə səs</p>
               </div>
             </div>
             <button
               onClick={() => setSoundEffects(!soundEffects)}
               className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                soundEffects ? 'bg-violet-600' : 'bg-slate-700'
+                soundEffects ? 'bg-[#7C3AED]' : 'bg-[#0D1220] border border-white/10'
               }`}
             >
               <span
@@ -380,18 +380,18 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
 
           <div className="flex items-center justify-between p-3.5">
             <div className="flex items-center gap-3">
-              <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-pink-500/15 text-pink-400">
+              <div className="flex h-8 w-8 items-center justify-center rounded-[12px] bg-[#7C3AED]/15 text-[#A78BFA]">
                 <Smartphone className="h-4 w-4" />
               </div>
               <div>
-                <p className="text-xs font-semibold text-white">Titrəmə</p>
-                <p className="text-[10px] text-slate-400">Düymə toxunuşlarında geri bildiriş</p>
+                <p className="text-xs font-medium text-[#F5F6FA]">Titrəmə</p>
+                <p className="text-[10px] text-[#94A3B8]">Düymə toxunuşlarında geri bildiriş</p>
               </div>
             </div>
             <button
               onClick={() => setHapticFeedback(!hapticFeedback)}
               className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                hapticFeedback ? 'bg-violet-600' : 'bg-slate-700'
+                hapticFeedback ? 'bg-[#7C3AED]' : 'bg-[#0D1220] border border-white/10'
               }`}
             >
               <span
@@ -406,63 +406,63 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
 
       {/* SECTION B: MƏLUMATLAR VƏ EHTİYAT NÜSXƏ */}
       <div className="space-y-1.5">
-        <h3 className="px-1 text-[11px] font-extrabold uppercase tracking-wider text-slate-400">
+        <h3 className="px-1 text-[11px] font-semibold uppercase tracking-wider text-[#94A3B8]">
           Məlumatlar və ehtiyat nüsxə
         </h3>
-        <div className="rounded-2xl border border-white/5 bg-[#101524] overflow-hidden divide-y divide-white/5">
+        <div className="rounded-[18px] border border-white/[0.06] bg-[#121827] overflow-hidden divide-y divide-white/[0.04]">
           <button
             onClick={handleExportData}
-            className="flex w-full items-center justify-between p-3.5 hover:bg-slate-800/40 text-left transition-colors"
+            className="flex w-full items-center justify-between p-3.5 hover:bg-white/[0.04] text-left transition-colors"
           >
             <div className="flex items-center gap-3">
-              <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-500/15 text-emerald-400">
+              <div className="flex h-8 w-8 items-center justify-center rounded-[12px] bg-[#10B981]/15 text-[#10B981]">
                 <Download className="h-4 w-4" />
               </div>
               <div>
-                <p className="text-xs font-semibold text-white">Ehtiyat nüsxə yarat</p>
-                <p className="text-[10px] text-slate-400">Xatırlatmalarını fayl şəklində yadda saxla.</p>
+                <p className="text-xs font-medium text-[#F5F6FA]">Ehtiyat nüsxə yarat</p>
+                <p className="text-[10px] text-[#94A3B8]">Xatırlatmalarını fayl şəklində yadda saxla.</p>
               </div>
             </div>
             {backupSuccess ? (
-              <span className="text-[11px] font-bold text-emerald-400 flex items-center gap-1">
+              <span className="text-[11px] font-medium text-[#10B981] flex items-center gap-1">
                 <Check className="h-3 w-3" /> Yadda saxlanıldı
               </span>
             ) : (
-              <ChevronRight className="h-4 w-4 text-slate-500" />
+              <ChevronRight className="h-4 w-4 text-[#94A3B8]" />
             )}
           </button>
 
-          <label className="flex w-full items-center justify-between p-3.5 hover:bg-slate-800/40 cursor-pointer transition-colors">
+          <label className="flex w-full items-center justify-between p-3.5 hover:bg-white/[0.04] cursor-pointer transition-colors">
             <div className="flex items-center gap-3">
-              <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-amber-500/15 text-amber-400">
+              <div className="flex h-8 w-8 items-center justify-center rounded-[12px] bg-amber-500/15 text-amber-400">
                 <Upload className="h-4 w-4" />
               </div>
               <div>
-                <p className="text-xs font-semibold text-white">Bərpa et</p>
-                <p className="text-[10px] text-slate-400">Əvvəl saxladığın ehtiyat nüsxəni geri yüklə.</p>
+                <p className="text-xs font-medium text-[#F5F6FA]">Bərpa et</p>
+                <p className="text-[10px] text-[#94A3B8]">Əvvəl saxladığın ehtiyat nüsxəni geri yüklə.</p>
               </div>
             </div>
             <input type="file" accept=".json" onChange={handleImportFile} className="hidden" />
-            <ChevronRight className="h-4 w-4 text-slate-500" />
+            <ChevronRight className="h-4 w-4 text-[#94A3B8]" />
           </label>
         </div>
       </div>
 
       {/* SECTION C: MƏLUMATLARIN SAXLANMASI */}
       <div className="space-y-1.5">
-        <h3 className="px-1 text-[11px] font-extrabold uppercase tracking-wider text-slate-400">
+        <h3 className="px-1 text-[11px] font-semibold uppercase tracking-wider text-[#94A3B8]">
           Məlumatların saxlanması
         </h3>
-        <div className="rounded-2xl border border-white/5 bg-[#101524] p-3.5">
+        <div className="rounded-[18px] border border-white/[0.06] bg-[#121827] p-3.5">
           <div className="flex items-start gap-3">
-            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-violet-500/15 text-violet-400 shrink-0 mt-0.5">
+            <div className="flex h-8 w-8 items-center justify-center rounded-[12px] bg-[#7C3AED]/15 text-[#A78BFA] shrink-0 mt-0.5">
               <ShieldCheck className="h-4 w-4" />
             </div>
             <div className="space-y-1">
-              <p className="text-xs font-semibold text-white">
+              <p className="text-xs font-medium text-[#F5F6FA]">
                 Xatırlatmaların və şəxsi məlumatların bu cihazda saxlanılır.
               </p>
-              <p className="text-[11px] text-slate-400 leading-relaxed">
+              <p className="text-[11px] text-[#94A3B8] leading-relaxed">
                 Məlumatların icazən olmadan avtomatik paylaşılmır.
               </p>
             </div>

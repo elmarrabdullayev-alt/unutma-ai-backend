@@ -328,6 +328,8 @@ export default function App() {
                       setEditorInitialType(initialType);
                       setIsRoutineEditorOpen(true);
                     }}
+                    onOpenCalendar={() => setCurrentTab('calendar')}
+                    onOpenAssistant={() => setCurrentTab('ai')}
                     activeFocusSession={activeFocusSession}
                     notificationPermission={notificationPermission}
                     onRequestNotificationPermission={handleRequestNotification}

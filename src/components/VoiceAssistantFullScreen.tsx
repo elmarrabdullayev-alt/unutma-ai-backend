@@ -623,7 +623,7 @@ export const VoiceAssistantFullScreen: React.FC<VoiceAssistantFullScreenProps> =
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.98 }}
       transition={{ duration: 0.22, ease: [0.25, 1, 0.5, 1] }}
-      className="fixed inset-0 z-50 flex flex-col bg-[#080C15] text-slate-50 overflow-y-auto"
+      className="fixed inset-0 z-50 flex flex-col bg-[#080B14] text-[#F5F6FA] overflow-y-auto"
       style={{
         paddingTop: 'max(env(safe-area-inset-top, 0px), 12px)',
         paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 16px)',
@@ -632,24 +632,23 @@ export const VoiceAssistantFullScreen: React.FC<VoiceAssistantFullScreenProps> =
       {/* Top Header Bar */}
       <div className="flex items-center justify-between px-5 pt-1 pb-2 z-20">
         <div className="flex items-center gap-2">
-          <div className="flex h-7 w-7 items-center justify-center rounded-xl bg-violet-500/15 border border-violet-500/30 text-violet-300">
+          <div className="flex h-7 w-7 items-center justify-center rounded-xl bg-[#7C3AED]/20 border border-[#7C3AED]/30 text-[#A78BFA]">
             <Sparkles className="h-3.5 w-3.5" />
           </div>
-          <span className="text-[11px] font-bold uppercase tracking-wider text-violet-300">
+          <span className="text-[11px] font-semibold uppercase tracking-wider text-[#A78BFA]">
             Unutma AI Səs Mühərriki
           </span>
         </div>
 
         <motion.button
-          whileTap={{ scale: 0.98 }}
-          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.95 }}
           id="close-voice-assistant-fullscreen"
           onClick={() => {
             stopListeningProcess();
             onClose();
           }}
           aria-label="Bağla"
-          className="flex h-11 w-11 items-center justify-center rounded-full bg-white/10 text-slate-300 hover:text-white transition-colors shrink-0"
+          className="flex h-10 w-10 items-center justify-center rounded-full bg-white/[0.04] text-[#94A3B8] hover:text-[#F5F6FA] transition-colors shrink-0"
         >
           <X className="h-4 w-4" />
         </motion.button>
@@ -662,16 +661,16 @@ export const VoiceAssistantFullScreen: React.FC<VoiceAssistantFullScreenProps> =
           <>
             {/* Top Prompt Section */}
             <div className="text-center pt-4">
-              <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full border border-violet-500/30 bg-violet-500/10 text-xs font-semibold text-violet-300 mb-3 shadow-sm">
-                <span className={`h-2 w-2 rounded-full ${isListening ? 'bg-rose-400 animate-ping' : 'bg-slate-500'}`} />
+              <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full border border-[#7C3AED]/30 bg-[#7C3AED]/15 text-xs font-medium text-[#A78BFA] mb-3 shadow-sm">
+                <span className={`h-2 w-2 rounded-full ${isListening ? 'bg-[#FF4D73] animate-ping' : 'bg-[#94A3B8]'}`} />
                 <span>{isListening ? `Dinləyirəm... (${formatSeconds(recordingSeconds)})` : isProcessing ? 'Analiz edilir...' : 'Mikrofon dayandırılıb'}</span>
               </div>
 
-              <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">
+              <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-[#F5F6FA]">
                 {isListening ? 'Dinləyirəm...' : 'Nəyi yadda saxlayaq?'}
               </h2>
 
-              <p className="text-xs text-slate-400 mt-1 max-w-[280px] mx-auto">
+              <p className="text-xs text-[#94A3B8] mt-1 max-w-[280px] mx-auto font-normal">
                 {isListening
                   ? 'Planlarınızı və ya xatırlatmalarınızı söyləyin.'
                   : 'Danışmağa başlamaq üçün mikrofona toxunun.'}
@@ -679,8 +678,8 @@ export const VoiceAssistantFullScreen: React.FC<VoiceAssistantFullScreenProps> =
 
               {/* Localized Error Display */}
               {recordingError && (
-                <div className="mt-2.5 mx-auto max-w-sm rounded-xl border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-xs text-rose-300 flex items-center justify-center gap-1.5">
-                  <AlertCircle className="h-3.5 w-3.5 shrink-0 text-rose-400" />
+                <div className="mt-2.5 mx-auto max-w-sm rounded-[14px] border border-[#FF4D73]/30 bg-[#FF4D73]/10 px-3 py-2 text-xs text-[#FF4D73] flex items-center justify-center gap-1.5">
+                  <AlertCircle className="h-3.5 w-3.5 shrink-0" />
                   <span>{recordingError}</span>
                 </div>
               )}
@@ -690,7 +689,7 @@ export const VoiceAssistantFullScreen: React.FC<VoiceAssistantFullScreenProps> =
             <div className="my-auto py-6 flex flex-col items-center justify-center relative">
               {/* Outer Ambient Aura */}
               <div
-                className="absolute h-56 w-56 rounded-full bg-gradient-to-tr from-violet-600/30 via-indigo-600/25 to-pink-600/20 blur-3xl pointer-events-none transition-all duration-300"
+                className="absolute h-56 w-56 rounded-full bg-gradient-to-tr from-[#7C3AED]/30 to-[#A78BFA]/20 blur-3xl pointer-events-none transition-all duration-300"
                 style={{
                   transform: `scale(${1 + audioLevel * 0.7})`,
                   opacity: isListening ? 0.95 : 0.2,
@@ -700,11 +699,11 @@ export const VoiceAssistantFullScreen: React.FC<VoiceAssistantFullScreenProps> =
               {/* Pulsing Concentric Rings */}
               <div className="relative flex items-center justify-center">
                 <div
-                  className="absolute h-44 w-44 rounded-full border border-violet-500/25 transition-all duration-150"
+                  className="absolute h-44 w-44 rounded-full border border-[#7C3AED]/20 transition-all duration-150"
                   style={{ transform: `scale(${1 + audioLevel * 0.35})` }}
                 />
                 <div
-                  className="absolute h-32 w-32 rounded-full border border-indigo-500/35 transition-all duration-100"
+                  className="absolute h-32 w-32 rounded-full border border-[#A78BFA]/25 transition-all duration-100"
                   style={{ transform: `scale(${1 + audioLevel * 0.2})` }}
                 />
 
@@ -723,16 +722,16 @@ export const VoiceAssistantFullScreen: React.FC<VoiceAssistantFullScreenProps> =
                       startListeningProcess();
                     }
                   }}
-                  className={`relative z-10 flex h-24 w-24 items-center justify-center rounded-full shadow-2xl transition-all duration-300 active:scale-95 border-2 border-white/20 ${
+                  className={`relative z-10 flex h-24 w-24 items-center justify-center rounded-full shadow-2xl transition-all duration-300 active:scale-95 border border-white/20 ${
                     isListening
-                      ? 'bg-gradient-to-tr from-rose-600 via-violet-600 to-indigo-600 text-white shadow-rose-500/40 ring-4 ring-rose-500/25 animate-pulse-glow'
-                      : 'bg-slate-800 text-slate-400 border-white/5 hover:bg-slate-700'
+                      ? 'bg-gradient-to-tr from-[#7C3AED] to-[#A78BFA] text-white shadow-[#7C3AED]/40 ring-4 ring-[#7C3AED]/25 animate-pulse-glow'
+                      : 'bg-[#121827] text-[#94A3B8] border-white/[0.08] hover:bg-[#151c2e]'
                   }`}
                 >
                   {isListening ? (
                     <Mic className="h-10 w-10 text-white stroke-[2.2]" />
                   ) : (
-                    <MicOff className="h-8 w-8 text-slate-400" />
+                    <MicOff className="h-8 w-8 text-[#94A3B8]" />
                   )}
                 </button>
               </div>
@@ -740,11 +739,11 @@ export const VoiceAssistantFullScreen: React.FC<VoiceAssistantFullScreenProps> =
               {/* Live Recognized Speech Box */}
               <div className="mt-7 w-full text-center">
                 {transcript || interimText ? (
-                  <p className="text-sm font-semibold text-slate-100 italic bg-[#111728] p-3.5 rounded-2xl border border-white/10 shadow-lg">
+                  <p className="text-sm font-medium text-[#F5F6FA] italic bg-[#121827] p-3.5 rounded-[18px] border border-white/[0.08] shadow-lg">
                     “{[transcript, interimText].filter(Boolean).join(' ').trim()}”
                   </p>
                 ) : (
-                  <p className="text-xs text-slate-500 font-medium">
+                  <p className="text-xs text-[#94A3B8] font-normal">
                     {isListening ? 'Danışın... Səs qeyd olunur' : 'Danışmaq üçün mikrofona toxunun'}
                   </p>
                 )}

@@ -1,10 +1,20 @@
 @import "tailwindcss";
 
 @layer base {
+  :root {
+    --bg-primary: #080B14;
+    --bg-secondary: #0D1220;
+    --bg-card: #121827;
+    --color-purple-primary: #7C3AED;
+    --color-purple-light: #A78BFA;
+    --text-primary: #F5F6FA;
+    --text-secondary: #94A3B8;
+  }
+
   html, body, #root {
     font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Plus Jakarta Sans", system-ui, sans-serif;
-    background-color: #090D16;
-    color: #F8FAFC;
+    background-color: #080B14;
+    color: #F5F6FA;
     min-height: 100%;
     min-height: 100dvh;
     width: 100%;
@@ -18,6 +28,7 @@
     overflow-x: hidden;
     user-select: none;
     -webkit-overflow-scrolling: touch;
+    background-color: #080B14;
   }
 }
 
@@ -34,21 +45,21 @@
 
 @keyframes pulseGlow {
   0%, 100% {
-    opacity: 0.5;
+    opacity: 0.6;
     transform: scale(1);
   }
   50% {
-    opacity: 0.9;
-    transform: scale(1.06);
+    opacity: 0.95;
+    transform: scale(1.04);
   }
 }
 
 @keyframes breathingGlow {
   0%, 100% {
-    box-shadow: 0 0 20px 2px rgba(139, 92, 246, 0.35);
+    box-shadow: 0 4px 20px -2px rgba(124, 58, 237, 0.35);
   }
   50% {
-    box-shadow: 0 0 35px 8px rgba(139, 92, 246, 0.65);
+    box-shadow: 0 4px 28px 4px rgba(124, 58, 237, 0.65);
   }
 }
 

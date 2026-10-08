@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'motion/react';
-import { Home, Calendar, Bot, User, Mic } from 'lucide-react';
+import { Home, User, Mic } from 'lucide-react';
 
 export type MobileTab = 'home' | 'calendar' | 'ai' | 'profile';
 
@@ -16,104 +16,83 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
   onMicClick,
 }) => {
   return (
-    <div
-      className="fixed bottom-0 left-0 right-0 z-40 max-w-lg mx-auto pointer-events-none"
+    <nav
+      aria-label="Əsas naviqasiya"
+      className="fixed bottom-0 left-0 right-0 z-40 max-w-md mx-auto pointer-events-none"
       style={{
-        paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 8px)',
+        paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 10px)',
       }}
     >
-      {/* Floating Prompt Pill: "Danış, mən xatırladım" */}
-      <div className="flex justify-center mb-1.5 pointer-events-auto">
-        <motion.button
-          whileTap={{ scale: 0.98 }}
-          whileHover={{ scale: 1.01 }}
-          id="mic-prompt-pill"
-          onClick={onMicClick}
-          className="group flex items-center gap-1.5 rounded-full bg-[#101726]/90 border border-violet-500/30 px-3.5 py-1 text-[11px] font-semibold text-violet-300 shadow-xl backdrop-blur-xl hover:border-violet-400 hover:text-white transition-colors"
-        >
-          <span className="h-1.5 w-1.5 rounded-full bg-violet-400 animate-pulse" />
-          <span>Danış, mən xatırladım</span>
-        </motion.button>
-      </div>
-
-      {/* Main Native Bottom Navigation Bar */}
-      <div className="mx-3 mb-2 rounded-[28px] border border-white/10 bg-[#0C121E]/95 shadow-2xl backdrop-blur-2xl px-2 py-1.5 pointer-events-auto">
-        <div className="flex items-center justify-around relative">
-          {/* TAB 1: Ana səhifə */}
+      {/* Premium Minimalist Bar: 3 elements (Ana səhifə, Mikrofon, Profil) */}
+      <div className="mx-4 mb-1 rounded-[22px] border border-white/[0.08] bg-[#0D1220]/95 shadow-[0_8px_28px_rgba(0,0,0,0.5)] backdrop-blur-2xl px-6 py-1 pointer-events-auto">
+        <div className="flex items-center justify-between relative">
+          {/* 1. Ana səhifə (Sol) */}
           <motion.button
-            whileTap={{ scale: 0.98 }}
+            whileTap={{ scale: 0.95 }}
             id="nav-tab-home"
             onClick={() => onTabChange('home')}
-            className={`flex flex-1 flex-col items-center justify-center py-1 transition-colors ${
-              currentTab === 'home' ? 'text-violet-400 font-bold' : 'text-slate-400 hover:text-slate-200'
+            className={`flex flex-col items-center justify-center py-1 px-3 transition-colors ${
+              currentTab === 'home' ? 'text-[#A78BFA]' : 'text-[#94A3B8] hover:text-[#F5F6FA]'
             }`}
+            aria-label="Ana səhifə"
           >
-            <div className={`p-1 rounded-xl transition-all ${currentTab === 'home' ? 'bg-violet-500/15' : ''}`}>
-              <Home className="h-5 w-5" />
+            <div
+              className={`p-1 rounded-xl transition-all duration-200 ${
+                currentTab === 'home' ? 'bg-[#7C3AED]/15 text-[#A78BFA]' : ''
+              }`}
+            >
+              <Home className="h-5 w-5 stroke-[2]" />
             </div>
-            <span className="text-[10px] tracking-tight mt-0.5">Ana səhifə</span>
+            <span
+              className={`text-[10px] tracking-tight mt-0.5 ${
+                currentTab === 'home' ? 'font-semibold text-[#F5F6FA]' : 'font-normal'
+              }`}
+            >
+              Ana səhifə
+            </span>
           </motion.button>
 
-          {/* TAB 2: Təqvim */}
-          <motion.button
-            whileTap={{ scale: 0.98 }}
-            id="nav-tab-calendar"
-            onClick={() => onTabChange('calendar')}
-            className={`flex flex-1 flex-col items-center justify-center py-1 transition-colors ${
-              currentTab === 'calendar' ? 'text-violet-400 font-bold' : 'text-slate-400 hover:text-slate-200'
-            }`}
-          >
-            <div className={`p-1 rounded-xl transition-all ${currentTab === 'calendar' ? 'bg-violet-500/15' : ''}`}>
-              <Calendar className="h-5 w-5" />
-            </div>
-            <span className="text-[10px] tracking-tight mt-0.5">Təqvim</span>
-          </motion.button>
-
-          {/* CENTER SIGNATURE FLOATING AI MICROPHONE */}
-          <div className="relative -top-5 px-1.5">
+          {/* 2. Mərkəzi Mikrofon Düyməsi (52px, kompakt, minimal glow) */}
+          <div className="relative -top-2">
             <motion.button
-              whileTap={{ scale: 0.97 }}
-              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.94 }}
+              whileHover={{ scale: 1.03 }}
               id="main-floating-ai-mic-btn"
               onClick={onMicClick}
-              className="flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-tr from-violet-600 via-indigo-600 to-purple-500 text-white shadow-xl shadow-violet-600/40 ring-4 ring-[#090D16] border-2 border-white/25 transition-all duration-200 animate-breathing-mic"
-              title="Danış, mən xatırladım"
+              aria-label="Səsli köməkçi ilə danış"
+              className="flex h-[52px] w-[52px] items-center justify-center rounded-full bg-gradient-to-tr from-[#7C3AED] to-[#A78BFA] text-[#F5F6FA] shadow-[0_4px_16px_rgba(124,58,237,0.3)] ring-3 ring-[#080B14] border border-white/20 transition-all duration-150 active:scale-95"
             >
-              <Mic className="h-6 w-6 text-white stroke-[2.4]" />
+              <Mic className="h-5 w-5 text-white stroke-[2.2]" />
             </motion.button>
           </div>
 
-          {/* TAB 3: AI köməkçi */}
+          {/* 3. Profil (Sağ) */}
           <motion.button
-            whileTap={{ scale: 0.98 }}
-            id="nav-tab-ai"
-            onClick={() => onTabChange('ai')}
-            className={`flex flex-1 flex-col items-center justify-center py-1 transition-colors ${
-              currentTab === 'ai' ? 'text-violet-400 font-bold' : 'text-slate-400 hover:text-slate-200'
-            }`}
-          >
-            <div className={`p-1 rounded-xl transition-all ${currentTab === 'ai' ? 'bg-violet-500/15' : ''}`}>
-              <Bot className="h-5 w-5" />
-            </div>
-            <span className="text-[10px] tracking-tight mt-0.5 whitespace-nowrap">AI köməkçi</span>
-          </motion.button>
-
-          {/* TAB 4: Profil */}
-          <motion.button
-            whileTap={{ scale: 0.98 }}
+            whileTap={{ scale: 0.95 }}
             id="nav-tab-profile"
             onClick={() => onTabChange('profile')}
-            className={`flex flex-1 flex-col items-center justify-center py-1 transition-colors ${
-              currentTab === 'profile' ? 'text-violet-400 font-bold' : 'text-slate-400 hover:text-slate-200'
+            className={`flex flex-col items-center justify-center py-1 px-3 transition-colors ${
+              currentTab === 'profile' ? 'text-[#A78BFA]' : 'text-[#94A3B8] hover:text-[#F5F6FA]'
             }`}
+            aria-label="Profil"
           >
-            <div className={`p-1 rounded-xl transition-all ${currentTab === 'profile' ? 'bg-violet-500/15' : ''}`}>
-              <User className="h-5 w-5" />
+            <div
+              className={`p-1 rounded-xl transition-all duration-200 ${
+                currentTab === 'profile' ? 'bg-[#7C3AED]/15 text-[#A78BFA]' : ''
+              }`}
+            >
+              <User className="h-5 w-5 stroke-[2]" />
             </div>
-            <span className="text-[10px] tracking-tight mt-0.5">Profil</span>
+            <span
+              className={`text-[10px] tracking-tight mt-0.5 ${
+                currentTab === 'profile' ? 'font-semibold text-[#F5F6FA]' : 'font-normal'
+              }`}
+            >
+              Profil
+            </span>
           </motion.button>
         </div>
       </div>
-    </div>
+    </nav>
   );
 };

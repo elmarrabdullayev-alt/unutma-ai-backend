@@ -303,16 +303,16 @@ export const AiAssistantScreen: React.FC<AiAssistantScreenProps> = ({
               className={`flex items-end gap-2 ${isUser ? 'justify-end' : 'justify-start'}`}
             >
               {!isUser && (
-                <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-violet-600/30 text-violet-300 text-[10px] font-bold">
+                <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#7C3AED]/20 text-[#A78BFA] text-[10px] font-bold">
                   <Bot className="h-3.5 w-3.5" />
                 </div>
               )}
 
               <div
-                className={`max-w-[85%] rounded-2xl p-3 text-xs leading-relaxed ${
+                className={`max-w-[85%] rounded-[18px] p-3 text-xs leading-relaxed ${
                   isUser
-                    ? 'bg-gradient-to-tr from-violet-600 to-indigo-600 text-white rounded-br-none shadow-sm'
-                    : 'bg-[#121828] text-slate-200 border border-white/5 rounded-bl-none shadow-sm'
+                    ? 'bg-[#7C3AED] text-white rounded-br-none shadow-sm'
+                    : 'bg-[#121827] text-[#F5F6FA] border border-white/[0.06] rounded-bl-none shadow-sm'
                 }`}
               >
                 <p className="whitespace-pre-wrap">{msg.text}</p>
@@ -543,7 +543,7 @@ export const AiAssistantScreen: React.FC<AiAssistantScreenProps> = ({
             <button
               key={idx}
               onClick={() => handleSendMessage(chip)}
-              className="shrink-0 rounded-full border border-violet-500/25 bg-[#121829] px-3 py-1.5 text-[11px] font-semibold text-violet-300 hover:border-violet-400 active:scale-95 transition-all"
+              className="shrink-0 rounded-[14px] border border-white/[0.06] bg-[#121827] px-3 py-1.5 text-[11px] font-medium text-[#94A3B8] hover:text-[#F5F6FA] hover:border-[#7C3AED]/30 active:scale-95 transition-all"
             >
               {chip}
             </button>
@@ -557,12 +557,12 @@ export const AiAssistantScreen: React.FC<AiAssistantScreenProps> = ({
           e.preventDefault();
           handleSendMessage(inputText);
         }}
-        className="flex items-center gap-2 rounded-2xl border border-white/10 bg-[#101524] p-1.5 shadow-lg"
+        className="flex items-center gap-2 rounded-[18px] border border-white/[0.08] bg-[#0D1220] p-1.5 shadow-lg"
       >
         <button
           type="button"
           onClick={onOpenVoice}
-          className="flex h-9 w-9 items-center justify-center rounded-xl bg-violet-500/15 text-violet-300 hover:bg-violet-500/25 active:scale-90 transition-transform"
+          className="flex h-9 w-9 items-center justify-center rounded-[12px] bg-[#7C3AED]/15 text-[#A78BFA] hover:bg-[#7C3AED]/25 active:scale-90 transition-transform"
           title="Səslə danış"
         >
           <Mic className="h-4 w-4" />
@@ -573,13 +573,13 @@ export const AiAssistantScreen: React.FC<AiAssistantScreenProps> = ({
           value={inputText}
           onChange={(e) => setInputText(e.target.value)}
           placeholder="AI-yə əmr ver və ya sual yaz..."
-          className="flex-1 bg-transparent px-2 text-xs text-white placeholder-slate-500 focus:outline-none"
+          className="flex-1 bg-transparent px-2 text-xs text-[#F5F6FA] placeholder-[#94A3B8]/60 focus:outline-none"
         />
 
         <button
           type="submit"
           disabled={!inputText.trim() || isLoading}
-          className="flex h-9 w-9 items-center justify-center rounded-xl bg-violet-600 text-white disabled:opacity-30 active:scale-90 transition-transform"
+          className="flex h-9 w-9 items-center justify-center rounded-[12px] bg-[#7C3AED] hover:bg-[#6D28D9] text-white disabled:opacity-30 active:scale-90 transition-transform"
         >
           <Send className="h-4 w-4" />
         </button>

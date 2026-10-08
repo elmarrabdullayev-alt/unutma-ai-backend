@@ -73,24 +73,24 @@ export const CalendarScreen: React.FC<CalendarScreenProps> = ({
       {/* Top Native Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-black tracking-tight text-white">
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-[#F5F6FA]">
             Təqvim
           </h1>
-          <p className="text-xs font-semibold text-slate-400 mt-0.5">
+          <p className="text-xs font-normal text-[#94A3B8] mt-0.5">
             {AZ_MONTHS[selectedDate.getMonth()]} {selectedDate.getFullYear()}
           </p>
         </div>
 
         <button
           onClick={() => setSelectedDate(new Date())}
-          className="rounded-xl border border-violet-500/30 bg-violet-500/10 px-3 py-1.5 text-xs font-bold text-violet-300 active:scale-95 transition-all"
+          className="rounded-[12px] border border-[#7C3AED]/30 bg-[#7C3AED]/15 px-3 py-1.5 text-xs font-medium text-[#A78BFA] active:scale-95 transition-all"
         >
           Bu gün
         </button>
       </div>
 
       {/* Horizontal Mobile 7-Day Date Selector */}
-      <div className="rounded-2xl border border-white/5 bg-[#101625] p-2 shadow-sm">
+      <div className="rounded-[18px] border border-white/[0.06] bg-[#121827] p-2 shadow-sm">
         <div className="flex items-center justify-between gap-1">
           {weekDates.map((date, idx) => {
             const isSelected = isSameDay(date, selectedDate);
@@ -103,24 +103,24 @@ export const CalendarScreen: React.FC<CalendarScreenProps> = ({
               <button
                 key={idx}
                 onClick={() => setSelectedDate(date)}
-                className={`flex-1 flex flex-col items-center justify-center py-2.5 rounded-xl transition-all duration-150 relative ${
+                className={`flex-1 flex flex-col items-center justify-center py-2.5 rounded-[14px] transition-all duration-150 relative ${
                   isSelected
-                    ? 'bg-gradient-to-tr from-violet-600 to-indigo-600 text-white shadow-md shadow-violet-500/20'
+                    ? 'bg-[#7C3AED] text-white shadow-sm'
                     : isToday
-                    ? 'bg-[#182136] text-violet-300 border border-violet-500/30'
-                    : 'text-slate-400 hover:text-slate-200'
+                    ? 'bg-[#0D1220] text-[#A78BFA] border border-[#7C3AED]/30'
+                    : 'text-[#94A3B8] hover:text-[#F5F6FA]'
                 }`}
               >
-                <span className="text-[10px] font-bold uppercase opacity-80">
+                <span className="text-[10px] font-medium uppercase opacity-80">
                   {AZ_DAYS_SHORT[date.getDay()]}
                 </span>
-                <span className="text-sm font-extrabold mt-0.5">{date.getDate()}</span>
+                <span className="text-sm font-semibold mt-0.5">{date.getDate()}</span>
 
                 {/* Event Dot */}
                 {hasReminders && (
                   <span
                     className={`h-1 w-1 rounded-full mt-1 ${
-                      isSelected ? 'bg-white' : 'bg-violet-400'
+                      isSelected ? 'bg-white' : 'bg-[#A78BFA]'
                     }`}
                   />
                 )}
@@ -133,11 +133,11 @@ export const CalendarScreen: React.FC<CalendarScreenProps> = ({
       {/* Selected Day Agenda Header */}
       <div className="flex items-center justify-between pt-1">
         <div className="flex items-center gap-2">
-          <CalendarIcon className="h-4 w-4 text-violet-400" />
-          <h2 className="text-xs font-extrabold uppercase tracking-wider text-slate-300">
+          <CalendarIcon className="h-4 w-4 text-[#A78BFA]" />
+          <h2 className="text-xs font-semibold uppercase tracking-wider text-[#F5F6FA]">
             {selectedDate.getDate()} {AZ_MONTHS[selectedDate.getMonth()]} qrafiki
           </h2>
-          <span className="text-[10px] font-bold text-slate-500">
+          <span className="text-[10px] font-normal text-[#94A3B8]">
             ({selectedDayReminders.length})
           </span>
         </div>
@@ -145,13 +145,15 @@ export const CalendarScreen: React.FC<CalendarScreenProps> = ({
         <div className="flex items-center gap-1">
           <button
             onClick={() => changeDayBy(-1)}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-white"
+            aria-label="Əvvəlki gün"
+            className="p-1.5 rounded-lg text-[#94A3B8] hover:text-white"
           >
             <ChevronLeft className="h-4 w-4" />
           </button>
           <button
             onClick={() => changeDayBy(1)}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-white"
+            aria-label="Növbəti gün"
+            className="p-1.5 rounded-lg text-[#94A3B8] hover:text-white"
           >
             <ChevronRight className="h-4 w-4" />
           </button>
@@ -173,17 +175,17 @@ export const CalendarScreen: React.FC<CalendarScreenProps> = ({
             />
           ))
         ) : (
-          <div className="rounded-2xl border border-white/5 bg-[#101524] p-8 text-center">
-            <Clock className="h-7 w-7 text-slate-500 mx-auto mb-2" />
-            <p className="text-xs font-semibold text-slate-300">
+          <div className="rounded-[18px] border border-white/[0.04] bg-[#121827] p-8 text-center">
+            <Clock className="h-7 w-7 text-[#94A3B8] mx-auto mb-2 opacity-60" />
+            <p className="text-xs font-medium text-[#F5F6FA]">
               Bu tarixdə xatırlatma yoxdur
             </p>
             <button
               onClick={onOpenVoice}
-              className="mt-3 inline-flex items-center gap-1.5 rounded-xl bg-violet-600/25 border border-violet-500/30 px-3 py-1.5 text-xs font-bold text-violet-300 hover:bg-violet-600/40 active:scale-95 transition-all"
+              className="mt-3 inline-flex items-center gap-1.5 rounded-[14px] bg-[#7C3AED]/20 border border-[#7C3AED]/30 px-3.5 py-1.5 text-xs font-medium text-[#A78BFA] hover:bg-[#7C3AED]/30 active:scale-95 transition-all"
             >
               <Sparkles className="h-3.5 w-3.5" />
-              Xatırlatma əlavə et
+              <span>Xatırlatma əlavə et</span>
             </button>
           </div>
         )}
