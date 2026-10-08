@@ -146,40 +146,27 @@ export function playMicStartSound() {
   }
 }
 
-// Speech synthesis (TTS) for speaking AI responses in Azerbaijani
-export function speakText(text: string) {
-  if (!('speechSynthesis' in window)) return;
-
-  try {
-    window.speechSynthesis.cancel();
-    const cleanText = text.replace(/[*_#`]/g, '');
-    const utterance = new SpeechSynthesisUtterance(cleanText);
-
-    const voices = window.speechSynthesis.getVoices();
-    // Try to find az-AZ or tr-TR or fallback to standard voice
-    const azVoice = voices.find(v => v.lang.includes('az') || v.lang.startsWith('az'));
-    const trVoice = voices.find(v => v.lang.includes('tr') || v.lang.startsWith('tr'));
-
-    if (azVoice) {
-      utterance.voice = azVoice;
-      utterance.lang = azVoice.lang;
-    } else if (trVoice) {
-      utterance.voice = trVoice;
-      utterance.lang = trVoice.lang;
-    } else {
-      utterance.lang = 'az-AZ';
+// Speech synthesis (TTS) is completely deactivated.
+// AI responses are presented strictly in text form.
+export function speakText(_text?: string) {
+  // 1. Never start any SpeechSynthesisUtterance
+  // 2. tr-TR fallback is completely removed
+  // 3. Immediately cancel any active browser/WebView speech if present
+  if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+    try {
+      window.speechSynthesis.cancel();
+    } catch {
+      // ignore
     }
-
-    utterance.rate = 1.0;
-    utterance.pitch = 1.0;
-    window.speechSynthesis.speak(utterance);
-  } catch (err) {
-    console.warn('Speech synthesis error:', err);
   }
 }
 
 export function stopSpeaking() {
-  if ('speechSynthesis' in window) {
-    window.speechSynthesis.cancel();
+  if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+    try {
+      window.speechSynthesis.cancel();
+    } catch {
+      // ignore
+    }
   }
 }

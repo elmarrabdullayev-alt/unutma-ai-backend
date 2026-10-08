@@ -34,7 +34,9 @@ public class VoiceRecorder: CAPPlugin, CAPBridgedPlugin {
     private var speechBegan: Bool = false
     private var silenceBeganTime: Date?
     private let speechThresholdDb: Float = -38.0
-    private let silenceAutoStopTimeoutSec: TimeInterval = 1.3
+    private let silenceAutoStopTimeoutSec: TimeInterval = 1.4
+    private var isStoppingNative: Bool = false
+    private let recordingLock = NSLock()
 
     @objc public func canDeviceVoiceRecord(_ call: CAPPluginCall) {
         call.resolve(["value": true])
@@ -101,19 +103,23 @@ public class VoiceRecorder: CAPPlugin, CAPBridgedPlugin {
             self.recordingStartTime = Date()
             self.speechBegan = false
             self.silenceBeganTime = nil
+            self.isStoppingNative = false
 
             DispatchQueue.main.async { [weak self] in
                 guard let self = self else { return }
                 self.silenceMeterTimer?.invalidate()
-                self.silenceMeterTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in
+                let timer = Timer(timeInterval: 0.1, repeats: true) { [weak self] _ in
                     self?.evaluateSilenceAutoStop()
                 }
+                RunLoop.main.add(timer, forMode: .common)
+                self.silenceMeterTimer = timer
             }
 
             call.resolve(["value": true])
         } catch {
             self.audioRecorder = nil
             self.currentStatus = "NONE"
+            self.isStoppingNative = false
             self.silenceMeterTimer?.invalidate()
             self.silenceMeterTimer = nil
             call.reject("CANNOT_RECORD_ON_THIS_PHONE: \(error.localizedDescription)")
@@ -121,31 +127,42 @@ public class VoiceRecorder: CAPPlugin, CAPBridgedPlugin {
     }
 
     private func evaluateSilenceAutoStop() {
-        guard let recorder = self.audioRecorder, recorder.isRecording else {
+        guard let recorder = self.audioRecorder, recorder.isRecording, self.currentStatus == "RECORDING", !self.isStoppingNative else {
             self.silenceMeterTimer?.invalidate()
             self.silenceMeterTimer = nil
             return
         }
 
+        // Ignore early transient noise (< 0.2s from start)
+        if let startTime = self.recordingStartTime, Date().timeIntervalSince(startTime) < 0.2 {
+            return
+        }
+
         recorder.updateMeters()
         let avgPower = recorder.averagePower(forChannel: 0) // -160 dB to 0 dB
+        let peakPower = recorder.peakPower(forChannel: 0)
 
-        if avgPower > self.speechThresholdDb {
-            // Speech detected
+        // Stabilized voice detection: avg > threshold OR peak > (threshold + 8 dB)
+        let isSpeaking = (avgPower > self.speechThresholdDb) || (peakPower > (self.speechThresholdDb + 8.0))
+
+        if isSpeaking {
+            // Real speech detected
             if !self.speechBegan {
                 self.speechBegan = true
-                self.notifyListeners("speechStarted", data: ["power": avgPower])
+                self.notifyListeners("speechStarted", data: ["power": avgPower, "peak": peakPower])
             }
+            // Reset silence timer on vocalization or during natural short pauses
             self.silenceBeganTime = nil
         } else if self.speechBegan {
-            // Speech was detected earlier, now below threshold
+            // Speech was detected previously, now in silence
             if self.silenceBeganTime == nil {
                 self.silenceBeganTime = Date()
             } else if let silenceStart = self.silenceBeganTime,
                       Date().timeIntervalSince(silenceStart) >= self.silenceAutoStopTimeoutSec {
-                print("[VOICE][iOS] auto-stopping: ~1.3s silence after speech")
+                print("[VOICE][iOS] auto-stopping: ~\(self.silenceAutoStopTimeoutSec)s silence after speech")
                 self.silenceMeterTimer?.invalidate()
                 self.silenceMeterTimer = nil
+                self.silenceBeganTime = nil
                 self.notifyListeners("silenceAutoStop", data: [
                     "silenceDuration": Date().timeIntervalSince(silenceStart)
                 ])
@@ -154,15 +171,26 @@ public class VoiceRecorder: CAPPlugin, CAPBridgedPlugin {
     }
 
     @objc public func stopRecording(_ call: CAPPluginCall) {
+        recordingLock.lock()
+        defer { recordingLock.unlock() }
+
         self.silenceMeterTimer?.invalidate()
         self.silenceMeterTimer = nil
         self.speechBegan = false
         self.silenceBeganTime = nil
 
-        guard let recorder = audioRecorder else {
+        if self.isStoppingNative {
+            call.reject("ALREADY_STOPPING")
+            return
+        }
+
+        guard let recorder = audioRecorder, currentStatus == "RECORDING" else {
             call.reject("RECORDING_HAS_NOT_STARTED")
             return
         }
+
+        self.isStoppingNative = true
+        self.currentStatus = "NONE"
 
         let fileURL = self.audioFilePath
         let durationMs: Int
@@ -174,7 +202,6 @@ public class VoiceRecorder: CAPPlugin, CAPBridgedPlugin {
 
         recorder.stop()
         self.audioRecorder = nil
-        self.currentStatus = "NONE"
         self.recordingStartTime = nil
 
         let session = AVAudioSession.sharedInstance()
@@ -182,6 +209,8 @@ public class VoiceRecorder: CAPPlugin, CAPBridgedPlugin {
         if let origCategory = originalSessionCategory {
             try? session.setCategory(origCategory, options: originalSessionOptions)
         }
+
+        self.isStoppingNative = false
 
         guard let url = fileURL, FileManager.default.fileExists(atPath: url.path) else {
             call.reject("FAILED_TO_FETCH_RECORDING")
