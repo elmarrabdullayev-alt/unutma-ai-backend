@@ -94,6 +94,13 @@ public class VoiceRecorder: CAPPlugin, CAPBridgedPlugin {
             recorder.prepareToRecord()
 
             guard recorder.record() else {
+                self.audioRecorder = nil
+                self.currentStatus = "NONE"
+                self.isStoppingNative = false
+                self.speechBegan = false
+                self.silenceBeganTime = nil
+                self.silenceMeterTimer?.invalidate()
+                self.silenceMeterTimer = nil
                 call.reject("CANNOT_RECORD_ON_THIS_PHONE")
                 return
             }
@@ -120,6 +127,8 @@ public class VoiceRecorder: CAPPlugin, CAPBridgedPlugin {
             self.audioRecorder = nil
             self.currentStatus = "NONE"
             self.isStoppingNative = false
+            self.speechBegan = false
+            self.silenceBeganTime = nil
             self.silenceMeterTimer?.invalidate()
             self.silenceMeterTimer = nil
             call.reject("CANNOT_RECORD_ON_THIS_PHONE: \(error.localizedDescription)")
@@ -185,6 +194,12 @@ public class VoiceRecorder: CAPPlugin, CAPBridgedPlugin {
         }
 
         guard let recorder = audioRecorder, currentStatus == "RECORDING" else {
+            if let recorder = audioRecorder {
+                recorder.stop()
+                self.audioRecorder = nil
+            }
+            self.currentStatus = "NONE"
+            self.isStoppingNative = false
             call.reject("RECORDING_HAS_NOT_STARTED")
             return
         }
@@ -270,6 +285,13 @@ public class VoiceRecorder: CAPPlugin, CAPBridgedPlugin {
     }
 
     @objc public func getCurrentStatus(_ call: CAPPluginCall) {
-        call.resolve(["status": currentStatus])
+        if let recorder = audioRecorder, recorder.isRecording, currentStatus == "RECORDING" {
+            call.resolve(["status": "RECORDING"])
+        } else {
+            if currentStatus == "RECORDING" && (audioRecorder == nil || !(audioRecorder?.isRecording ?? false)) {
+                currentStatus = "NONE"
+            }
+            call.resolve(["status": currentStatus])
+        }
     }
 }

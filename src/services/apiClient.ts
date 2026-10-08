@@ -121,20 +121,31 @@ export class ApiClient {
             }
           }
         } catch (e) {}
-        throw new Error(errMessage);
+        const httpErr: any = new Error(errMessage);
+        httpErr.status = response.status;
+        throw httpErr;
       }
 
       return (await response.json()) as T;
     } catch (err: any) {
       clearTimeout(timer);
-      console.warn(`[ApiClient] request failed:`, err);
+      const errName = err?.name || 'Error';
+      const errMsg = err?.message || String(err || '');
+      const statusSuffix = err?.status !== undefined ? ` (status: ${err.status})` : '';
+      console.warn(`[ApiClient] request failed: [${errName}] ${errMsg}${statusSuffix}`);
+
       if (err.name === 'AbortError') {
         throw new Error('AI xidmətinə qoşulma vaxtı bitdi. İnternet bağlantınızı yoxlayın.');
       }
       if (typeof navigator !== 'undefined' && !navigator.onLine) {
         throw new Error('İnternet bağlantısı yoxdur. Zəhmət olmasa şəbəkəni yoxlayın.');
       }
-      if (err.message && (err.message.includes('Failed to fetch') || err.message.includes('NetworkError'))) {
+      if (
+        err.message &&
+        (err.message.includes('Failed to fetch') ||
+          err.message.includes('NetworkError') ||
+          err.message.includes('Load failed'))
+      ) {
         throw new Error('AI xidmətinə qoşulmaq mümkün olmadı. İnternet bağlantınızı yoxlayın.');
       }
       throw new Error(err.message || 'AI xidmətinə qoşulmaq mümkün olmadı. İnternet bağlantınızı yoxlayın.');

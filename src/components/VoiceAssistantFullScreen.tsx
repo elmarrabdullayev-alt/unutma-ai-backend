@@ -76,6 +76,9 @@ export const VoiceAssistantFullScreen: React.FC<VoiceAssistantFullScreenProps> =
   const [recordingSeconds, setRecordingSeconds] = useState(0);
   const speechBeganRef = useRef(false);
   const silenceTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const isAnalyzingRef = useRef(false);
+  const currentSessionIdRef = useRef<number>(0);
+  const analyzedSessionIdRef = useRef<number>(0);
 
   const clearSilenceTimer = () => {
     if (silenceTimerRef.current) {
@@ -86,13 +89,20 @@ export const VoiceAssistantFullScreen: React.FC<VoiceAssistantFullScreenProps> =
 
   const scheduleSilenceAutoStop = (detectedText?: string) => {
     clearSilenceTimer();
+    const sessionId = currentSessionIdRef.current;
     silenceTimerRef.current = setTimeout(async () => {
-      if (isMountedRef.current) {
+      if (
+        isMountedRef.current &&
+        currentSessionIdRef.current === sessionId &&
+        analyzedSessionIdRef.current !== sessionId
+      ) {
         console.log('[VoiceAssistant] Auto-stopping: ~1.3s silence detected after speech began');
         const finalRecorded = await stopListeningProcess();
+        if (analyzedSessionIdRef.current === sessionId) return;
         const textToAnalyze = finalRecorded || detectedText || transcript || interimText;
         if (textToAnalyze && textToAnalyze.trim()) {
-          handleAnalyzeText(textToAnalyze.trim());
+          analyzedSessionIdRef.current = sessionId;
+          handleAnalyzeText(textToAnalyze.trim(), sessionId);
         }
       }
     }, 1300);
@@ -161,6 +171,9 @@ export const VoiceAssistantFullScreen: React.FC<VoiceAssistantFullScreenProps> =
 
   const startListeningProcess = async () => {
     try {
+      const sessionId = Date.now();
+      currentSessionIdRef.current = sessionId;
+      analyzedSessionIdRef.current = 0;
       setRecordingError(null);
       clearSilenceTimer();
       speechBeganRef.current = false;
@@ -176,9 +189,10 @@ export const VoiceAssistantFullScreen: React.FC<VoiceAssistantFullScreenProps> =
               setIsListening(false);
               setTranscript(text);
               setInterimText('');
-              // If final text is received directly, analyze it
-              if (text.trim()) {
-                handleAnalyzeText(text.trim());
+              // If final text is received directly, analyze it strictly ONCE for this session
+              if (text.trim() && analyzedSessionIdRef.current !== sessionId) {
+                analyzedSessionIdRef.current = sessionId;
+                handleAnalyzeText(text.trim(), sessionId);
               }
             } else {
               setInterimText(text);
@@ -203,7 +217,7 @@ export const VoiceAssistantFullScreen: React.FC<VoiceAssistantFullScreenProps> =
           }
         },
         onError: (err) => {
-          console.warn('[VoiceAssistant] Speech error:', err);
+          console.warn('[VoiceAssistant] Speech error:', err?.name || 'Error', err?.message || err);
           if (isMountedRef.current) {
             clearSilenceTimer();
             speechBeganRef.current = false;
@@ -220,7 +234,7 @@ export const VoiceAssistantFullScreen: React.FC<VoiceAssistantFullScreenProps> =
         },
       });
     } catch (err: any) {
-      console.warn('[VoiceAssistant] Mic start error:', err);
+      console.warn('[VoiceAssistant] Mic start error:', err?.name || 'Error', err?.message || err);
       if (isMountedRef.current) {
         clearSilenceTimer();
         speechBeganRef.current = false;
@@ -241,7 +255,7 @@ export const VoiceAssistantFullScreen: React.FC<VoiceAssistantFullScreenProps> =
       }
       return finalRecorded || '';
     } catch (e: any) {
-      console.warn('[VoiceAssistant] Stop error:', e);
+      console.warn('[VoiceAssistant] Stop error:', e?.name || 'Error', e?.message || e);
       if (isMountedRef.current && e.message) {
         setRecordingError(e.message);
       }
@@ -249,25 +263,36 @@ export const VoiceAssistantFullScreen: React.FC<VoiceAssistantFullScreenProps> =
     }
   };
 
-  const handleAnalyzeText = async (textOverride?: string) => {
-    let textToAnalyze = (textOverride || transcript || interimText).trim();
-
-    if (!textToAnalyze) {
-      // If live transcript empty, trigger provider stop to check audio fallback buffer
-      const fallbackResult = await speechManager.stopListening();
-      setIsListening(false);
-      if (fallbackResult) {
-        textToAnalyze = fallbackResult.trim();
-        setTranscript(textToAnalyze);
-      }
-    } else {
-      await stopListeningProcess();
-    }
-
-    if (!textToAnalyze) {
-      setIsProcessing(false);
+  const handleAnalyzeText = async (textOverride?: string, fromSessionId?: number) => {
+    if (isAnalyzingRef.current) {
+      console.log('[VoiceAssistant] Analysis already in progress, skipping duplicate call');
       return;
     }
+    if (fromSessionId && fromSessionId === analyzedSessionIdRef.current && textOverride === undefined) {
+      console.log('[VoiceAssistant] Session already analyzed, skipping duplicate call');
+      return;
+    }
+
+    isAnalyzingRef.current = true;
+    let textToAnalyze = (textOverride || transcript || interimText).trim();
+
+      if (!textToAnalyze) {
+        // If live transcript empty, trigger provider stop to check audio fallback buffer
+        const fallbackResult = await speechManager.stopListening();
+        setIsListening(false);
+        if (fallbackResult) {
+          textToAnalyze = fallbackResult.trim();
+          setTranscript(textToAnalyze);
+        }
+      } else {
+        await stopListeningProcess();
+      }
+
+      if (!textToAnalyze) {
+        isAnalyzingRef.current = false;
+        setIsProcessing(false);
+        return;
+      }
 
     // Check if deterministic local fast path handles this instantly
     const currentReminders = reminderService.getAll();
@@ -280,6 +305,7 @@ export const VoiceAssistantFullScreen: React.FC<VoiceAssistantFullScreenProps> =
       if (payload.action === 'plan_day' && payload.dailyPlanProposal) {
         playSuccessSound();
         speakText('Bugünkü planın hazırlandı. Cədvəli nəzərdən keçirib təsdiq edə bilərsiniz.');
+        isAnalyzingRef.current = false;
         setIsProcessing(false);
         if (onOpenDailyPlanner) {
           onClose();
@@ -291,6 +317,7 @@ export const VoiceAssistantFullScreen: React.FC<VoiceAssistantFullScreenProps> =
       if (payload.action === 'create_routine' && payload.routineProposal) {
         playSuccessSound();
         speakText('Rutininiz üçün cədvəl tərtib edildi. Zəhmət olmasa təsdiq edin.');
+        isAnalyzingRef.current = false;
         setIsProcessing(false);
         if (onOpenRoutineReview) {
           onClose();
@@ -308,6 +335,7 @@ export const VoiceAssistantFullScreen: React.FC<VoiceAssistantFullScreenProps> =
         setAssistantSpokenResponse(payload.responseMessage);
         speakText(payload.responseMessage);
         setViewStep('answer');
+        isAnalyzingRef.current = false;
         setIsProcessing(false);
         return;
       }
@@ -322,6 +350,7 @@ export const VoiceAssistantFullScreen: React.FC<VoiceAssistantFullScreenProps> =
         setAssistantSpokenResponse(result.message);
         speakText(result.message);
         setViewStep('answer');
+        isAnalyzingRef.current = false;
         setIsProcessing(false);
         return;
       }
@@ -357,6 +386,7 @@ export const VoiceAssistantFullScreen: React.FC<VoiceAssistantFullScreenProps> =
         setParsedReminders(editableList);
         setParsedSummary(payload.responseMessage || `${editableList.length} xatırlatma tapdım`);
         setViewStep('review');
+        isAnalyzingRef.current = false;
         setIsProcessing(false);
         return;
       }
@@ -469,11 +499,12 @@ export const VoiceAssistantFullScreen: React.FC<VoiceAssistantFullScreenProps> =
         setViewStep('review');
       }
     } catch (err: any) {
-      console.error('Error analyzing voice command:', err);
-      const userErr = err.message || 'AI xidmətinə qoşulmaq mümkün olmadı. İnternet bağlantınızı yoxlayın.';
+      console.error('Error analyzing voice command:', err?.name || 'Error', err?.message || err);
+      const userErr = err?.message || 'AI xidmətinə qoşulmaq mümkün olmadı. İnternet bağlantınızı yoxlayın.';
       setAssistantSpokenResponse(userErr);
       setViewStep('answer');
     } finally {
+      isAnalyzingRef.current = false;
       setIsProcessing(false);
     }
   };
@@ -682,9 +713,11 @@ export const VoiceAssistantFullScreen: React.FC<VoiceAssistantFullScreenProps> =
                   id="voice-screen-toggle-mic"
                   onClick={async () => {
                     if (isListening) {
+                      const sessionId = currentSessionIdRef.current;
                       const text = await stopListeningProcess();
-                      if (text.trim()) {
-                        handleAnalyzeText(text.trim());
+                      if (text.trim() && analyzedSessionIdRef.current !== sessionId) {
+                        analyzedSessionIdRef.current = sessionId;
+                        handleAnalyzeText(text.trim(), sessionId);
                       }
                     } else {
                       startListeningProcess();

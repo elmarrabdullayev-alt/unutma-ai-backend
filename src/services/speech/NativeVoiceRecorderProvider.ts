@@ -3,19 +3,33 @@ import { VoiceRecorder } from 'capacitor-voice-recorder';
 import { SpeechCallbacks, SpeechRecognitionProvider } from './SpeechRecognitionProvider';
 import { apiClient } from '../apiClient';
 
+export type VoiceSessionLifecycleState = 'IDLE' | 'RECORDING' | 'STOPPING' | 'TRANSCRIBING';
+
 /**
  * NativeVoiceRecorderProvider bridges to the native VoiceRecorder plugin.
  * On iOS, this connects to VoiceRecorderPlugin (AVAudioRecorder via CapApp-SPM).
  */
 export class NativeVoiceRecorderProvider implements SpeechRecognitionProvider {
   public readonly name = 'NativeVoiceRecorderProvider';
-  private isRecording = false;
-  private isStopping = false;
+  private lifecycleState: VoiceSessionLifecycleState = 'IDLE';
+  private sessionId = 0;
   private activeStopPromise: Promise<string> | null = null;
   private callbacks: SpeechCallbacks | null = null;
   private audioLevelInterval: number | null = null;
   private currentAudioLevel = 0;
   private silenceListenerHandle: { remove: () => Promise<void> | void } | null = null;
+
+  public get isRecording(): boolean {
+    return this.lifecycleState === 'RECORDING';
+  }
+
+  public get isStopping(): boolean {
+    return this.lifecycleState === 'STOPPING' || this.lifecycleState === 'TRANSCRIBING';
+  }
+
+  public get currentLifecycleState(): VoiceSessionLifecycleState {
+    return this.lifecycleState;
+  }
 
   public isAvailable(): boolean {
     if (!Capacitor.isNativePlatform()) {
@@ -62,8 +76,8 @@ export class NativeVoiceRecorderProvider implements SpeechRecognitionProvider {
         if (typeof this.silenceListenerHandle.remove === 'function') {
           await this.silenceListenerHandle.remove();
         }
-      } catch (e) {
-        console.warn('[NATIVE VOICE] Error removing silenceAutoStop listener:', e);
+      } catch (e: any) {
+        console.warn('[NATIVE VOICE] Error removing silenceAutoStop listener:', e?.message || e);
       }
       this.silenceListenerHandle = null;
     }
@@ -71,13 +85,23 @@ export class NativeVoiceRecorderProvider implements SpeechRecognitionProvider {
 
   public async start(callbacks: SpeechCallbacks): Promise<void> {
     this.callbacks = callbacks;
-    this.activeStopPromise = null;
     const platform = Capacitor.getPlatform();
 
-    if (this.isRecording) {
+    if (this.lifecycleState === 'RECORDING') {
       console.warn('[NATIVE VOICE] Already recording, ignoring start request');
       return;
     }
+
+    // If previous session is still stopping/transcribing, wait for it to settle cleanly
+    if (this.activeStopPromise) {
+      try {
+        await this.activeStopPromise;
+      } catch (e) {
+        // Previous error already handled
+      }
+    }
+
+    const currentSession = ++this.sessionId;
 
     // 1. Remove any previous silenceAutoStop listener before starting to prevent duplicates
     await this.removeSilenceListener();
@@ -108,15 +132,15 @@ export class NativeVoiceRecorderProvider implements SpeechRecognitionProvider {
         }
       }
 
-      // 3. Check current status in case previous recording was dangling
+      // 3. Check current status in case previous recording was dangling on native
       try {
         const status = await VoiceRecorder.getCurrentStatus();
         if (status?.status === 'RECORDING') {
           console.warn('[NATIVE VOICE] Previous recording was dangling, stopping it first');
           await VoiceRecorder.stopRecording();
         }
-      } catch (statusErr) {
-        console.warn('[NATIVE VOICE] Error checking recording status:', statusErr);
+      } catch (statusErr: any) {
+        console.warn('[NATIVE VOICE] Error checking recording status:', statusErr?.name || 'Error', statusErr?.message || statusErr);
       }
 
       // 4. Register silenceAutoStop listener BEFORE starting recording so early events are never lost
@@ -126,20 +150,20 @@ export class NativeVoiceRecorderProvider implements SpeechRecognitionProvider {
             'silenceAutoStop',
             async (eventData?: any) => {
               console.log('[NATIVE VOICE] silenceAutoStop event received from native iOS VoiceRecorder', eventData);
-              // Ensure stop() is called strictly ONCE, preserving isStopping and activeStopPromise
-              if (this.isRecording && !this.isStopping && !this.activeStopPromise) {
+              // Ensure stop() is called strictly ONCE, preserving lifecycle idempotency
+              if (this.sessionId === currentSession && this.lifecycleState === 'RECORDING' && !this.isStopping && !this.activeStopPromise) {
                 try {
                   await this.stop();
-                } catch (stopErr) {
-                  console.warn('[NATIVE VOICE] Error executing stop after silenceAutoStop:', stopErr);
+                } catch (stopErr: any) {
+                  console.warn('[NATIVE VOICE] Error executing stop after silenceAutoStop:', stopErr?.name || 'Error', stopErr?.message || stopErr);
                 }
               }
             }
           );
           console.log('[NATIVE VOICE] silenceAutoStop listener successfully registered before recording');
         }
-      } catch (listenerErr) {
-        console.warn('[NATIVE VOICE] Could not attach silenceAutoStop listener before recording:', listenerErr);
+      } catch (listenerErr: any) {
+        console.warn('[NATIVE VOICE] Could not attach silenceAutoStop listener before recording:', listenerErr?.name || 'Error', listenerErr?.message || listenerErr);
       }
 
       // 5. Start native recording
@@ -148,7 +172,7 @@ export class NativeVoiceRecorderProvider implements SpeechRecognitionProvider {
         throw new Error('Native səs yazma başladıla bilmədi.');
       }
 
-      this.isRecording = true;
+      this.lifecycleState = 'RECORDING';
       if (platform === 'ios') {
         console.log('[VOICE][iOS] recorder start success/failure: success');
       }
@@ -158,12 +182,12 @@ export class NativeVoiceRecorderProvider implements SpeechRecognitionProvider {
       this.startAudioLevelSimulation();
     } catch (err: any) {
       await this.removeSilenceListener();
-      this.isRecording = false;
+      this.lifecycleState = 'IDLE';
       this.stopAudioLevelSimulation();
       if (platform === 'ios') {
         console.log('[VOICE][iOS] recorder start success/failure: failure');
       }
-      console.error('[NATIVE VOICE] error:', err?.message || err);
+      console.error('[NATIVE VOICE] error:', err?.name || 'Error', err?.message || err);
       const localizedError = this.localizeError(err);
       if (callbacks.onError) callbacks.onError(new Error(localizedError));
       throw new Error(localizedError);
@@ -176,25 +200,48 @@ export class NativeVoiceRecorderProvider implements SpeechRecognitionProvider {
       return this.activeStopPromise;
     }
 
-    if (!this.isRecording) {
+    if (this.lifecycleState !== 'RECORDING') {
       console.log('[NATIVE VOICE] Not recording, returning empty');
       await this.removeSilenceListener();
+      this.lifecycleState = 'IDLE';
       return '';
     }
 
     this.stopAudioLevelSimulation();
-    this.isStopping = true;
+    this.lifecycleState = 'STOPPING';
 
-    // Immediately remove silence listener to avoid trailing duplicate triggers
-    await this.removeSilenceListener();
+    const currentSession = this.sessionId;
+    const sessionCallbacks = this.callbacks;
 
     this.activeStopPromise = (async () => {
+      // Immediately remove silence listener to avoid trailing duplicate triggers
+      await this.removeSilenceListener();
+
+      let recordingData: any = null;
+      let nativeStopSucceeded = false;
+
       try {
         console.log('[NATIVE VOICE] recording stopped');
-        const recordingData = await VoiceRecorder.stopRecording();
-        this.isRecording = false;
-        this.isStopping = false;
+        recordingData = await VoiceRecorder.stopRecording();
+        nativeStopSucceeded = true;
+      } catch (nativeErr: any) {
+        console.error('[NATIVE VOICE] native stopRecording error:', nativeErr?.name || 'Error', nativeErr?.message || nativeErr);
+      }
 
+      // If native recording stopped without valid data, return cleanly to IDLE
+      if (!nativeStopSucceeded || !recordingData?.value?.recordDataBase64) {
+        console.warn('[NATIVE VOICE] Recording stopped without valid audio data');
+        this.lifecycleState = 'IDLE';
+        if (this.sessionId === currentSession && sessionCallbacks?.onEnd) {
+          sessionCallbacks.onEnd();
+        }
+        return '';
+      }
+
+      // Native recording is stopped; now in TRANSCRIBING phase
+      this.lifecycleState = 'TRANSCRIBING';
+
+      try {
         const base64Audio = recordingData.value?.recordDataBase64 || '';
         const mimeType = recordingData.value?.mimeType || (Capacitor.getPlatform() === 'ios' ? 'audio/m4a' : 'audio/aac');
         const duration = recordingData.value?.msDuration || 0;
@@ -223,7 +270,9 @@ export class NativeVoiceRecorderProvider implements SpeechRecognitionProvider {
         // 3. Validate Base64 client-side before request
         if (!normalizedBase64 || normalizedBase64.length < 100 || !/^[A-Za-z0-9+/=]+$/.test(normalizedBase64)) {
           console.warn('[NATIVE VOICE] Audio recording was empty, too short, or contained invalid characters');
-          if (this.callbacks?.onEnd) this.callbacks.onEnd();
+          if (this.sessionId === currentSession && sessionCallbacks?.onEnd) {
+            sessionCallbacks.onEnd();
+          }
           return '';
         }
 
@@ -234,24 +283,29 @@ export class NativeVoiceRecorderProvider implements SpeechRecognitionProvider {
 
         console.log(`[NATIVE VOICE] transcription completed: "${text}"`);
 
-        if (this.callbacks?.onResult) {
-          this.callbacks.onResult(text, true);
-        }
-        if (this.callbacks?.onEnd) {
-          this.callbacks.onEnd();
+        // Strictly ONE final result and end callback per session
+        if (this.sessionId === currentSession) {
+          if (sessionCallbacks?.onResult) {
+            sessionCallbacks.onResult(text, true);
+          }
+          if (sessionCallbacks?.onEnd) {
+            sessionCallbacks.onEnd();
+          }
         }
 
         return text;
       } catch (err: any) {
-        this.isRecording = false;
-        this.isStopping = false;
-        console.error('[NATIVE VOICE] error:', err?.message || err);
+        // Architecture Rule: This is a TRANSCRIPTION failure, NOT a recording-stop failure.
+        // The native recorder has ALREADY stopped. Do not call native stopRecording() again!
+        console.error('[NATIVE VOICE] transcription error:', err?.name || 'Error', err?.message || err);
         const localizedError = this.localizeError(err);
-        if (this.callbacks?.onError) {
-          this.callbacks.onError(new Error(localizedError));
+        if (this.sessionId === currentSession && sessionCallbacks?.onError) {
+          sessionCallbacks.onError(new Error(localizedError));
         }
         throw new Error(localizedError);
       } finally {
+        // Always reset lifecycle state to IDLE and clear activeStopPromise
+        this.lifecycleState = 'IDLE';
         this.activeStopPromise = null;
         await this.removeSilenceListener();
       }
@@ -266,7 +320,8 @@ export class NativeVoiceRecorderProvider implements SpeechRecognitionProvider {
 
   private startAudioLevelSimulation(): void {
     this.stopAudioLevelSimulation();
-    this.audioLevelInterval = window.setInterval(() => {
+    const setIntervalFn = typeof window !== 'undefined' && typeof window.setInterval === 'function' ? window.setInterval : setInterval;
+    this.audioLevelInterval = (setIntervalFn as any)(() => {
       if (!this.isRecording) return;
       // Generate natural acoustic pulse pattern between 0.35 and 0.85
       const base = 0.4 + Math.random() * 0.45;
@@ -279,7 +334,8 @@ export class NativeVoiceRecorderProvider implements SpeechRecognitionProvider {
 
   private stopAudioLevelSimulation(): void {
     if (this.audioLevelInterval !== null) {
-      clearInterval(this.audioLevelInterval);
+      const clearIntervalFn = typeof window !== 'undefined' && typeof window.clearInterval === 'function' ? window.clearInterval : clearInterval;
+      (clearIntervalFn as any)(this.audioLevelInterval);
       this.audioLevelInterval = null;
     }
     this.currentAudioLevel = 0;
