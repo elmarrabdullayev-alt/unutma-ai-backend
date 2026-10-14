@@ -113,10 +113,16 @@ export async function callOpenAIChatCompletion(
         }
 
         // If the preferred model (e.g. gpt-4.1-mini) is not found (404/model_not_found), fallback to stable gpt-4o-mini
-        if (
-          (response.status === 404 || errorCode === 'model_not_found' || parsedMessage.toLowerCase().includes('model')) &&
-          modelToUse !== STABLE_OPENAI_TEXT_MODEL
-        ) {
+        // Only a missing/unknown model triggers the fallback. Rate limits (429) or
+        // auth errors (401) that merely mention "model" must not be retried.
+        const lowerMsg = parsedMessage.toLowerCase();
+        const isModelMissing =
+          response.status === 404 ||
+          errorCode === 'model_not_found' ||
+          (response.status === 400 &&
+            lowerMsg.includes('model') &&
+            (lowerMsg.includes('does not exist') || lowerMsg.includes('not found') || lowerMsg.includes('invalid model')));
+        if (isModelMissing && modelToUse !== STABLE_OPENAI_TEXT_MODEL) {
           console.warn(`[OPENAI-TEXT] Model ${modelToUse} not available, falling back to ${STABLE_OPENAI_TEXT_MODEL}`);
           return await executeRequest(STABLE_OPENAI_TEXT_MODEL);
         }

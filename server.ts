@@ -8,13 +8,19 @@ import {
   PREFERRED_OPENAI_TEXT_MODEL,
   STABLE_OPENAI_TEXT_MODEL,
 } from "./src/server/openaiText";
+import { normalizeDueDateTimeForTimezone } from "./src/server/timeNormalization";
 
 dotenv.config();
 
 const app = express();
-const PORT = 3000;
+const PORT = Number(process.env.PORT) || 3000;
+const IS_PRODUCTION = process.env.NODE_ENV === "production";
 
-app.use(express.json({ limit: "50mb" }));
+// Render / Railway / Fly put the app behind a proxy; needed for the real client IP.
+app.set("trust proxy", 1);
+
+// ~2 minutes of compressed audio is well under 10 MB of base64.
+app.use(express.json({ limit: "15mb" }));
 
 // Mobile & Cross-Origin Resource Sharing (CORS) Middleware
 app.use((req, res, next) => {
@@ -29,6 +35,98 @@ app.use((req, res, next) => {
   }
   next();
 });
+
+// =========================================================================
+// API PROTECTION: every /api/* AI call costs money on the OpenAI key.
+// =========================================================================
+
+// Optional shared app key. When APP_API_KEY is set on the server, clients must
+// send the same value in the "x-app-key" header (VITE_APP_API_KEY in the app).
+const APP_API_KEY = process.env.APP_API_KEY || "";
+
+// Simple in-memory per-IP rate limit (no extra dependency).
+const RATE_LIMIT_WINDOW_MS = 60_000;
+const RATE_LIMIT_MAX = Number(process.env.RATE_LIMIT_PER_MINUTE) || 30;
+const rateBuckets = new Map<string, { count: number; resetAt: number }>();
+
+setInterval(() => {
+  const now = Date.now();
+  for (const [ip, bucket] of rateBuckets) {
+    if (bucket.resetAt <= now) rateBuckets.delete(ip);
+  }
+}, RATE_LIMIT_WINDOW_MS).unref();
+
+function protectAiRoute(req: express.Request, res: express.Response, next: express.NextFunction) {
+  if (APP_API_KEY && req.headers["x-app-key"] !== APP_API_KEY) {
+    return res.status(401).json({ error: "unauthorized", message: "İcazəsiz sorğu." });
+  }
+
+  const ip = req.ip || req.socket.remoteAddress || "unknown";
+  const now = Date.now();
+  const bucket = rateBuckets.get(ip);
+  if (!bucket || bucket.resetAt <= now) {
+    rateBuckets.set(ip, { count: 1, resetAt: now + RATE_LIMIT_WINDOW_MS });
+  } else if (++bucket.count > RATE_LIMIT_MAX) {
+    res.setHeader("Retry-After", String(Math.ceil((bucket.resetAt - now) / 1000)));
+    return res.status(429).json({
+      error: "rate_limited",
+      message: "Çox sayda sorğu göndərildi. Bir dəqiqə sonra yenidən cəhd edin.",
+    });
+  }
+  next();
+}
+
+app.use(
+  ["/api/parse-reminder", "/api/ai-action", "/api/transcribe-audio", "/api/ask-assistant", "/api/chat"],
+  protectAiRoute
+);
+
+/** Test-only simulation hooks. Always disabled in production. */
+function getTestSimulation(req: express.Request): string | undefined {
+  if (IS_PRODUCTION) return undefined;
+  const value = req.headers["x-test-simulate-openai"] || req.body?.__testSimulateOpenAI;
+  return typeof value === "string" ? value : undefined;
+}
+
+/** Returns a valid IANA timezone, falling back to Asia/Baku. */
+function resolveTimezone(tz: unknown): string {
+  if (typeof tz === "string" && tz) {
+    try {
+      new Intl.DateTimeFormat("en-US", { timeZone: tz });
+      return tz;
+    } catch {
+      // invalid timezone from client
+    }
+  }
+  return "Asia/Baku";
+}
+
+/** Returns a valid Date from the client's ISO string, falling back to server time. */
+function resolveNow(iso: unknown): Date {
+  if (typeof iso === "string") {
+    const d = new Date(iso);
+    if (!isNaN(d.getTime())) return d;
+  }
+  return new Date();
+}
+
+/** Keeps only the fields the model needs and caps the list, to save tokens. */
+function compactRemindersForPrompt(reminders: unknown): any[] {
+  if (!Array.isArray(reminders)) return [];
+  return reminders
+    .filter((r) => r && typeof r === "object")
+    .slice(0, 150)
+    .map((r: any) => ({
+      id: r.id,
+      title: typeof r.title === "string" ? r.title.slice(0, 200) : "",
+      dueDateTime: r.dueDateTime,
+      category: r.category,
+      recurrence: r.recurrence,
+      isCompleted: Boolean(r.isCompleted),
+    }));
+}
+
+const MAX_PROMPT_CHARS = 4000;
 
 // Public health check endpoints
 app.get("/health", (req, res) => {
@@ -88,131 +186,6 @@ function normalizeAzerbaijaniRecurrence(prompt: string, reminderItem: any): void
   }
 }
 
-/**
- * Normalizes dueDateTime to ensure that the time in the user's timezone matches
- * the user's intended explicit hour and dayparts (e.g. 18:00, "səhər 10", "günorta 2", "axşam 10", "gecə 1").
- * Prevents the UTC offset mutation (e.g. 18:00 UTC becoming 22:00 in Asia/Baku).
- */
-export function normalizeDueDateTimeForTimezone(
-  dueDateTime: string,
-  text: string,
-  timezone: string
-): string {
-  if (!dueDateTime) return dueDateTime;
-
-  const lower = text.toLowerCase();
-
-  // 1. Detect explicit hour and daypart intentions from text
-  let targetHour: number | null = null;
-  let targetMinute: number = 0;
-
-  const morningMatch = lower.match(/(?:səhər|seher)\s+(?:saat\s+)?(\d{1,2})(?::(\d{2}))?/i);
-  const afternoonMatch = lower.match(/(?:günorta|gunorta|nahar)\s+(?:saat\s+)?(\d{1,2})(?::(\d{2}))?/i);
-  const eveningMatch = lower.match(/(?:axşam|axsam|axşamüstü|axsamustu)\s+(?:saat\s+)?(\d{1,2})(?::(\d{2}))?/i);
-  const nightMatch = lower.match(/(?:gecə|gece)\s+(?:saat\s+)?(\d{1,2})(?::(\d{2}))?/i);
-
-  const exactHourMatch = lower.match(/(?:saat\s+)?(\d{1,2})(?::(\d{2}))?\s*(?:-|–)?\s*(?:da|də|de|ta|tə|yə|a|e|dək)?/i);
-
-  if (morningMatch && morningMatch[1]) {
-    const h = parseInt(morningMatch[1], 10);
-    // "səhər" = AM. Explicit 24-hour time must never be changed.
-    targetHour = h;
-    targetMinute = morningMatch[2] ? parseInt(morningMatch[2], 10) : 0;
-  } else if (afternoonMatch && afternoonMatch[1]) {
-    const h = parseInt(afternoonMatch[1], 10);
-    // "günorta" converts 1–5 to 13–17. Explicit 24-hour time must never be changed.
-    targetHour = h >= 1 && h <= 5 ? h + 12 : h;
-    targetMinute = afternoonMatch[2] ? parseInt(afternoonMatch[2], 10) : 0;
-  } else if (eveningMatch && eveningMatch[1]) {
-    const h = parseInt(eveningMatch[1], 10);
-    // "axşam" = PM (converts 1–11 to 13–23). Explicit 24-hour time must never be changed.
-    targetHour = h >= 1 && h <= 11 ? h + 12 : (h === 12 ? 0 : h);
-    targetMinute = eveningMatch[2] ? parseInt(eveningMatch[2], 10) : 0;
-  } else if (nightMatch && nightMatch[1]) {
-    const h = parseInt(nightMatch[1], 10);
-    // "gecə" keeps 1–4 as 01–04. Explicit 24-hour time must never be changed.
-    targetHour = h >= 1 && h <= 4 ? h : (h === 12 ? 0 : (h === 11 ? 23 : h));
-    targetMinute = nightMatch[2] ? parseInt(nightMatch[2], 10) : 0;
-  } else if (
-    exactHourMatch &&
-    exactHourMatch[1] &&
-    (lower.includes('saat') || exactHourMatch[0].includes('də') || exactHourMatch[0].includes('da') || exactHourMatch[2])
-  ) {
-    const h = parseInt(exactHourMatch[1], 10);
-    if (h >= 0 && h <= 24) {
-      targetHour = h;
-      targetMinute = exactHourMatch[2] ? parseInt(exactHourMatch[2], 10) : 0;
-      // Explicit 24-hour time must never be changed (hours >= 12 preserved)
-      if (targetHour >= 1 && targetHour <= 11) {
-        if (/axşam|axsam/i.test(lower)) {
-          // "axşam" = PM
-          targetHour += 12;
-        } else if (/günorta|gunorta/i.test(lower) && targetHour <= 5) {
-          // "günorta" converts 1–5 to 13–17
-          targetHour += 12;
-        } else if (/gecə|gece/i.test(lower) && targetHour <= 4) {
-          // "gecə" keeps 1–4 as 01–04
-        }
-        // Bare 1–11 hours with no daypart = AM (targetHour unchanged)
-      }
-    }
-  }
-
-  // If no explicit target hour found, keep dueDateTime as is
-  if (targetHour === null) {
-    return dueDateTime;
-  }
-
-  // 2. Check what hour dueDateTime represents in the specified timezone
-  const baseDate = new Date(dueDateTime);
-  if (isNaN(baseDate.getTime())) return dueDateTime;
-
-  try {
-    const dtfTime = new Intl.DateTimeFormat('en-US', {
-      timeZone: timezone,
-      hour: 'numeric',
-      minute: 'numeric',
-      hour12: false,
-    });
-    const timeParts = dtfTime.formatToParts(baseDate);
-    let hInTz = Number(timeParts.find((p) => p.type === 'hour')?.value || 0);
-    if (hInTz === 24) hInTz = 0;
-    const minInTz = Number(timeParts.find((p) => p.type === 'minute')?.value || 0);
-
-    // If it already matches the target hour and minute in timezone, return as is
-    if (hInTz === targetHour && minInTz === targetMinute) {
-      return dueDateTime;
-    }
-
-    // Otherwise, calculate the exact UTC date that yields targetHour:targetMinute in timezone
-    const dtfDate = new Intl.DateTimeFormat('en-US', {
-      timeZone: timezone,
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-    });
-    const dateParts = dtfDate.formatToParts(baseDate);
-    const y = dateParts.find((p) => p.type === 'year')?.value;
-    const m = dateParts.find((p) => p.type === 'month')?.value;
-    const d = dateParts.find((p) => p.type === 'day')?.value;
-
-    if (!y || !m || !d) return dueDateTime;
-
-    const guess = new Date(Date.UTC(Number(y), Number(m) - 1, Number(d), targetHour, targetMinute, 0));
-    const guessParts = dtfTime.formatToParts(guess);
-    let guessH = Number(guessParts.find((p) => p.type === 'hour')?.value || 0);
-    if (guessH === 24) guessH = 0;
-    const guessMin = Number(guessParts.find((p) => p.type === 'minute')?.value || 0);
-
-    const diffMs = ((guessH * 60 + guessMin) - (targetHour * 60 + targetMinute)) * 60 * 1000;
-    const corrected = new Date(guess.getTime() - diffMs);
-    return corrected.toISOString();
-  } catch (tzErr) {
-    console.warn('[SERVER-TZ] Timezone adjustment warning:', tzErr);
-    return dueDateTime;
-  }
-}
-
 // =========================================================================
 // API 1: PARSE VOICE/TEXT INTO STRUCTURED REMINDERS (OPENAI)
 // =========================================================================
@@ -224,9 +197,12 @@ app.post("/api/parse-reminder", async (req, res) => {
     if (!text || typeof text !== "string") {
       return res.status(400).json({ error: "Mətn daxil edilməyib." });
     }
+    if (text.length > MAX_PROMPT_CHARS) {
+      return res.status(400).json({ error: "Mətn çox uzundur." });
+    }
 
-    const now = userNowISO ? new Date(userNowISO) : new Date();
-    const timezone = userTimezone || "Asia/Baku";
+    const now = resolveNow(userNowISO);
+    const timezone = resolveTimezone(userTimezone);
     const userNowFormatted = now.toLocaleString("az-AZ", {
       timeZone: timezone,
       dateStyle: "full",
@@ -234,7 +210,7 @@ app.post("/api/parse-reminder", async (req, res) => {
     });
 
     const apiKey = process.env.OPENAI_API_KEY;
-    if (!apiKey && req.headers["x-test-simulate-openai"] !== "mock_success") {
+    if (!apiKey) {
       return res.status(503).json({
         error: "ai_unavailable",
         message:
@@ -326,7 +302,9 @@ Hazırkı cari vaxt: ${userNowFormatted} (ISO: ${now.toISOString()}).
 
     const reminders = rawReminders.map((item: any, idx: number) => {
       const rawDue = item.dueDateTime || new Date(now.getTime() + 3600000).toISOString();
-      const normalizedDue = normalizeDueDateTimeForTimezone(rawDue, text, timezone);
+      // The whole sentence is only a reliable time source when it produced one reminder.
+      const normalizedDue =
+        rawReminders.length === 1 ? normalizeDueDateTimeForTimezone(rawDue, text, timezone) : rawDue;
       const mapped = {
         id: `extracted-${Date.now()}-${idx}`,
         title: item.title || text,
@@ -338,7 +316,7 @@ Hazırkı cari vaxt: ${userNowFormatted} (ISO: ${now.toISOString()}).
         inferredTime: Boolean(item.inferredTime || item.timeConfidence === "inferred"),
         timeConfidence: item.timeConfidence || (item.inferredTime ? "inferred" : "exact"),
       };
-      normalizeAzerbaijaniRecurrence(text, mapped);
+      if (rawReminders.length === 1) normalizeAzerbaijaniRecurrence(text, mapped);
       return mapped;
     });
 
@@ -350,7 +328,7 @@ Hazırkı cari vaxt: ${userNowFormatted} (ISO: ${now.toISOString()}).
   } catch (error: any) {
     console.error("Error in parse-reminder:", error);
     return res.status(500).json({
-      error: "Xatırlatmanın analizi zamanı xəta baş verdi: " + (error?.message || "Bilinməyən xəta"),
+      error: "Xatırlatmanın analizi zamanı xəta baş verdi. Bir az sonra yenidən cəhd edin.",
     });
   }
 });
@@ -366,11 +344,14 @@ app.post("/api/ai-action", async (req, res) => {
     const userPrompt = req.body.userPrompt || req.body.prompt || req.body.text || req.body.command;
     const { reminders, userNowISO, userTimezone } = req.body;
 
-    if (!userPrompt) {
+    if (!userPrompt || typeof userPrompt !== "string") {
       return res.status(400).json({ error: "Əmr və ya sual daxil edilməyib." });
     }
+    if (userPrompt.length > MAX_PROMPT_CHARS) {
+      return res.status(400).json({ error: "Mətn çox uzundur." });
+    }
 
-    const simulateOpenAI = req.headers["x-test-simulate-openai"] || req.body.__testSimulateOpenAI;
+    const simulateOpenAI = getTestSimulation(req);
     if (simulateOpenAI === "missing_key") {
       console.log("[AI-ACTION] OPENAI_API_KEY is not configured (simulated)");
       return res.status(503).json({
@@ -398,8 +379,8 @@ app.post("/api/ai-action", async (req, res) => {
       });
     }
 
-    const now = userNowISO ? new Date(userNowISO) : new Date();
-    const timezone = userTimezone || "Asia/Baku";
+    const now = resolveNow(userNowISO);
+    const timezone = resolveTimezone(userTimezone);
     const userNowFormatted = now.toLocaleString("az-AZ", {
       timeZone: timezone,
       dateStyle: "full",
@@ -411,7 +392,7 @@ Hazırkı cari vaxt: ${userNowFormatted} (ISO: ${now.toISOString()}).
 İstifadəçinin zaman qurşağı: ${timezone}.
 
 İSTİFADƏÇİNİN HAZIRDA MÖVCUD OLAN XATIRLATMALARI:
-${JSON.stringify(reminders || [], null, 2)}
+${JSON.stringify(compactRemindersForPrompt(reminders))}
 
 SƏNİN MƏQSƏDİN:
 İstifadəçinin Azərbaycan dilindəki istənilən əmrini, sualını və ya tapşırığını analiz edib DƏQİQ JSON formatında STRUKTURLAŞDIRILMIŞ FƏALİYYƏT (action) generasiya etməkdir.
@@ -480,7 +461,7 @@ JSON CAVAB STRUKTURU:
     let parsed: any;
     let modelUsed = PREFERRED_OPENAI_TEXT_MODEL;
 
-    if (simulateOpenAI === "mock_success" || req.body.__testMockParsed) {
+    if (simulateOpenAI === "mock_success" || (!IS_PRODUCTION && req.body.__testMockParsed)) {
       parsed = req.body.__testMockParsed || {
         action: "create_reminder",
         responseMessage: "Xatırlatma yaradıldı.",
@@ -553,9 +534,12 @@ JSON CAVAB STRUKTURU:
     console.log(`[AI-ACTION] action: ${action}`);
 
     // Map remindersToCreate and post-process recurrence
-    const formattedReminders = (remindersToCreate || []).map((r: any, idx: number) => {
+    const reminderList: any[] = Array.isArray(remindersToCreate) ? remindersToCreate : [];
+    const isSingle = reminderList.length === 1;
+    const formattedReminders = reminderList.map((r: any, idx: number) => {
       const rawDue = r.dueDateTime || new Date(now.getTime() + 3600000).toISOString();
-      const normalizedDue = normalizeDueDateTimeForTimezone(rawDue, userPrompt, timezone);
+      // With several reminders in one sentence, each has its own time; don't force one onto all.
+      const normalizedDue = isSingle ? normalizeDueDateTimeForTimezone(rawDue, userPrompt, timezone) : rawDue;
       const item = {
         id: `extracted-${Date.now()}-${idx}`,
         title: r.title || userPrompt,
@@ -570,7 +554,7 @@ JSON CAVAB STRUKTURU:
         inferredTime: Boolean(r.inferredTime),
         timeConfidence: r.timeConfidence || (r.inferredTime ? "inferred" : "exact"),
       };
-      normalizeAzerbaijaniRecurrence(userPrompt, item);
+      if (isSingle) normalizeAzerbaijaniRecurrence(userPrompt, item);
       return item;
     });
 
@@ -600,7 +584,7 @@ JSON CAVAB STRUKTURU:
   } catch (error: any) {
     console.error("[AI-ACTION] error:", error?.message || error);
     return res.status(500).json({
-      error: "AI fəaliyyətinin analizi zamanı xəta: " + (error?.message || "Bilinməyən xəta"),
+      error: "AI fəaliyyətinin analizi zamanı xəta baş verdi. Bir az sonra yenidən cəhd edin.",
     });
   }
 });
@@ -656,7 +640,7 @@ app.post("/api/transcribe-audio", async (req, res) => {
     }
 
     // 2. Check test simulation flags or validate OpenAI API key
-    const simulateOpenAI = req.headers["x-test-simulate-openai"] || req.body.__testSimulateOpenAI;
+    const simulateOpenAI = getTestSimulation(req);
     if (simulateOpenAI === "503") {
       const errMsg = "OpenAI API error (status 503): Service Unavailable (simulated)";
       console.log(`[TRANSCRIBE] simulated service unavailable response returned`);
@@ -753,8 +737,11 @@ async function handleChatWithOpenAI(req: express.Request, res: express.Response)
     if (!question || typeof question !== "string") {
       return res.status(400).json({ error: "Sual daxil edilməyib." });
     }
+    if (question.length > MAX_PROMPT_CHARS) {
+      return res.status(400).json({ error: "Sual çox uzundur." });
+    }
 
-    const simulateOpenAI = req.headers["x-test-simulate-openai"] || req.body.__testSimulateOpenAI;
+    const simulateOpenAI = getTestSimulation(req);
     if (simulateOpenAI === "missing_key") {
       return res.status(503).json({
         error: "ai_unavailable",
@@ -772,8 +759,8 @@ async function handleChatWithOpenAI(req: express.Request, res: express.Response)
       });
     }
 
-    const now = req.body.userNowISO ? new Date(req.body.userNowISO) : new Date();
-    const timezone = req.body.userTimezone || "Asia/Baku";
+    const now = resolveNow(req.body.userNowISO);
+    const timezone = resolveTimezone(req.body.userTimezone);
     const userNowFormatted = now.toLocaleString("az-AZ", {
       timeZone: timezone,
       dateStyle: "full",
@@ -784,7 +771,7 @@ async function handleChatWithOpenAI(req: express.Request, res: express.Response)
 Hazırkı cari vaxt: ${userNowFormatted} (ISO: ${now.toISOString()}).
 İstifadəçinin zaman qurşağı: ${timezone}.
 İstifadəçinin hazırkı xatırlatmaları:
-${JSON.stringify(req.body.reminders || [], null, 2)}
+${JSON.stringify(compactRemindersForPrompt(req.body.reminders))}
 
 İstifadəçinin sualına Azərbaycan dilində aydın, mehriban və lakonik cavab ver.`;
 
@@ -812,7 +799,7 @@ ${JSON.stringify(req.body.reminders || [], null, 2)}
   } catch (error: any) {
     console.error("Error in chat/ask-assistant:", error);
     return res.status(500).json({
-      error: "Köməkçi ilə əlaqə zamanı xəta: " + (error?.message || "Bilinməyən xəta"),
+      error: "Köməkçi ilə əlaqə zamanı xəta baş verdi. Bir az sonra yenidən cəhd edin.",
     });
   }
 }
@@ -841,4 +828,7 @@ async function startServer() {
   });
 }
 
-startServer();
+startServer().catch((err) => {
+  console.error("Server failed to start:", err);
+  process.exit(1);
+});

@@ -13,7 +13,7 @@ import {
 } from '../types';
 import { reminderService } from './reminderService';
 import { apiClient } from './apiClient';
-import { formatDateAz, formatTimeOnly } from '../utils/dateUtils';
+import { formatDateAz, formatTimeOnly, getLocalYMD } from '../utils/dateUtils';
 import { dailyPlannerService } from './dailyPlannerService';
 import { routineService } from './routineService';
 import { conflictDetector } from './conflictDetector';
@@ -1390,7 +1390,7 @@ export class IntelligentRouter {
         if (actionPayload.action === 'plan_day') {
           actionPayload.needsConfirmation = true;
           if (!actionPayload.dailyPlanProposal && actionPayload.remindersToCreate) {
-            const todayYMD = new Date().toISOString().slice(0, 10);
+            const todayYMD = getLocalYMD();
             const tasks = actionPayload.remindersToCreate.map((d, idx) => ({
               id: `plan-task-${Date.now()}-${idx}`,
               title: d.title,

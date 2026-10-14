@@ -99,13 +99,14 @@ export default function App() {
     progressService.init();
 
     // Listen for notification tap / action deep links
-    const unsubAction = notificationService.onNotificationAction((reminderId, actionId) => {
-      // Check if notification belongs to a routine step (e.g. routine-rt-123-step-1)
+    const unsubAction = notificationService.onNotificationAction(async (reminderId, actionId) => {
+      // Check if notification belongs to a routine step.
+      // Format is routine-{routineId}-{stepId}, and routine IDs themselves contain
+      // hyphens (e.g. "routine-1712-abc"), so match by prefix instead of split('-').
       if (reminderId.startsWith('routine-')) {
-        const parts = reminderId.split('-');
-        // Format is routine-{routineId}-{stepId}
-        const routineId = parts.length >= 2 ? parts[1] : '';
-        const matched = routineService.getById(routineId) || routineService.getAll()[0];
+        const all = routineService.getAll();
+        const matched =
+          all.find((r) => reminderId.startsWith(`routine-${r.id}-`)) || all[0];
         if (matched) {
           setCurrentTab('home');
           setActiveRoutineSession(matched);
@@ -114,8 +115,13 @@ export default function App() {
         return;
       }
 
+      // When the app is opened by tapping a notification button, reminders may
+      // still be loading from storage; wait so the action isn't silently lost.
+      await reminderService.waitUntilLoaded();
+
       if (actionId === 'complete') {
-        reminderService.toggleComplete(reminderId);
+        // Explicit complete: a toggle would UN-complete an already completed reminder.
+        reminderService.completeReminder(reminderId);
         setActiveAlarmReminder(null);
         setToastMessage('Xatırlatma tamamlandı!');
         setTimeout(() => setToastMessage(null), 2500);

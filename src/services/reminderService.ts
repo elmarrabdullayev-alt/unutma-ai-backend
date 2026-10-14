@@ -7,6 +7,7 @@ import {
 } from '../types';
 import { getReminderStorageProvider, ReminderStorageProvider } from '../storage/ReminderStorageProvider';
 import { notificationService } from './notificationService';
+import { getLocalYMD } from '../utils/dateUtils';
 
 type ReminderListener = (reminders: Reminder[]) => void;
 
@@ -37,17 +38,15 @@ class ReminderService {
         if (newlyAdded.length > 0) {
           await this.storage.saveAll(this.reminders);
         }
-      } else {
-        if (this.reminders.length === 0) {
-          this.reminders = this.generateStarterReminders();
-        }
+      } else if (this.reminders.length > 0) {
+        // Reminders created before storage finished loading
         await this.storage.saveAll(this.reminders);
       }
+      // NOTE: demo/starter reminders used to be inserted here. They fired real
+      // notifications ("call the doctor") for new users and came back every time
+      // a user deleted all their reminders, so they are no longer created.
     } catch (e) {
       console.warn('[ReminderService] Init storage error:', e);
-      if (this.reminders.length === 0) {
-        this.reminders = this.generateStarterReminders();
-      }
     } finally {
       this.isLoaded = true;
       notificationService.rescheduleAll(this.reminders);
@@ -59,14 +58,23 @@ class ReminderService {
     return this.storage.name;
   }
 
-  private async persist() {
-    console.log(`[VOICE-FLOW] persistence started: count=${this.reminders.length}, storage=${this.storage.name}`);
-    try {
-      await this.storage.saveAll(this.reminders);
-      console.log(`[VOICE-FLOW] persistence success: count=${this.reminders.length}, storage=${this.storage.name}`);
-    } catch (e) {
-      console.error('[VOICE-FLOW] persistence error:', e);
-    }
+  private persistChain: Promise<void> = Promise.resolve();
+
+  /**
+   * Saves are chained so an older snapshot can never finish after (and
+   * overwrite) a newer one when several changes happen quickly.
+   */
+  private persist(): Promise<void> {
+    const snapshot = [...this.reminders];
+    this.persistChain = this.persistChain.then(async () => {
+      try {
+        await this.storage.saveAll(snapshot);
+        console.log(`[VOICE-FLOW] persistence success: count=${snapshot.length}, storage=${this.storage.name}`);
+      } catch (e) {
+        console.error('[VOICE-FLOW] persistence error:', e);
+      }
+    });
+    return this.persistChain;
   }
 
   private notifySubscribers() {
@@ -212,12 +220,23 @@ class ReminderService {
     });
   }
 
+  /** Marks a reminder as done (never un-completes it, unlike toggleComplete). */
+  public completeReminder(id: string): Reminder | null {
+    const target = this.reminders.find((r) => r.id === id);
+    if (!target) return null;
+    if (target.isCompleted) return target;
+    return this.toggleComplete(id);
+  }
+
   public snooze(id: string, minutes: number): Reminder | null {
     const target = this.reminders.find((r) => r.id === id);
     if (!target) return null;
 
-    const currentDue = new Date(target.dueDateTime);
-    const newDue = new Date(currentDue.getTime() + minutes * 60 * 1000);
+    // Snooze from "now" when the reminder is already overdue; otherwise the
+    // new time could still be in the past and the alarm would fire again at once.
+    const currentDueMs = new Date(target.dueDateTime).getTime();
+    const baseMs = isNaN(currentDueMs) ? Date.now() : Math.max(Date.now(), currentDueMs);
+    const newDue = new Date(baseMs + minutes * 60 * 1000);
 
     return this.updateReminder(id, {
       dueDateTime: newDue.toISOString(),
@@ -267,7 +286,7 @@ class ReminderService {
 
       result.push({
         dayName: daysNameAz[d.getDay()],
-        date: d.toISOString().slice(0, 10),
+        date: getLocalYMD(d),
         count: items.length,
         hoursBusy: items.length * 1.5, // estimate
       });
@@ -357,53 +376,97 @@ class ReminderService {
   }
 
   public async importReminders(newReminders: Reminder[]) {
-    this.reminders = newReminders;
+    // Drop malformed entries from a backup file so they can't crash the UI.
+    const valid = (Array.isArray(newReminders) ? newReminders : []).filter(
+      (r: any) =>
+        r &&
+        typeof r === 'object' &&
+        typeof r.id === 'string' &&
+        typeof r.title === 'string' &&
+        typeof r.dueDateTime === 'string' &&
+        !isNaN(new Date(r.dueDateTime).getTime())
+    );
+    this.reminders = valid.map((r) => ({
+      ...r,
+      category: r.category || 'other',
+      recurrence: r.recurrence || 'none',
+      priority: r.priority || 'medium',
+      isCompleted: Boolean(r.isCompleted),
+      notificationEnabled: r.notificationEnabled !== false,
+      createdAt: r.createdAt || new Date().toISOString(),
+    }));
     await this.persist();
     notificationService.rescheduleAll(this.reminders);
     this.notifySubscribers();
   }
 
-  private scheduleNextRecurringInstance(r: Reminder) {
-    const current = new Date(r.dueDateTime);
-    const next = new Date(current);
+  /** Adds months without overflowing (Jan 31 + 1 month = Feb 28/29, not Mar 3). */
+  private addMonths(date: Date, months: number, dayOfMonth?: number): Date {
+    const result = new Date(date);
+    const wantedDay = dayOfMonth || date.getDate();
+    result.setDate(1);
+    result.setMonth(result.getMonth() + months);
+    const lastDay = new Date(result.getFullYear(), result.getMonth() + 1, 0).getDate();
+    result.setDate(Math.min(wantedDay, lastDay));
+    return result;
+  }
 
+  private nextOccurrence(r: Reminder, from: Date): Date | null {
+    const next = new Date(from);
     if (r.recurrenceInterval && r.recurrenceUnit) {
-      if (r.recurrenceUnit === 'day') {
-        next.setDate(next.getDate() + r.recurrenceInterval);
-      } else if (r.recurrenceUnit === 'week') {
-        next.setDate(next.getDate() + (r.recurrenceInterval * 7));
-      } else if (r.recurrenceUnit === 'month') {
-        next.setMonth(next.getMonth() + r.recurrenceInterval);
-        if (r.recurrenceDayOfMonth) next.setDate(r.recurrenceDayOfMonth);
-      } else if (r.recurrenceUnit === 'year') {
-        next.setFullYear(next.getFullYear() + r.recurrenceInterval);
-      }
-    } else if (r.recurrence === 'daily') {
-      next.setDate(next.getDate() + 1);
-    } else if (r.recurrence === 'weekly') {
-      next.setDate(next.getDate() + 7);
-    } else if (r.recurrence === 'monthly') {
-      next.setMonth(next.getMonth() + 1);
-      if (r.recurrenceDayOfMonth) next.setDate(r.recurrenceDayOfMonth);
-    } else if (r.recurrence === 'yearly') {
-      next.setFullYear(next.getFullYear() + 1);
-    } else if (r.recurrence === 'weekdays') {
-      const day = next.getDay();
-      if (day === 5) {
-        next.setDate(next.getDate() + 3);
-      } else if (day === 6) {
-        next.setDate(next.getDate() + 2);
-      } else {
-        next.setDate(next.getDate() + 1);
-      }
-    } else {
-      return;
+      const n = Math.max(1, r.recurrenceInterval);
+      if (r.recurrenceUnit === 'day') next.setDate(next.getDate() + n);
+      else if (r.recurrenceUnit === 'week') next.setDate(next.getDate() + n * 7);
+      else if (r.recurrenceUnit === 'month') return this.addMonths(next, n, r.recurrenceDayOfMonth);
+      else if (r.recurrenceUnit === 'year') next.setFullYear(next.getFullYear() + n);
+      else return null;
+      return next;
     }
+    switch (r.recurrence) {
+      case 'daily':
+        next.setDate(next.getDate() + 1);
+        return next;
+      case 'weekly':
+        next.setDate(next.getDate() + 7);
+        return next;
+      case 'monthly':
+        return this.addMonths(next, 1, r.recurrenceDayOfMonth);
+      case 'yearly':
+        next.setFullYear(next.getFullYear() + 1);
+        return next;
+      case 'weekdays': {
+        const day = next.getDay();
+        next.setDate(next.getDate() + (day === 5 ? 3 : day === 6 ? 2 : 1));
+        return next;
+      }
+      default:
+        return null;
+    }
+  }
+
+  private scheduleNextRecurringInstance(r: Reminder) {
+    let next = this.nextOccurrence(r, new Date(r.dueDateTime));
+    if (!next) return;
+
+    // If the reminder was completed late, skip occurrences that are already in
+    // the past so the new instance doesn't fire immediately.
+    let guard = 0;
+    while (next && next.getTime() <= Date.now() && guard++ < 1000) {
+      next = this.nextOccurrence(r, next);
+    }
+    if (!next) return;
+
+    // Completing, un-completing and completing again must not create duplicates.
+    const nextISO = next.toISOString();
+    const alreadyExists = this.reminders.some(
+      (x) => x.id !== r.id && x.title === r.title && x.dueDateTime === nextISO
+    );
+    if (alreadyExists) return;
 
     this.createReminder({
       title: r.title,
       description: r.description,
-      dueDateTime: next.toISOString(),
+      dueDateTime: nextISO,
       category: r.category,
       recurrence: r.recurrence,
       recurrenceDays: r.recurrenceDays,
@@ -412,65 +475,8 @@ class ReminderService {
       recurrenceRule: r.recurrenceRule,
       recurrenceDayOfMonth: r.recurrenceDayOfMonth,
       priority: r.priority,
-      notificationEnabled: true,
+      notificationEnabled: r.notificationEnabled !== false,
     });
-  }
-
-  private generateStarterReminders(): Reminder[] {
-    const now = new Date();
-    const tomorrow = new Date(now);
-    tomorrow.setDate(tomorrow.getDate() + 1);
-
-    return [
-      {
-        id: 'starter-1',
-        title: 'Həkimə zəng et və analiz nəticələrini soruş',
-        description: 'Qan analizi və ultrasəs cavabları',
-        dueDateTime: new Date(new Date().setHours(new Date().getHours() + 2, 0, 0, 0)).toISOString(),
-        category: 'health',
-        recurrence: 'none',
-        priority: 'high',
-        isCompleted: false,
-        createdAt: now.toISOString(),
-        notificationEnabled: true,
-        notified: false,
-        sourceVoiceText: 'Sabah saat 10-da həkimə zəng et',
-      },
-      {
-        id: 'starter-2',
-        title: 'Maşını ustaya apar',
-        description: 'Yağ və əyləc mayesini yoxlatmaq',
-        dueDateTime: new Date(tomorrow.setHours(14, 0, 0, 0)).toISOString(),
-        category: 'personal',
-        recurrence: 'none',
-        priority: 'medium',
-        isCompleted: false,
-        createdAt: now.toISOString(),
-        notificationEnabled: true,
-        notified: false,
-      },
-      {
-        id: 'starter-3',
-        title: 'Mənzil kirayə haqqını ödə',
-        description: 'Ev sahibinin bank kartına köçürmə',
-        dueDateTime: (() => {
-          const d = new Date();
-          d.setDate(5);
-          if (d.getTime() < Date.now()) {
-            d.setMonth(d.getMonth() + 1);
-          }
-          d.setHours(10, 0, 0, 0);
-          return d.toISOString();
-        })(),
-        category: 'finance',
-        recurrence: 'monthly',
-        priority: 'high',
-        isCompleted: false,
-        createdAt: now.toISOString(),
-        notificationEnabled: true,
-        notified: false,
-      },
-    ];
   }
 }
 

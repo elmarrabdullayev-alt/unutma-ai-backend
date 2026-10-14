@@ -16,6 +16,28 @@ const AZ_DAYS_FULL = [
   'Cümə axşamı', 'Cümə', 'Şənbə'
 ];
 
+/**
+ * Today's date as YYYY-MM-DD in the device's LOCAL timezone.
+ * (new Date().toISOString().slice(0, 10) gives the UTC date, which is
+ * yesterday's date in Baku between 00:00 and 04:00.)
+ */
+export function getLocalYMD(date: Date = new Date()): string {
+  const y = date.getFullYear();
+  const m = (date.getMonth() + 1).toString().padStart(2, '0');
+  const d = date.getDate().toString().padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+/**
+ * Builds an ISO (UTC) timestamp from a LOCAL date (YYYY-MM-DD) and LOCAL time (HH:MM).
+ * Example in Baku: ("2026-10-14", "16:00") -> "2026-10-14T12:00:00.000Z".
+ */
+export function localDateTimeToISO(ymd: string, hhmm: string): string {
+  const [y, mo, d] = ymd.split('-').map(Number);
+  const [h, mi] = hhmm.split(':').map(Number);
+  return new Date(y, (mo || 1) - 1, d || 1, h || 0, mi || 0, 0, 0).toISOString();
+}
+
 export function formatDateAz(dateStr: string): string {
   if (!dateStr) return '';
   const date = new Date(dateStr);

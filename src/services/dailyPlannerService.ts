@@ -8,7 +8,7 @@ import {
 } from '../types';
 import { reminderService } from './reminderService';
 import { apiClient } from './apiClient';
-import { isReminderToday, formatTimeOnly } from '../utils/dateUtils';
+import { isReminderToday, formatTimeOnly, getLocalYMD, localDateTimeToISO } from '../utils/dateUtils';
 
 export class DailyPlannerService {
   /**
@@ -84,7 +84,7 @@ export class DailyPlannerService {
             id: `plan-${Date.now()}`,
             rawInput: cleanInput,
             createdAt: new Date().toISOString(),
-            targetDate: new Date().toISOString().slice(0, 10),
+            targetDate: getLocalYMD(),
             tasks: tasksFromAi,
             summaryNote: payload.responseMessage,
           };
@@ -136,7 +136,7 @@ export class DailyPlannerService {
       id: `plan-${Date.now()}`,
       rawInput: input,
       createdAt: new Date().toISOString(),
-      targetDate: new Date().toISOString().slice(0, 10),
+      targetDate: getLocalYMD(),
       tasks: allocatedTasks,
     };
   }
@@ -322,7 +322,7 @@ export class DailyPlannerService {
     existingReminders: Reminder[]
   ): PlanTask[] {
     const now = new Date();
-    const todayYMD = now.toISOString().slice(0, 10);
+    const todayYMD = getLocalYMD(now);
 
     // Baseline window slots in hours/mins
     const defaultSlots: Record<string, string[]> = {
@@ -349,7 +349,7 @@ export class DailyPlannerService {
     // Place fixed items first
     for (const it of fixedItems) {
       const timeStr = it.fixedTime!;
-      const dueDateTime = `${todayYMD}T${timeStr}:00.000Z`;
+      const dueDateTime = localDateTimeToISO(todayYMD, timeStr);
 
       resultTasks.push({
         id: `plan-task-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
@@ -399,7 +399,7 @@ export class DailyPlannerService {
       }
 
       takenTimes.add(chosenTime);
-      const dueDateTime = `${todayYMD}T${chosenTime}:00.000Z`;
+      const dueDateTime = localDateTimeToISO(todayYMD, chosenTime);
 
       resultTasks.push({
         id: `plan-task-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
@@ -448,7 +448,7 @@ export class DailyPlannerService {
           todayReminders,
           proposal.tasks.filter((t) => t.id !== task.id)
         );
-        const todayYMD = new Date().toISOString().slice(0, 10);
+        const todayYMD = getLocalYMD();
 
         return {
           ...task,
@@ -457,7 +457,7 @@ export class DailyPlannerService {
             conflictingReminder.dueDateTime
           )})`,
           suggestedAlternativeTime: altTime,
-          suggestedAlternativeDueDateTime: `${todayYMD}T${altTime}:00.000Z`,
+          suggestedAlternativeDueDateTime: localDateTimeToISO(todayYMD, altTime),
         };
       }
 
@@ -562,13 +562,13 @@ export class DailyPlannerService {
     input: string,
     existingReminders: Reminder[]
   ): DailyPlanProposal {
-    const todayYMD = new Date().toISOString().slice(0, 10);
+    const todayYMD = getLocalYMD();
     const tasks: PlanTask[] = [
       {
         id: `plan-fallback-1`,
         title: 'Fokus və iş tapşırığı',
         timeString: '10:00',
-        dueDateTime: `${todayYMD}T10:00:00.000Z`,
+        dueDateTime: localDateTimeToISO(todayYMD, '10:00'),
         durationMinutes: 45,
         priority: 'high',
         category: 'work',
@@ -579,7 +579,7 @@ export class DailyPlannerService {
         id: `plan-fallback-2`,
         title: input.slice(0, 40) || 'Günün əsas tapşırığı',
         timeString: '15:00',
-        dueDateTime: `${todayYMD}T15:00:00.000Z`,
+        dueDateTime: localDateTimeToISO(todayYMD, '15:00'),
         durationMinutes: 30,
         priority: 'medium',
         category: 'personal',
@@ -601,9 +601,9 @@ export class DailyPlannerService {
    */
   public applyAlternativeSlot(task: PlanTask): PlanTask {
     if (!task.suggestedAlternativeTime) return task;
-    const todayYMD = new Date().toISOString().slice(0, 10);
+    const todayYMD = getLocalYMD();
     const newTimeString = task.suggestedAlternativeTime;
-    const newDueDateTime = `${todayYMD}T${newTimeString}:00.000Z`;
+    const newDueDateTime = localDateTimeToISO(todayYMD, newTimeString);
 
     return {
       ...task,
@@ -620,8 +620,8 @@ export class DailyPlannerService {
    * Changes task time manually and updates dueDateTime.
    */
   public updateTaskTime(task: PlanTask, newTimeString: string): PlanTask {
-    const todayYMD = new Date().toISOString().slice(0, 10);
-    const newDueDateTime = `${todayYMD}T${newTimeString}:00.000Z`;
+    const todayYMD = getLocalYMD();
+    const newDueDateTime = localDateTimeToISO(todayYMD, newTimeString);
 
     return {
       ...task,
