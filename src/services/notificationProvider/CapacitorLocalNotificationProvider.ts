@@ -6,6 +6,7 @@ import {
 } from '@capacitor/local-notifications';
 import { Reminder } from '../../types';
 import { playReminderAlarmSound } from '../../utils/soundUtils';
+import { getNotificationSound } from './notificationSound';
 import { getNativeRepeatKind, getNextOccurrence, isRecurring } from '../../utils/recurrence';
 import { NotificationProvider, NotificationActionCallback } from './NotificationProvider';
 
@@ -172,7 +173,7 @@ export class CapacitorLocalNotificationProvider implements NotificationProvider 
         schedule,
         channelId: 'unutma_reminders_channel',
         actionTypeId: 'REMINDER_ACTIONS',
-        sound: 'default',
+        sound: getNotificationSound(),
         extra: { reminderId: reminder.id, reminderData: reminder },
       };
     };
