@@ -96,7 +96,7 @@ export const VoiceAssistantFullScreen: React.FC<VoiceAssistantFullScreenProps> =
         currentSessionIdRef.current === sessionId &&
         analyzedSessionIdRef.current !== sessionId
       ) {
-        console.log('[VoiceAssistant] Auto-stopping: ~1.3s silence detected after speech began');
+        console.log('[VoiceAssistant] Auto-stopping: ~1s silence detected after speech began');
         const finalRecorded = await stopListeningProcess();
         if (analyzedSessionIdRef.current === sessionId) return;
         const textToAnalyze = finalRecorded || detectedText || transcript || interimText;
@@ -105,7 +105,7 @@ export const VoiceAssistantFullScreen: React.FC<VoiceAssistantFullScreenProps> =
           handleAnalyzeText(textToAnalyze.trim(), sessionId);
         }
       }
-    }, 1300);
+    }, 1000);
   };
   const [recordingError, setRecordingError] = useState<string | null>(null);
   const [parsedReminders, setParsedReminders] = useState<EditableExtractedReminder[]>([]);
@@ -198,7 +198,7 @@ export const VoiceAssistantFullScreen: React.FC<VoiceAssistantFullScreenProps> =
               setInterimText(text);
               if (text.trim().length > 0) {
                 speechBeganRef.current = true;
-                // Schedule auto-stop ~1.3s after user pauses speaking
+                // Schedule auto-stop 1s after user pauses speaking
                 scheduleSilenceAutoStop(text);
               }
             }
