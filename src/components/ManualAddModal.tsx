@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useEscapeKey } from '../hooks/useEscapeKey';
 import { motion } from 'motion/react';
 import { X, Sparkles, Plus, Loader2 } from 'lucide-react';
 import { Reminder } from '../types';
@@ -16,6 +17,7 @@ export const ManualAddModal: React.FC<ManualAddModalProps> = ({
   onClose,
   onRemindersCreated,
 }) => {
+  useEscapeKey(onClose);
   const [naturalText, setNaturalText] = useState('');
   const [isAiProcessing, setIsAiProcessing] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -72,7 +74,7 @@ export const ManualAddModal: React.FC<ManualAddModalProps> = ({
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 0.2 }}
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md"
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-ink-950/70 backdrop-blur-sm"
       style={{
         paddingTop: 'max(env(safe-area-inset-top, 0px), 16px)',
         paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 16px)',
@@ -86,26 +88,26 @@ export const ManualAddModal: React.FC<ManualAddModalProps> = ({
         transition={{ duration: 0.22, ease: [0.25, 1, 0.5, 1] }}
         onClick={(e) => e.stopPropagation()}
         id="manual-add-modal"
-        className="relative w-full max-w-md rounded-[22px] border border-white/[0.08] bg-[#0D1220] p-5 shadow-2xl text-[#F5F6FA]"
+        className="relative w-full max-w-md rounded-[22px] border border-white/[0.08] bg-[#1d161c] p-5 shadow-2xl text-[#f8f2ec]"
       >
         <motion.button
           whileTap={{ scale: 0.95 }}
           id="close-manual-modal-btn"
           onClick={onClose}
           aria-label="Bağla"
-          className="absolute right-3.5 top-3.5 flex min-h-[40px] min-w-[40px] items-center justify-center rounded-full bg-white/[0.04] text-[#94A3B8] hover:text-[#F5F6FA] transition-colors shrink-0"
+          className="absolute right-3.5 top-3.5 flex min-h-[40px] min-w-[40px] items-center justify-center rounded-full bg-white/[0.04] text-[#c3b2ba] hover:text-[#f8f2ec] transition-colors shrink-0"
         >
           <X className="h-4 w-4" />
         </motion.button>
 
         <div className="flex items-center gap-2.5 mb-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-[#7C3AED]/20 text-[#A78BFA] border border-[#7C3AED]/30">
+          <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-[#e2a332]/20 text-[#f1c868] border border-[#e2a332]/30">
             <Plus className="h-4 w-4" />
           </div>
-          <h3 className="font-semibold text-base text-[#F5F6FA]">Xatırlatma yarat</h3>
+          <h3 className="font-semibold text-base text-[#f8f2ec]">Xatırlatma yarat</h3>
         </div>
 
-        <p className="text-xs text-[#94A3B8] mb-4">
+        <p className="text-xs text-[#c3b2ba] mb-4">
           Cümləni yazın. Tarix və vaxt avtomatik müəyyən ediləcək.
         </p>
 
@@ -118,12 +120,12 @@ export const ManualAddModal: React.FC<ManualAddModalProps> = ({
               value={naturalText}
               onChange={(e) => setNaturalText(e.target.value)}
               placeholder="Məsələn: Sabah saat 16:30-da görüş və 18:00-da market..."
-              className="w-full resize-none rounded-[16px] border border-white/[0.06] bg-[#121827] p-3 text-xs text-[#F5F6FA] placeholder-[#94A3B8]/60 focus:border-[#7C3AED]/60 focus:outline-none transition-colors"
+              className="w-full resize-none rounded-[16px] border border-white/[0.06] bg-[#1d161c] p-3 text-xs text-[#f8f2ec] placeholder-[#c3b2ba]/60 focus:border-[#e2a332]/60 focus:outline-none transition-colors"
             />
           </div>
 
           {errorMessage && (
-            <p className="text-xs text-[#FF4D73] bg-[#FF4D73]/10 p-2.5 rounded-[12px] border border-[#FF4D73]/20">
+            <p className="text-xs text-[#e14762] bg-[#e14762]/10 p-2.5 rounded-[12px] border border-[#e14762]/20">
               {errorMessage}
             </p>
           )}
@@ -133,7 +135,7 @@ export const ManualAddModal: React.FC<ManualAddModalProps> = ({
             id="submit-manual-parse-btn"
             type="submit"
             disabled={isAiProcessing || !naturalText.trim()}
-            className="flex w-full items-center justify-center gap-2 rounded-[14px] bg-[#7C3AED] hover:bg-[#6D28D9] py-3 text-xs font-medium text-white disabled:opacity-40 transition-all shadow-sm"
+            className="flex w-full items-center justify-center gap-2 rounded-[14px] bg-[#e2a332] hover:bg-[#c78626] py-3 text-xs font-medium text-white disabled:opacity-40 transition-all shadow-sm"
           >
             {isAiProcessing ? (
               <>

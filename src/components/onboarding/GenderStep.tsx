@@ -58,9 +58,9 @@ export const GenderStep: React.FC<GenderStepProps> = ({
   };
 
   return (
-    <div className="relative flex flex-col justify-between flex-1 px-6 py-6 min-h-0 bg-[#090D16] select-none">
+    <div className="relative flex flex-col justify-between flex-1 px-6 py-6 min-h-0 bg-[#130e13] select-none">
       {/* Background ambient glow */}
-      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-violet-600/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-zer-600/10 rounded-full blur-3xl pointer-events-none" />
 
       <div>
         {/* Progress Bar & Header */}
@@ -68,23 +68,23 @@ export const GenderStep: React.FC<GenderStepProps> = ({
           <button
             type="button"
             onClick={onBack}
-            className="text-xs font-semibold text-slate-400 hover:text-white transition-colors"
+            className="text-xs font-semibold text-ink-400 hover:text-white transition-colors"
           >
             ← Geri
           </button>
-          <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-violet-500/10 border border-violet-500/20 text-[11px] font-bold text-violet-300">
+          <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-zer-500/10 border border-zer-500/20 text-[13px] font-bold text-zer-300">
             <span>2</span>
-            <span className="text-violet-500">/</span>
+            <span className="text-zer-500">/</span>
             <span>3</span>
           </div>
         </div>
 
         {/* Title & Subtitle */}
         <div className="space-y-2 mb-6">
-          <h2 className="text-2xl font-black tracking-tight text-white">
+          <h2 className="font-display text-[30px] leading-[1.1] font-normal text-ink-50">
             Səni necə tanıyaq?
           </h2>
-          <p className="text-sm text-slate-300/80 leading-relaxed">
+          <p className="text-sm text-ink-300/80 leading-relaxed">
             Müraciət formasını və tətbiq təcrübəsini sənə uyğunlaşdırırıq.
           </p>
         </div>
@@ -102,25 +102,25 @@ export const GenderStep: React.FC<GenderStepProps> = ({
                 onClick={() => handleSelect(opt.id)}
                 className={`relative flex items-center justify-between p-4 rounded-2xl border text-left transition-all duration-200 active:scale-[0.99] min-h-[64px] ${
                   isSelected
-                    ? 'bg-gradient-to-r from-violet-600/20 to-indigo-600/20 border-violet-500/80 shadow-[0_0_20px_rgba(139,92,246,0.2)]'
-                    : 'bg-[#101524] border-white/5 hover:border-white/15'
+                    ? 'bg-gradient-to-r from-zer-600/20 to-zer-600/20 border-zer-500/80 shadow-[0_0_20px_rgba(226,163,50,0.2)]'
+                    : 'bg-[#1d161c] border-white/5 hover:border-white/15'
                 }`}
               >
                 <div className="flex items-center gap-3.5">
                   <div
                     className={`flex h-11 w-11 items-center justify-center rounded-xl transition-colors duration-200 ${
                       isSelected
-                        ? 'bg-violet-600 text-white shadow-md'
-                        : 'bg-white/5 text-slate-400'
+                        ? ' btn-gold text-ink-950 shadow-md'
+                        : 'bg-white/5 text-ink-400'
                     }`}
                   >
                     <Icon className="h-5 w-5" />
                   </div>
                   <div>
-                    <p className={`text-base font-bold ${isSelected ? 'text-white' : 'text-slate-200'}`}>
+                    <p className={`text-base font-bold ${isSelected ? 'text-white' : 'text-ink-200'}`}>
                       {opt.label}
                     </p>
-                    <p className="text-xs text-slate-400">{opt.sublabel}</p>
+                    <p className="text-xs text-ink-400">{opt.sublabel}</p>
                   </div>
                 </div>
 
@@ -128,7 +128,7 @@ export const GenderStep: React.FC<GenderStepProps> = ({
                 <div
                   className={`flex h-6 w-6 items-center justify-center rounded-full border transition-all duration-200 ${
                     isSelected
-                      ? 'bg-violet-600 border-violet-500 text-white'
+                      ? ' border-zer-500 btn-gold text-ink-950'
                       : 'border-white/20 bg-white/5'
                   }`}
                 >
@@ -145,7 +145,7 @@ export const GenderStep: React.FC<GenderStepProps> = ({
         <button
           type="button"
           onClick={handleContinue}
-          className="w-full h-14 rounded-2xl bg-gradient-to-r from-violet-600 to-indigo-600 text-white font-bold text-base shadow-[0_4px_20px_rgba(124,58,237,0.35)] flex items-center justify-center gap-2 hover:brightness-110 active:scale-[0.98] transition-all duration-200"
+          className="w-full h-14 rounded-2xl btn-gold text-ink-950 font-bold text-base flex items-center justify-center gap-2 hover:brightness-110 active:scale-[0.98] transition-all duration-200"
         >
           <span>Davam et</span>
           <ArrowRight className="h-5 w-5" />

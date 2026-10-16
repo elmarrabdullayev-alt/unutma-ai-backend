@@ -80,10 +80,10 @@ export const MemoryRingFocusVisual: React.FC<FocusVisualProps> = ({ progress, is
       <div
         className={`absolute inset-0 m-auto w-40 h-40 rounded-full blur-3xl pointer-events-none transition-opacity duration-700 ${
           isCompleted
-            ? 'bg-violet-500/40 opacity-90'
+            ? 'bg-zer-500/40 opacity-90'
             : isPaused
-            ? 'bg-violet-600/10 opacity-30'
-            : 'bg-violet-600/20 opacity-60'
+            ? 'bg-zer-600/10 opacity-30'
+            : 'bg-zer-600/20 opacity-60'
         }`}
       />
 
@@ -95,24 +95,24 @@ export const MemoryRingFocusVisual: React.FC<FocusVisualProps> = ({ progress, is
         <defs>
           {/* Radial gradient for central memory core */}
           <radialGradient id={`memCoreGrad_${uniqueId}`} cx="50%" cy="50%" r="50%">
-            <stop offset="0%" stopColor="#FAF5FF" stopOpacity="1" />
-            <stop offset="35%" stopColor="#C084FC" stopOpacity="0.95" />
-            <stop offset="70%" stopColor="#7C3AED" stopOpacity="0.7" />
-            <stop offset="100%" stopColor="#4C1D95" stopOpacity="0" />
+            <stop offset="0%" stopColor="#fdf8ea" stopOpacity="1" />
+            <stop offset="35%" stopColor="#f1c868" stopOpacity="0.95" />
+            <stop offset="70%" stopColor="#e2a332" stopOpacity="0.7" />
+            <stop offset="100%" stopColor="#2e242d" stopOpacity="0" />
           </radialGradient>
 
           {/* Linear gradient for glowing orbital stroke */}
           <linearGradient id={`memOrbitalGrad_${uniqueId}`} x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="#C084FC" />
-            <stop offset="50%" stopColor="#8B5CF6" />
-            <stop offset="100%" stopColor="#6366F1" />
+            <stop offset="0%" stopColor="#f1c868" />
+            <stop offset="50%" stopColor="#e2a332" />
+            <stop offset="100%" stopColor="#e2a332" />
           </linearGradient>
 
           {/* Progress arc gradient */}
           <linearGradient id={`memProgressGrad_${uniqueId}`} x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%" stopColor="#A855F7" />
-            <stop offset="50%" stopColor="#C084FC" />
-            <stop offset="100%" stopColor="#E9D5FF" />
+            <stop offset="0%" stopColor="#ecb74a" />
+            <stop offset="50%" stopColor="#f1c868" />
+            <stop offset="100%" stopColor="#fbedc9" />
           </linearGradient>
 
           {/* Glow filter for core */}
@@ -131,7 +131,7 @@ export const MemoryRingFocusVisual: React.FC<FocusVisualProps> = ({ progress, is
           cy="120"
           r={trackRadius}
           fill="none"
-          stroke="rgba(139, 92, 246, 0.14)"
+          stroke="rgba(226, 163, 50, 0.14)"
           strokeWidth="3.5"
         />
 
@@ -166,14 +166,14 @@ export const MemoryRingFocusVisual: React.FC<FocusVisualProps> = ({ progress, is
               cy="120"
               r="82"
               fill="none"
-              stroke="rgba(167, 139, 250, 0.28)"
+              stroke="rgba(241, 200, 104, 0.28)"
               strokeWidth="1.2"
               strokeDasharray="4 8"
             />
             {/* Satellite Nodes */}
-            <circle cx="202" cy="120" r="3" fill="#C084FC" filter={`url(#memGlow_${uniqueId})`} />
-            <circle cx="38" cy="120" r="2" fill="#8B5CF6" opacity="0.8" />
-            <circle cx="120" cy="38" r="1.5" fill="#A78BFA" opacity="0.6" />
+            <circle cx="202" cy="120" r="3" fill="#f1c868" filter={`url(#memGlow_${uniqueId})`} />
+            <circle cx="38" cy="120" r="2" fill="#e2a332" opacity="0.8" />
+            <circle cx="120" cy="38" r="1.5" fill="#f1c868" opacity="0.6" />
           </g>
 
           {/* Middle Layer Orbital Ring (Counter-Clockwise) */}
@@ -194,8 +194,8 @@ export const MemoryRingFocusVisual: React.FC<FocusVisualProps> = ({ progress, is
               opacity="0.65"
             />
             {/* Satellite Nodes */}
-            <circle cx="184" cy="120" r="2.5" fill="#DDD6FE" />
-            <circle cx="120" cy="180" r="2" fill="#A855F7" />
+            <circle cx="184" cy="120" r="2.5" fill="#fbedc9" />
+            <circle cx="120" cy="180" r="2" fill="#ecb74a" />
           </g>
 
           {/* Inner Layer Orbital Ring (Slow Clockwise) */}
@@ -212,8 +212,8 @@ export const MemoryRingFocusVisual: React.FC<FocusVisualProps> = ({ progress, is
               strokeWidth="1"
               strokeDasharray="8 6 2 6"
             />
-            <circle cx="164" cy="120" r="2" fill="#E9D5FF" />
-            <circle cx="76" cy="120" r="1.5" fill="#C084FC" />
+            <circle cx="164" cy="120" r="2" fill="#fbedc9" />
+            <circle cx="76" cy="120" r="1.5" fill="#f1c868" />
           </g>
 
           {/* Inner Filament Circle */}
@@ -222,7 +222,7 @@ export const MemoryRingFocusVisual: React.FC<FocusVisualProps> = ({ progress, is
             cy="120"
             r="30"
             fill="none"
-            stroke="rgba(139, 92, 246, 0.25)"
+            stroke="rgba(226, 163, 50, 0.25)"
             strokeWidth="1"
             strokeDasharray="3 5"
           />
@@ -252,7 +252,7 @@ export const MemoryRingFocusVisual: React.FC<FocusVisualProps> = ({ progress, is
             cx="120"
             cy="120"
             r={isCompleted ? 14 : 10}
-            fill="#FAF5FF"
+            fill="#fdf8ea"
             className="transition-all duration-500"
             filter={`url(#memGlow_${uniqueId})`}
           />

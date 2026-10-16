@@ -74,9 +74,9 @@ export const HourglassFocusTimer: React.FC<HourglassFocusTimerProps> = ({
       >
         {/* Soft Ambient Violet Glow Behind Hourglass */}
         <div
-          className={`absolute inset-0 m-auto w-52 h-64 rounded-full bg-violet-600/20 blur-3xl pointer-events-none transition-opacity duration-700 ${
+          className={`absolute inset-0 m-auto w-52 h-64 rounded-full bg-zer-600/20 blur-3xl pointer-events-none transition-opacity duration-700 ${
             isCompleted
-              ? 'hourglass-completed bg-violet-500/40'
+              ? 'hourglass-completed bg-zer-500/40'
               : isPaused
               ? 'opacity-20'
               : 'hourglass-glow'
@@ -115,33 +115,33 @@ export const HourglassFocusTimer: React.FC<HourglassFocusTimerProps> = ({
 
             {/* Sand Linear Gradients */}
             <linearGradient id="sandGradientTop" x1="0%" y1="0%" x2="0%" y2="100%">
-              <stop offset="0%" stopColor="#DDD6FE" />
-              <stop offset="35%" stopColor="#A78BFA" />
-              <stop offset="75%" stopColor="#7C3AED" />
-              <stop offset="100%" stopColor="#5B21B6" />
+              <stop offset="0%" stopColor="#fbedc9" />
+              <stop offset="35%" stopColor="#f1c868" />
+              <stop offset="75%" stopColor="#e2a332" />
+              <stop offset="100%" stopColor="#a1681f" />
             </linearGradient>
 
             <linearGradient id="sandGradientBottom" x1="0%" y1="0%" x2="0%" y2="100%">
-              <stop offset="0%" stopColor="#EDE9FE" />
-              <stop offset="25%" stopColor="#C4B5FD" />
-              <stop offset="65%" stopColor="#8B5CF6" />
-              <stop offset="100%" stopColor="#5B21B6" />
+              <stop offset="0%" stopColor="#fdf8ea" />
+              <stop offset="25%" stopColor="#f6dc98" />
+              <stop offset="65%" stopColor="#e2a332" />
+              <stop offset="100%" stopColor="#a1681f" />
             </linearGradient>
 
             {/* Glass Outline Gradient */}
             <linearGradient id="glassOutlineGrad" x1="0%" y1="0%" x2="100%" y2="100%">
               <stop offset="0%" stopColor="rgba(255, 255, 255, 0.55)" />
               <stop offset="25%" stopColor="rgba(196, 181, 253, 0.45)" />
-              <stop offset="50%" stopColor="rgba(167, 139, 250, 0.25)" />
-              <stop offset="75%" stopColor="rgba(139, 92, 246, 0.35)" />
+              <stop offset="50%" stopColor="rgba(241, 200, 104, 0.25)" />
+              <stop offset="75%" stopColor="rgba(226, 163, 50, 0.35)" />
               <stop offset="100%" stopColor="rgba(255, 255, 255, 0.5)" />
             </linearGradient>
 
             {/* Stream Gradient */}
             <linearGradient id="streamGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-              <stop offset="0%" stopColor="#EDE9FE" stopOpacity="0.95" />
-              <stop offset="45%" stopColor="#C4B5FD" stopOpacity="0.85" />
-              <stop offset="100%" stopColor="#8B5CF6" stopOpacity="0.95" />
+              <stop offset="0%" stopColor="#fdf8ea" stopOpacity="0.95" />
+              <stop offset="45%" stopColor="#f6dc98" stopOpacity="0.85" />
+              <stop offset="100%" stopColor="#e2a332" stopOpacity="0.95" />
             </linearGradient>
 
             {/* Glass Body Fill Gradient */}
@@ -196,7 +196,7 @@ export const HourglassFocusTimer: React.FC<HourglassFocusTimerProps> = ({
                 cy={upperSandY}
                 rx={Math.max(10, (1 - (upperSandY - 38) / 114) * 52)}
                 ry="2.8"
-                fill="#EDE9FE"
+                fill="#fdf8ea"
                 opacity="0.4"
               />
             )}
@@ -223,7 +223,7 @@ export const HourglassFocusTimer: React.FC<HourglassFocusTimerProps> = ({
                 cy={lowerSandPeakY + 1}
                 rx="7"
                 ry="2.2"
-                fill="#F5F3FF"
+                fill="#f8f2ec"
                 className="hourglass-splash"
                 filter="url(#violetGlow)"
               />
@@ -259,14 +259,14 @@ export const HourglassFocusTimer: React.FC<HourglassFocusTimerProps> = ({
                 cx="119.3"
                 cy="154"
                 r="1.1"
-                fill="#EDE9FE"
+                fill="#fdf8ea"
                 className="hourglass-grain hourglass-grain-2"
               />
               <circle
                 cx="120.7"
                 cy="153.5"
                 r="1.3"
-                fill="#DDD6FE"
+                fill="#fbedc9"
                 className="hourglass-grain hourglass-grain-3"
               />
               <circle
@@ -345,8 +345,8 @@ export const HourglassFocusTimer: React.FC<HourglassFocusTimerProps> = ({
               width="160"
               height="12"
               rx="6"
-              fill="#131826"
-              stroke="rgba(167, 139, 250, 0.35)"
+              fill="#1d161c"
+              stroke="rgba(241, 200, 104, 0.35)"
               strokeWidth="1.5"
             />
             {/* Top metallic bevel light */}
@@ -369,8 +369,8 @@ export const HourglassFocusTimer: React.FC<HourglassFocusTimerProps> = ({
               width="160"
               height="12"
               rx="6"
-              fill="#131826"
-              stroke="rgba(167, 139, 250, 0.35)"
+              fill="#1d161c"
+              stroke="rgba(241, 200, 104, 0.35)"
               strokeWidth="1.5"
             />
             {/* Bottom metallic bevel light */}
@@ -391,7 +391,7 @@ export const HourglassFocusTimer: React.FC<HourglassFocusTimerProps> = ({
             cy="290"
             rx="62"
             ry="4.5"
-            fill="#8B5CF6"
+            fill="#e2a332"
             opacity={isCompleted ? 0.45 : isPaused ? 0.18 : 0.32}
             filter="url(#violetGlow)"
           />
@@ -404,11 +404,11 @@ export const HourglassFocusTimer: React.FC<HourglassFocusTimerProps> = ({
           <div className="text-4xl sm:text-5xl font-black tracking-tight text-white font-mono drop-shadow-[0_4px_12px_rgba(0,0,0,0.5)]">
             {timeFormatted}
           </div>
-          <div className="text-[10px] sm:text-[11px] font-bold text-violet-300 mt-1.5 uppercase tracking-[0.25em] flex items-center justify-center gap-1.5">
+          <div className="text-[12px] sm:text-[13px] font-bold text-zer-300 mt-1.5 flex items-center justify-center gap-1.5">
             {isPaused ? (
               <span className="text-amber-400 font-extrabold">• FASİLƏDƏ •</span>
             ) : isCompleted ? (
-              <span className="text-violet-400 font-extrabold">• TAMAMLANDI •</span>
+              <span className="text-zer-400 font-extrabold">• TAMAMLANDI •</span>
             ) : (
               <span>• QALAN VAXT •</span>
             )}

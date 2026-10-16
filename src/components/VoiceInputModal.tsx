@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useEscapeKey } from '../hooks/useEscapeKey';
 import {
   Mic,
   MicOff,
@@ -33,6 +34,7 @@ export const VoiceInputModal: React.FC<VoiceInputModalProps> = ({
   onClose,
   onRemindersCreated,
 }) => {
+  useEscapeKey(onClose);
   const [isListening, setIsListening] = useState(false);
   const [transcript, setTranscript] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
@@ -280,7 +282,7 @@ export const VoiceInputModal: React.FC<VoiceInputModalProps> = ({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in"
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-ink-950/70 backdrop-blur-sm animate-fade-in"
       style={{
         paddingTop: 'max(env(safe-area-inset-top, 0px), 16px)',
         paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 16px)',
@@ -288,10 +290,10 @@ export const VoiceInputModal: React.FC<VoiceInputModalProps> = ({
     >
       <div
         id="voice-input-modal"
-        className="relative w-full max-w-lg rounded-3xl border border-white/10 bg-gradient-to-b from-[#111827] to-[#0F172A] p-6 shadow-2xl text-slate-50 overflow-hidden"
+        className="relative w-full max-w-lg rounded-3xl border border-white/10 bg-gradient-to-b from-[#1d161c] to-[#1d161c] p-6 shadow-2xl text-ink-50 overflow-hidden"
       >
         {/* Ambient Glow */}
-        <div className="pointer-events-none absolute -top-20 left-1/2 h-52 w-52 -translate-x-1/2 rounded-full bg-violet-500/15 blur-3xl" />
+        <div className="pointer-events-none absolute -top-20 left-1/2 h-52 w-52 -translate-x-1/2 rounded-full bg-zer-500/15 blur-3xl" />
 
         {/* Close Button */}
         <button
@@ -301,21 +303,21 @@ export const VoiceInputModal: React.FC<VoiceInputModalProps> = ({
             onClose();
           }}
           aria-label="Bağla"
-          className="absolute right-3.5 top-3.5 flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full bg-slate-800/80 text-slate-400 hover:bg-slate-700 hover:text-white transition-colors active:scale-95 shrink-0"
+          className="absolute right-3.5 top-3.5 flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full bg-ink-800/80 text-ink-400 hover:bg-ink-700 hover:text-white transition-colors active:scale-95 shrink-0"
         >
           <X className="h-4 w-4" />
         </button>
 
         {/* Header */}
         <div className="text-center mb-6">
-          <div className="inline-flex items-center gap-1.5 rounded-full border border-violet-500/30 bg-violet-500/10 px-3 py-1 text-xs font-semibold text-violet-300 mb-2 uppercase tracking-wider">
-            <Sparkles className="h-3.5 w-3.5 text-violet-400" />
+          <div className="inline-flex items-center gap-1.5 rounded-full border border-zer-500/30 bg-zer-500/10 px-3 py-1 text-xs font-semibold text-zer-300 mb-2">
+            <Sparkles className="h-3.5 w-3.5 text-zer-400" />
             Süni İntellekt Səs Analizi
           </div>
-          <h2 className="text-xl font-bold tracking-tight text-white sm:text-2xl">
+          <h2 className="font-display text-[26px] leading-[1.15] font-normal text-ink-50">
             Nəyi xatırlamaq istəyirsiniz?
           </h2>
-          <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto">
+          <p className="text-xs text-ink-400 mt-1 max-w-sm mx-auto">
             Bir cümlədə bir neçə tapşırıq və vaxt qeyd edə bilərsiniz. AI hər birini ayrı-ayrı təyin edəcək.
           </p>
         </div>
@@ -326,9 +328,9 @@ export const VoiceInputModal: React.FC<VoiceInputModalProps> = ({
             {/* Pulsing rings when listening */}
             {isListening && (
               <>
-                <div className="absolute h-36 w-36 rounded-full bg-violet-500/20 animate-ping opacity-75" />
+                <div className="absolute h-36 w-36 rounded-full bg-zer-500/20 animate-ping opacity-75" />
                 <div
-                  className="absolute h-44 w-44 rounded-full border border-violet-500/30 transition-all duration-150"
+                  className="absolute h-44 w-44 rounded-full border border-zer-500/30 transition-all duration-150"
                   style={{ transform: `scale(${1 + audioLevel * 0.3})` }}
                 />
               </>
@@ -340,8 +342,8 @@ export const VoiceInputModal: React.FC<VoiceInputModalProps> = ({
               disabled={isProcessing}
               className={`relative z-10 flex h-24 w-24 items-center justify-center rounded-full shadow-2xl transition-all duration-300 active:scale-95 border-2 border-white/10 ${
                 isListening
-                  ? 'bg-rose-500 text-white shadow-rose-500/30 ring-4 ring-rose-500/20 animate-pulse'
-                  : 'bg-gradient-to-tr from-violet-600 to-indigo-600 text-white shadow-violet-500/30 hover:scale-105'
+                  ? 'bg-nar-500 btn-gold text-ink-950 shadow-nar-500/30 ring-4 ring-nar-500/20 animate-pulse'
+                  : ' text-ink-950 shadow-zer-500/30 hover:scale-105'
               }`}
             >
               {isListening ? (
@@ -352,10 +354,10 @@ export const VoiceInputModal: React.FC<VoiceInputModalProps> = ({
             </button>
           </div>
 
-          <span className="mt-4 text-xs font-medium text-slate-300">
+          <span className="mt-4 text-xs font-medium text-ink-300">
             {isListening ? (
-              <span className="flex items-center gap-1.5 text-rose-400 font-semibold">
-                <span className="h-2 w-2 rounded-full bg-rose-500 animate-ping" />
+              <span className="flex items-center gap-1.5 text-nar-400 font-semibold">
+                <span className="h-2 w-2 rounded-full bg-nar-500 animate-ping" />
                 Dinləyirəm... ({formatSeconds(recordingSeconds)})
               </span>
             ) : (
@@ -366,18 +368,18 @@ export const VoiceInputModal: React.FC<VoiceInputModalProps> = ({
 
         {/* Transcript / Input text area */}
         <div className="mb-4">
-          <div className="relative rounded-2xl border border-white/5 bg-slate-800/40 p-3 shadow-inner">
+          <div className="relative rounded-2xl border border-white/5 bg-ink-800/40 p-3 shadow-inner">
             <textarea
               id="voice-transcript-input"
               value={transcript}
               onChange={(e) => setTranscript(e.target.value)}
               placeholder="Məsələn: “Sabah saat 10-da həkimə get, axşam 7-də idman et və hər ayın 5-i kirayəni ödə...”"
               rows={3}
-              className="w-full resize-none bg-transparent text-sm text-slate-100 placeholder-slate-500 focus:outline-none"
+              className="w-full resize-none bg-transparent text-sm text-ink-100 placeholder-ink-500 focus:outline-none"
             />
 
             <div className="flex items-center justify-between pt-2 border-t border-white/5 mt-1">
-              <span className="text-[11px] text-slate-500 flex items-center gap-1">
+              <span className="text-[13px] text-ink-500 flex items-center gap-1">
                 <Clock className="h-3 w-3" />
                 Azərbaycan dili dəstəklənir
               </span>
@@ -386,7 +388,7 @@ export const VoiceInputModal: React.FC<VoiceInputModalProps> = ({
                 id="submit-voice-transcript-btn"
                 onClick={() => handleAnalyzeText()}
                 disabled={isProcessing || !transcript.trim()}
-                className="flex items-center gap-1.5 rounded-xl bg-gradient-to-tr from-violet-600 to-indigo-600 px-4 py-1.5 text-xs font-semibold text-white hover:brightness-110 disabled:opacity-40 disabled:cursor-not-allowed transition-all active:scale-95 shadow-md shadow-violet-500/20 border border-white/10"
+                className="flex items-center gap-1.5 rounded-xl px-4 py-1.5 text-xs font-semibold btn-gold text-ink-950 hover:brightness-110 disabled:opacity-40 disabled:cursor-not-allowed transition-all active:scale-95 shadow-md shadow-zer-500/20 border border-white/10"
               >
                 {isProcessing ? (
                   <>
@@ -406,16 +408,16 @@ export const VoiceInputModal: React.FC<VoiceInputModalProps> = ({
 
         {/* Error message */}
         {errorMessage && (
-          <div className="mb-4 rounded-xl border border-rose-500/30 bg-rose-500/10 p-3 text-xs text-rose-300 flex items-start gap-2">
-            <div className="mt-0.5 h-2 w-2 shrink-0 rounded-full bg-rose-500" />
+          <div className="mb-4 rounded-xl border border-nar-500/30 bg-nar-500/10 p-3 text-xs text-nar-300 flex items-start gap-2">
+            <div className="mt-0.5 h-2 w-2 shrink-0 rounded-full bg-nar-500" />
             <span>{errorMessage}</span>
           </div>
         )}
 
         {/* Sample presets for fast one-tap testing */}
         <div className="mt-2">
-          <p className="text-[11px] font-medium text-slate-400 mb-2 flex items-center gap-1">
-            <Sparkles className="h-3 w-3 text-violet-400" />
+          <p className="text-[13px] font-medium text-ink-400 mb-2 flex items-center gap-1">
+            <Sparkles className="h-3 w-3 text-zer-400" />
             Sürətli sınaq üçün hazır nümunələr:
           </p>
           <div className="flex flex-col gap-1.5 max-h-36 overflow-y-auto pr-1">
@@ -425,10 +427,10 @@ export const VoiceInputModal: React.FC<VoiceInputModalProps> = ({
                 id={`sample-prompt-btn-${idx}`}
                 onClick={() => handleSampleClick(sample)}
                 disabled={isProcessing}
-                className="text-left text-xs text-slate-300 rounded-xl border border-white/5 bg-slate-800/30 px-3 py-2 hover:bg-slate-800/70 hover:border-violet-500/30 hover:text-white transition-all flex items-center justify-between group"
+                className="text-left text-xs text-ink-300 rounded-xl border border-white/5 bg-ink-800/30 px-3 py-2 hover:bg-ink-800/70 hover:border-zer-500/30 hover:text-white transition-all flex items-center justify-between group"
               >
                 <span className="line-clamp-1 italic font-normal">“{sample}”</span>
-                <ArrowRight className="h-3 w-3 shrink-0 text-slate-500 group-hover:text-violet-400 group-hover:translate-x-0.5 transition-all" />
+                <ArrowRight className="h-3 w-3 shrink-0 text-ink-500 group-hover:text-zer-400 group-hover:translate-x-0.5 transition-all" />
               </button>
             ))}
           </div>

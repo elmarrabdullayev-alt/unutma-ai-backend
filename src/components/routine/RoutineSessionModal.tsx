@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useEscapeKey } from '../../hooks/useEscapeKey';
 import { motion } from 'motion/react';
 import {
   X,
@@ -31,6 +32,7 @@ export const RoutineSessionModal: React.FC<RoutineSessionModalProps> = ({
   onClose,
   onEditRoutine,
 }) => {
+  useEscapeKey(onClose);
   const [completedIds, setCompletedIds] = useState<string[]>([]);
   const [justFinished, setJustFinished] = useState(false);
 
@@ -73,9 +75,9 @@ export const RoutineSessionModal: React.FC<RoutineSessionModalProps> = ({
 
   const getRoutineIcon = (type: RoutineType) => {
     if (type === 'morning') return <Sunrise className="h-5 w-5 text-amber-300" />;
-    if (type === 'evening') return <Moon className="h-5 w-5 text-indigo-300" />;
+    if (type === 'evening') return <Moon className="h-5 w-5 text-zer-300" />;
     if (type === 'afternoon') return <Sun className="h-5 w-5 text-yellow-400" />;
-    return <Sparkles className="h-5 w-5 text-violet-300" />;
+    return <Sparkles className="h-5 w-5 text-zer-300" />;
   };
 
   const streakData = routineService.getStreakData();
@@ -86,7 +88,7 @@ export const RoutineSessionModal: React.FC<RoutineSessionModalProps> = ({
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 0.2 }}
-      className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-black/85 backdrop-blur-md"
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-3 bg-ink-950/70 backdrop-blur-sm"
       style={{
         paddingTop: 'max(env(safe-area-inset-top, 0px), 12px)',
         paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 12px)',
@@ -99,10 +101,10 @@ export const RoutineSessionModal: React.FC<RoutineSessionModalProps> = ({
         exit={{ opacity: 0, scale: 0.94, y: 10 }}
         transition={{ duration: 0.22, ease: [0.25, 1, 0.5, 1] }}
         onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-md max-h-[92vh] flex flex-col rounded-3xl bg-[#0F1523] border border-violet-500/30 shadow-2xl overflow-hidden text-white"
+        className="w-full max-w-md max-h-[92vh] flex flex-col rounded-3xl bg-[#1d161c] border border-zer-500/30 shadow-2xl overflow-hidden text-white"
       >
         {/* Header */}
-        <div className="p-4 border-b border-white/10 flex items-center justify-between bg-[#131A2D]">
+        <div className="p-4 border-b border-white/10 flex items-center justify-between bg-[#1d161c]">
           <div className="flex items-center gap-3 min-w-0">
             <div className="h-10 w-10 rounded-2xl bg-white/10 flex items-center justify-center shrink-0 border border-white/10">
               {getRoutineIcon(routine.type)}
@@ -113,15 +115,15 @@ export const RoutineSessionModal: React.FC<RoutineSessionModalProps> = ({
                   {routine.title}
                 </h2>
                 {streakData.currentStreak > 0 && (
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-300 text-[10px] font-black shrink-0">
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-300 text-[12px] font-black shrink-0">
                     <Flame className="h-3 w-3 text-amber-400 fill-amber-400" />
                     {streakData.currentStreak} gün
                   </span>
                 )}
               </div>
-              <div className="flex items-center gap-2 text-[11px] text-slate-400 font-medium">
+              <div className="flex items-center gap-2 text-[13px] text-ink-400 font-medium">
                 <span className="flex items-center gap-1">
-                  <Clock className="h-3 w-3 text-slate-400" />
+                  <Clock className="h-3 w-3 text-ink-400" />
                   {routine.startTime}
                 </span>
                 <span>•</span>
@@ -136,7 +138,7 @@ export const RoutineSessionModal: React.FC<RoutineSessionModalProps> = ({
               whileHover={{ scale: 1.02 }}
               onClick={() => onEditRoutine(routine)}
               aria-label="Rutini redaktə et"
-              className="h-11 w-11 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 flex items-center justify-center transition-colors shrink-0"
+              className="h-11 w-11 rounded-xl bg-white/5 hover:bg-white/10 text-ink-300 flex items-center justify-center transition-colors shrink-0"
               title="Rutini redaktə et"
             >
               <Pencil className="h-4 w-4" />
@@ -146,7 +148,7 @@ export const RoutineSessionModal: React.FC<RoutineSessionModalProps> = ({
               whileHover={{ scale: 1.02 }}
               onClick={onClose}
               aria-label="Bağla"
-              className="h-11 w-11 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 flex items-center justify-center transition-colors shrink-0"
+              className="h-11 w-11 rounded-xl bg-white/5 hover:bg-white/10 text-ink-300 flex items-center justify-center transition-colors shrink-0"
             >
               <X className="h-4 w-4" />
             </motion.button>
@@ -154,12 +156,12 @@ export const RoutineSessionModal: React.FC<RoutineSessionModalProps> = ({
         </div>
 
         {/* Progress Overview Card */}
-        <div className="px-5 pt-4 pb-3 bg-[#111728] border-b border-white/5 space-y-2">
+        <div className="px-5 pt-4 pb-3 bg-[#1d161c] border-b border-white/5 space-y-2">
           <div className="flex items-center justify-between text-xs">
             <span className="font-extrabold text-white tracking-tight">
               {completedCount} / {totalSteps} tamamlandı
             </span>
-            <span className={`font-black ${isAllDone ? 'text-emerald-400' : 'text-violet-400'}`}>
+            <span className={`font-black ${isAllDone ? 'text-pista-400' : 'text-zer-400'}`}>
               {percent}%
             </span>
           </div>
@@ -168,8 +170,8 @@ export const RoutineSessionModal: React.FC<RoutineSessionModalProps> = ({
             <div
               className={`h-full transition-all duration-500 rounded-full ${
                 isAllDone
-                  ? 'bg-gradient-to-r from-emerald-500 to-teal-400'
-                  : 'bg-gradient-to-r from-violet-500 to-indigo-400'
+                  ? 'bg-gradient-to-r from-pista-500 to-pista-400'
+                  : 'bg-gradient-to-r from-zer-500 to-zer-400'
               }`}
               style={{ width: `${percent}%` }}
             />
@@ -177,14 +179,14 @@ export const RoutineSessionModal: React.FC<RoutineSessionModalProps> = ({
 
           {/* 100% Celebration Banner */}
           {(isAllDone || justFinished) && (
-            <div className="pt-1.5 flex items-center justify-between p-3 rounded-2xl bg-gradient-to-r from-emerald-950/60 to-teal-950/40 border border-emerald-500/40 text-emerald-300 text-xs font-black animate-fade-in shadow-md">
+            <div className="pt-1.5 flex items-center justify-between p-3 rounded-2xl bg-gradient-to-r from-pista-950/60 to-pista-950/40 border border-pista-500/40 text-pista-300 text-xs font-black animate-fade-in shadow-md">
               <div className="flex items-center gap-2">
-                <Sparkles className="h-4 w-4 text-emerald-400 animate-spin" />
+                <Sparkles className="h-4 w-4 text-pista-400 animate-spin" />
                 <span>Rutini tamamladın ✨</span>
               </div>
               <button
                 onClick={handleReset}
-                className="text-[10px] text-slate-400 hover:text-white font-semibold flex items-center gap-1 active:scale-95"
+                className="text-[12px] text-ink-400 hover:text-white font-semibold flex items-center gap-1 active:scale-95"
               >
                 <RotateCcw className="h-3 w-3" />
                 Sıfırla
@@ -195,9 +197,9 @@ export const RoutineSessionModal: React.FC<RoutineSessionModalProps> = ({
 
         {/* Ordered Steps Checklist */}
         <div className="flex-1 overflow-y-auto p-4 space-y-2.5">
-          <div className="flex items-center justify-between px-1 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+          <div className="flex items-center justify-between px-1 text-[13px] font-bold text-ink-400">
             <span>Addımlar ({totalSteps})</span>
-            <span className="text-[10px] lowercase text-slate-400">klikləyərək tamamla</span>
+            <span className="text-[12px] lowercase text-ink-400">klikləyərək tamamla</span>
           </div>
 
           {routine.steps.map((step, index) => {
@@ -209,8 +211,8 @@ export const RoutineSessionModal: React.FC<RoutineSessionModalProps> = ({
                 onClick={() => handleToggleStep(step.id)}
                 className={`flex items-center justify-between p-3 rounded-2xl border transition-all cursor-pointer active:scale-[0.98] ${
                   isDone
-                    ? 'bg-[#101524]/60 border-emerald-500/30 text-slate-400'
-                    : 'bg-[#141B2D] border-white/10 hover:border-violet-500/30 text-white shadow-sm'
+                    ? 'bg-[#1d161c]/60 border-pista-500/30 text-ink-400'
+                    : 'bg-[#251c24] border-white/10 hover:border-zer-500/30 text-white shadow-sm'
                 }`}
               >
                 <div className="flex items-center gap-3 min-w-0 flex-1">
@@ -218,8 +220,8 @@ export const RoutineSessionModal: React.FC<RoutineSessionModalProps> = ({
                   <div
                     className={`h-6 w-6 rounded-xl flex items-center justify-center shrink-0 border transition-all duration-200 ${
                       isDone
-                        ? 'bg-emerald-500 border-emerald-400 text-black shadow-md scale-105'
-                        : 'border-white/30 bg-white/5 hover:border-violet-400'
+                        ? 'bg-pista-500 border-pista-400 text-black shadow-md scale-105'
+                        : 'border-white/30 bg-white/5 hover:border-zer-400'
                     }`}
                   >
                     {isDone && <Check className="h-3.5 w-3.5 stroke-[3]" />}
@@ -229,12 +231,12 @@ export const RoutineSessionModal: React.FC<RoutineSessionModalProps> = ({
                   <div className="min-w-0 flex-1">
                     <p
                       className={`text-xs font-bold leading-snug transition-all truncate ${
-                        isDone ? 'line-through text-slate-400' : 'text-white'
+                        isDone ? 'line-through text-ink-400' : 'text-white'
                       }`}
                     >
                       {step.title}
                     </p>
-                    <div className="flex items-center gap-2 mt-0.5 text-[10px] text-slate-400">
+                    <div className="flex items-center gap-2 mt-0.5 text-[12px] text-ink-400">
                       <span>#{index + 1}</span>
                       {step.time && <span>• {step.time}</span>}
                       {step.duration && <span>• {step.duration} dəq</span>}
@@ -245,7 +247,7 @@ export const RoutineSessionModal: React.FC<RoutineSessionModalProps> = ({
                 {/* Notification indicator */}
                 <div className="shrink-0 pl-2">
                   {step.notificationEnabled && (
-                    <Bell className="h-3.5 w-3.5 text-violet-400/60" />
+                    <Bell className="h-3.5 w-3.5 text-zer-400/60" />
                   )}
                 </div>
               </div>
@@ -254,13 +256,13 @@ export const RoutineSessionModal: React.FC<RoutineSessionModalProps> = ({
         </div>
 
         {/* Footer Actions */}
-        <div className="p-4 border-t border-white/10 bg-[#121828] flex items-center gap-2">
+        <div className="p-4 border-t border-white/10 bg-[#1d161c] flex items-center gap-2">
           {isAllDone ? (
             <motion.button
               whileTap={{ scale: 0.98 }}
               whileHover={{ scale: 1.02 }}
               onClick={onClose}
-              className="flex-1 py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs shadow-lg flex items-center justify-center gap-1.5 transition-colors"
+              className="flex-1 py-3 rounded-2xl bg-pista-600 hover:bg-pista-500 text-white font-black text-xs shadow-lg flex items-center justify-center gap-1.5 transition-colors"
             >
               <CheckCircle2 className="h-4 w-4" />
               <span>Əladır, bağla</span>
@@ -269,7 +271,7 @@ export const RoutineSessionModal: React.FC<RoutineSessionModalProps> = ({
             <motion.button
               whileTap={{ scale: 0.98 }}
               onClick={onClose}
-              className="flex-1 py-3 rounded-2xl bg-violet-600 hover:bg-violet-500 text-white font-bold text-xs shadow-md transition-colors"
+              className="flex-1 py-3 rounded-2xl btn-gold text-ink-950 font-bold text-xs shadow-md transition-colors"
             >
               Davam etmək üçün saxla
             </motion.button>

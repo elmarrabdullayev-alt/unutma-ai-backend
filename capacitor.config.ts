@@ -16,13 +16,13 @@ const config: CapacitorConfig = {
     },
     LocalNotifications: {
       smallIcon: 'ic_stat_unutma_reminder',
-      iconColor: '#7C3AED',
+      iconColor: '#E2A332',
       presentationOptions: ['badge', 'sound', 'banner', 'list'],
     },
     SplashScreen: {
       launchShowDuration: 1500,
       launchAutoHide: true,
-      backgroundColor: '#090D16',
+      backgroundColor: '#130E13',
       androidSplashResourceName: 'splash',
       androidScaleType: 'CENTER_CROP',
       showSpinner: false,

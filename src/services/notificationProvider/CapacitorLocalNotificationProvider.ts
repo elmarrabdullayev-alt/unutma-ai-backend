@@ -34,7 +34,7 @@ export class CapacitorLocalNotificationProvider implements NotificationProvider 
           visibility: 1, // Public on lock screen
           vibration: true,
           lights: true,
-          lightColor: '#7C3AED',
+          lightColor: '#e2a332',
         });
       }
 

@@ -37,7 +37,7 @@ export const EnergyCoreFocusVisual: React.FC<FocusVisualProps> = ({ progress, is
           50% {
             transform: scale(1.08);
             opacity: 1;
-            filter: drop-shadow(0 0 14px rgba(168, 85, 247, 0.85));
+            filter: drop-shadow(0 0 14px rgba(236, 183, 74, 0.85));
           }
         }
 
@@ -128,10 +128,10 @@ export const EnergyCoreFocusVisual: React.FC<FocusVisualProps> = ({ progress, is
       <div
         className={`absolute inset-0 m-auto w-44 h-44 rounded-full blur-3xl pointer-events-none transition-all duration-700 ${
           isCompleted
-            ? 'bg-fuchsia-500/35 opacity-95 scale-110'
+            ? 'bg-zer-500/35 opacity-95 scale-110'
             : isPaused
-            ? 'bg-violet-600/10 opacity-25'
-            : 'bg-violet-600/25 opacity-70'
+            ? 'bg-zer-600/10 opacity-25'
+            : 'bg-zer-600/25 opacity-70'
         }`}
       />
 
@@ -145,22 +145,22 @@ export const EnergyCoreFocusVisual: React.FC<FocusVisualProps> = ({ progress, is
           <radialGradient id={`coreOrbGrad_${uniqueId}`} cx="50%" cy="50%" r="50%">
             <stop offset="0%" stopColor="#FFFFFF" />
             <stop offset="25%" stopColor="#F5D0FE" />
-            <stop offset="55%" stopColor="#C084FC" />
+            <stop offset="55%" stopColor="#f1c868" />
             <stop offset="85%" stopColor="#7E22CE" />
-            <stop offset="100%" stopColor="#4C1D95" stopOpacity="0" />
+            <stop offset="100%" stopColor="#2e242d" stopOpacity="0" />
           </radialGradient>
 
           {/* Plasma ring gradient */}
           <radialGradient id={`shellGrad_${uniqueId}`} cx="50%" cy="50%" r="50%">
-            <stop offset="70%" stopColor="#8B5CF6" stopOpacity="0" />
-            <stop offset="90%" stopColor="#A855F7" stopOpacity="0.45" />
-            <stop offset="100%" stopColor="#C084FC" stopOpacity="0.8" />
+            <stop offset="70%" stopColor="#e2a332" stopOpacity="0" />
+            <stop offset="90%" stopColor="#ecb74a" stopOpacity="0.45" />
+            <stop offset="100%" stopColor="#f1c868" stopOpacity="0.8" />
           </radialGradient>
 
           {/* Progress arc gradient */}
           <linearGradient id={`energyProgressGrad_${uniqueId}`} x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%" stopColor="#7C3AED" />
-            <stop offset="50%" stopColor="#C084FC" />
+            <stop offset="0%" stopColor="#e2a332" />
+            <stop offset="50%" stopColor="#f1c868" />
             <stop offset="100%" stopColor="#F472B6" />
           </linearGradient>
 
@@ -179,7 +179,7 @@ export const EnergyCoreFocusVisual: React.FC<FocusVisualProps> = ({ progress, is
           cy="120"
           r={trackRadius}
           fill="none"
-          stroke="rgba(139, 92, 246, 0.12)"
+          stroke="rgba(226, 163, 50, 0.12)"
           strokeWidth="3.5"
         />
 
@@ -230,7 +230,7 @@ export const EnergyCoreFocusVisual: React.FC<FocusVisualProps> = ({ progress, is
               cy="120"
               r="58"
               fill="none"
-              stroke="rgba(168, 85, 247, 0.38)"
+              stroke="rgba(236, 183, 74, 0.38)"
               strokeWidth="1.8"
               strokeDasharray="14 8 4 8"
             />
@@ -264,7 +264,7 @@ export const EnergyCoreFocusVisual: React.FC<FocusVisualProps> = ({ progress, is
             <path
               d="M 120 40 Q 148 76 120 120"
               fill="none"
-              stroke="#E9D5FF"
+              stroke="#fbedc9"
               strokeWidth="1.4"
               strokeDasharray="6 8"
             />
@@ -272,7 +272,7 @@ export const EnergyCoreFocusVisual: React.FC<FocusVisualProps> = ({ progress, is
             <path
               d="M 200 120 Q 164 148 120 120"
               fill="none"
-              stroke="#C084FC"
+              stroke="#f1c868"
               strokeWidth="1.2"
               strokeDasharray="4 10"
             />
@@ -280,7 +280,7 @@ export const EnergyCoreFocusVisual: React.FC<FocusVisualProps> = ({ progress, is
             <path
               d="M 120 200 Q 92 164 120 120"
               fill="none"
-              stroke="#E9D5FF"
+              stroke="#fbedc9"
               strokeWidth="1.4"
               strokeDasharray="6 8"
             />
@@ -288,7 +288,7 @@ export const EnergyCoreFocusVisual: React.FC<FocusVisualProps> = ({ progress, is
             <path
               d="M 40 120 Q 76 92 120 120"
               fill="none"
-              stroke="#C084FC"
+              stroke="#f1c868"
               strokeWidth="1.2"
               strokeDasharray="4 10"
             />
@@ -305,14 +305,14 @@ export const EnergyCoreFocusVisual: React.FC<FocusVisualProps> = ({ progress, is
             <path
               d="M 176 64 Q 140 100 120 120"
               fill="none"
-              stroke="#A855F7"
+              stroke="#ecb74a"
               strokeWidth="1.2"
               strokeDasharray="5 7"
             />
             <path
               d="M 64 176 Q 100 140 120 120"
               fill="none"
-              stroke="#A855F7"
+              stroke="#ecb74a"
               strokeWidth="1.2"
               strokeDasharray="5 7"
             />
@@ -337,7 +337,7 @@ export const EnergyCoreFocusVisual: React.FC<FocusVisualProps> = ({ progress, is
               cx="120"
               cy="120"
               r={coreRadius}
-              fill="#FAF5FF"
+              fill="#fdf8ea"
               filter={`url(#coreGlow_${uniqueId})`}
               className="transition-all duration-300"
             />

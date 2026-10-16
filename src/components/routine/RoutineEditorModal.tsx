@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useEscapeKey } from '../../hooks/useEscapeKey';
 import { motion } from 'motion/react';
 import {
   X,
@@ -45,6 +46,7 @@ export const RoutineEditorModal: React.FC<RoutineEditorModalProps> = ({
   onSave,
   onDelete,
 }) => {
+  useEscapeKey(onClose);
   const [type, setType] = useState<RoutineType>('morning');
   const [title, setTitle] = useState('Səhər rutini');
   const [startTime, setStartTime] = useState('07:00');
@@ -246,7 +248,7 @@ export const RoutineEditorModal: React.FC<RoutineEditorModalProps> = ({
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 0.2 }}
-      className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-black/85 backdrop-blur-md"
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-3 bg-ink-950/70 backdrop-blur-sm"
       style={{
         paddingTop: 'max(env(safe-area-inset-top, 0px), 12px)',
         paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 12px)',
@@ -259,10 +261,10 @@ export const RoutineEditorModal: React.FC<RoutineEditorModalProps> = ({
         exit={{ opacity: 0, scale: 0.94, y: 10 }}
         transition={{ duration: 0.22, ease: [0.25, 1, 0.5, 1] }}
         onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-md max-h-[92vh] flex flex-col rounded-3xl bg-[#0F1523] border border-violet-500/30 shadow-2xl overflow-hidden text-white"
+        className="w-full max-w-md max-h-[92vh] flex flex-col rounded-3xl bg-[#1d161c] border border-zer-500/30 shadow-2xl overflow-hidden text-white"
       >
         {/* Header */}
-        <div className="p-4 border-b border-white/10 flex items-center justify-between bg-[#131A2D]">
+        <div className="p-4 border-b border-white/10 flex items-center justify-between bg-[#1d161c]">
           <h2 className="text-base font-black text-white tracking-tight">
             {editingRoutine ? 'Rutini redaktə et' : 'Yeni rutin yarat'}
           </h2>
@@ -271,7 +273,7 @@ export const RoutineEditorModal: React.FC<RoutineEditorModalProps> = ({
             whileHover={{ scale: 1.02 }}
             onClick={onClose}
             aria-label="Bağla"
-            className="h-11 w-11 -mr-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 flex items-center justify-center transition-colors shrink-0"
+            className="h-11 w-11 -mr-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-ink-300 flex items-center justify-center transition-colors shrink-0"
           >
             <X className="h-4 w-4" />
           </motion.button>
@@ -281,9 +283,9 @@ export const RoutineEditorModal: React.FC<RoutineEditorModalProps> = ({
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
           {/* AI Quick Generator Prompt */}
           {!editingRoutine && (
-            <div className="p-3 rounded-2xl bg-violet-950/30 border border-violet-500/25 space-y-2">
-              <div className="flex items-center gap-1.5 text-xs font-bold text-violet-300">
-                <Sparkles className="h-3.5 w-3.5 text-violet-400" />
+            <div className="p-3 rounded-2xl bg-zer-950/30 border border-zer-500/25 space-y-2">
+              <div className="flex items-center gap-1.5 text-xs font-bold text-zer-300">
+                <Sparkles className="h-3.5 w-3.5 text-zer-400" />
                 <span>AI ilə sürətli qur</span>
               </div>
               <div className="flex gap-2">
@@ -293,11 +295,11 @@ export const RoutineEditorModal: React.FC<RoutineEditorModalProps> = ({
                   onChange={(e) => setAiPrompt(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleAiParse()}
                   placeholder="Məs: Hər səhər 7-də oyanım, 10 dəq idman..."
-                  className="flex-1 px-3 py-2 rounded-xl bg-[#101524] border border-white/10 text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-violet-500"
+                  className="flex-1 px-3 py-2 rounded-xl bg-[#1d161c] border border-white/10 text-xs text-white placeholder:text-ink-500 focus:outline-none focus:border-zer-500"
                 />
                 <button
                   onClick={handleAiParse}
-                  className="px-3 py-2 rounded-xl bg-violet-600 hover:bg-violet-500 text-white text-xs font-bold shrink-0 active:scale-95 transition-all"
+                  className="px-3 py-2 rounded-xl btn-gold text-ink-950 text-xs font-bold shrink-0 active:scale-95 transition-all"
                 >
                   Qur
                 </button>
@@ -307,10 +309,10 @@ export const RoutineEditorModal: React.FC<RoutineEditorModalProps> = ({
 
           {/* Routine Type Selector */}
           <div className="space-y-1.5">
-            <label className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400">
+            <label className="text-[13px] font-extrabold text-ink-400">
               Rutin Növü
             </label>
-            <div className="grid grid-cols-4 gap-1.5 bg-[#121828] p-1 rounded-2xl border border-white/5">
+            <div className="grid grid-cols-4 gap-1.5 bg-[#1d161c] p-1 rounded-2xl border border-white/5">
               {[
                 { id: 'morning', label: 'Səhər', icon: Sunrise },
                 { id: 'afternoon', label: 'Gündüz', icon: Sun },
@@ -326,12 +328,12 @@ export const RoutineEditorModal: React.FC<RoutineEditorModalProps> = ({
                     onClick={() => handleTypeChange(item.id as RoutineType)}
                     className={`py-2 rounded-xl text-xs font-bold flex flex-col items-center gap-1 transition-all ${
                       isSelected
-                        ? 'bg-violet-600 text-white shadow-md'
-                        : 'text-slate-400 hover:text-white'
+                        ? ' btn-gold text-ink-950 shadow-md'
+                        : 'text-ink-400 hover:text-white'
                     }`}
                   >
                     <Icon className="h-3.5 w-3.5" />
-                    <span className="text-[10px]">{item.label}</span>
+                    <span className="text-[12px]">{item.label}</span>
                   </button>
                 );
               })}
@@ -341,7 +343,7 @@ export const RoutineEditorModal: React.FC<RoutineEditorModalProps> = ({
           {/* Title & Start Time */}
           <div className="grid grid-cols-3 gap-2.5">
             <div className="col-span-2 space-y-1.5">
-              <label className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400">
+              <label className="text-[13px] font-extrabold text-ink-400">
                 Rutin Adı
               </label>
               <input
@@ -349,12 +351,12 @@ export const RoutineEditorModal: React.FC<RoutineEditorModalProps> = ({
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="Rutin adı"
-                className="w-full px-3 py-2.5 rounded-xl bg-[#141B2D] border border-white/10 text-xs text-white font-bold focus:outline-none focus:border-violet-500"
+                className="w-full px-3 py-2.5 rounded-xl bg-[#251c24] border border-white/10 text-xs text-white font-bold focus:outline-none focus:border-zer-500"
               />
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400">
+              <label className="text-[13px] font-extrabold text-ink-400">
                 Başlama
               </label>
               <div className="relative">
@@ -362,7 +364,7 @@ export const RoutineEditorModal: React.FC<RoutineEditorModalProps> = ({
                   type="time"
                   value={startTime}
                   onChange={(e) => setStartTime(e.target.value)}
-                  className="w-full px-2.5 py-2.5 rounded-xl bg-[#141B2D] border border-white/10 text-xs text-white font-bold text-center focus:outline-none focus:border-violet-500"
+                  className="w-full px-2.5 py-2.5 rounded-xl bg-[#251c24] border border-white/10 text-xs text-white font-bold text-center focus:outline-none focus:border-zer-500"
                 />
               </div>
             </div>
@@ -371,22 +373,22 @@ export const RoutineEditorModal: React.FC<RoutineEditorModalProps> = ({
           {/* Days of week */}
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
-              <label className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400">
+              <label className="text-[13px] font-extrabold text-ink-400">
                 Həftə Günləri
               </label>
               <div className="flex items-center gap-1.5">
                 <button
                   type="button"
                   onClick={() => setDaysOfWeek([1, 2, 3, 4, 5, 6, 0])}
-                  className="text-[10px] font-bold text-violet-400 hover:text-violet-300"
+                  className="text-[12px] font-bold text-zer-400 hover:text-zer-300"
                 >
                   Hər gün
                 </button>
-                <span className="text-slate-600">•</span>
+                <span className="text-ink-600">•</span>
                 <button
                   type="button"
                   onClick={() => setDaysOfWeek([1, 2, 3, 4, 5])}
-                  className="text-[10px] font-bold text-violet-400 hover:text-violet-300"
+                  className="text-[12px] font-bold text-zer-400 hover:text-zer-300"
                 >
                   Həftə içi
                 </button>
@@ -403,8 +405,8 @@ export const RoutineEditorModal: React.FC<RoutineEditorModalProps> = ({
                     onClick={() => toggleDay(w.day)}
                     className={`py-2 rounded-xl text-xs font-black transition-all ${
                       isSelected
-                        ? 'bg-violet-600 text-white shadow-sm'
-                        : 'bg-[#141B2D] text-slate-400 hover:text-white border border-white/5'
+                        ? ' btn-gold text-ink-950 shadow-sm'
+                        : 'bg-[#251c24] text-ink-400 hover:text-white border border-white/5'
                     }`}
                   >
                     {w.label}
@@ -417,13 +419,13 @@ export const RoutineEditorModal: React.FC<RoutineEditorModalProps> = ({
           {/* Ordered Steps Editor */}
           <div className="space-y-2 pt-1">
             <div className="flex items-center justify-between">
-              <label className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400">
+              <label className="text-[13px] font-extrabold text-ink-400">
                 Ardıcıl Addımlar ({steps.length})
               </label>
               <button
                 type="button"
                 onClick={handleAddStep}
-                className="inline-flex items-center gap-1 text-[11px] font-bold text-violet-400 hover:text-violet-300 active:scale-95 transition-all"
+                className="inline-flex items-center gap-1 text-[13px] font-bold text-zer-400 hover:text-zer-300 active:scale-95 transition-all"
               >
                 <Plus className="h-3.5 w-3.5" />
                 <span>Addım əlavə et</span>
@@ -434,10 +436,10 @@ export const RoutineEditorModal: React.FC<RoutineEditorModalProps> = ({
               {steps.map((step, idx) => (
                 <div
                   key={idx}
-                  className="p-3 rounded-2xl bg-[#141B2D] border border-white/5 space-y-2.5"
+                  className="p-3 rounded-2xl bg-[#251c24] border border-white/5 space-y-2.5"
                 >
                   <div className="flex items-center gap-2">
-                    <span className="h-6 w-6 rounded-xl bg-violet-600/20 text-violet-300 text-xs font-black flex items-center justify-center shrink-0">
+                    <span className="h-6 w-6 rounded-xl bg-zer-600/20 text-zer-300 text-xs font-black flex items-center justify-center shrink-0">
                       {idx + 1}
                     </span>
                     <input
@@ -445,13 +447,13 @@ export const RoutineEditorModal: React.FC<RoutineEditorModalProps> = ({
                       value={step.title}
                       onChange={(e) => handleUpdateStep(idx, { title: e.target.value })}
                       placeholder="Məs: 10 dəqiqə idman"
-                      className="flex-1 px-3 py-1.5 rounded-xl bg-[#101524] border border-white/10 text-xs text-white font-semibold focus:outline-none focus:border-violet-500"
+                      className="flex-1 px-3 py-1.5 rounded-xl bg-[#1d161c] border border-white/10 text-xs text-white font-semibold focus:outline-none focus:border-zer-500"
                     />
                     <button
                       type="button"
                       onClick={() => handleRemoveStep(idx)}
                       disabled={steps.length <= 1}
-                      className="h-7 w-7 rounded-xl bg-white/5 hover:bg-rose-500/20 text-slate-400 hover:text-rose-400 flex items-center justify-center transition-colors disabled:opacity-30 shrink-0"
+                      className="h-7 w-7 rounded-xl bg-white/5 hover:bg-nar-500/20 text-ink-400 hover:text-nar-400 flex items-center justify-center transition-colors disabled:opacity-30 shrink-0"
                     >
                       <Trash2 className="h-3.5 w-3.5" />
                     </button>
@@ -461,16 +463,16 @@ export const RoutineEditorModal: React.FC<RoutineEditorModalProps> = ({
                   <div className="flex items-center justify-between gap-2 pt-1 text-xs">
                     <div className="flex items-center gap-2">
                       <div className="flex items-center gap-1">
-                        <Clock className="h-3 w-3 text-slate-400" />
+                        <Clock className="h-3 w-3 text-ink-400" />
                         <input
                           type="time"
                           value={step.time || ''}
                           onChange={(e) => handleUpdateStep(idx, { time: e.target.value })}
-                          className="px-1.5 py-0.5 rounded-lg bg-[#101524] border border-white/10 text-[11px] text-white"
+                          className="px-1.5 py-0.5 rounded-lg bg-[#1d161c] border border-white/10 text-[13px] text-white"
                         />
                       </div>
 
-                      <div className="flex items-center gap-1 text-[11px] text-slate-400">
+                      <div className="flex items-center gap-1 text-[13px] text-ink-400">
                         <input
                           type="number"
                           min="1"
@@ -482,7 +484,7 @@ export const RoutineEditorModal: React.FC<RoutineEditorModalProps> = ({
                             })
                           }
                           placeholder="Dəq"
-                          className="w-12 px-1.5 py-0.5 rounded-lg bg-[#101524] border border-white/10 text-[11px] text-white text-center"
+                          className="w-12 px-1.5 py-0.5 rounded-lg bg-[#1d161c] border border-white/10 text-[13px] text-white text-center"
                         />
                         <span>dəq</span>
                       </div>
@@ -495,10 +497,10 @@ export const RoutineEditorModal: React.FC<RoutineEditorModalProps> = ({
                           notificationEnabled: !step.notificationEnabled,
                         })
                       }
-                      className={`px-2 py-1 rounded-xl text-[10px] font-bold flex items-center gap-1 transition-all ${
+                      className={`px-2 py-1 rounded-xl text-[12px] font-bold flex items-center gap-1 transition-all ${
                         step.notificationEnabled
-                          ? 'bg-violet-500/20 text-violet-300 border border-violet-500/30'
-                          : 'bg-white/5 text-slate-400'
+                          ? 'bg-zer-500/20 text-zer-300 border border-zer-500/30'
+                          : 'bg-white/5 text-ink-400'
                       }`}
                     >
                       <Bell className="h-2.5 w-2.5" />
@@ -512,13 +514,13 @@ export const RoutineEditorModal: React.FC<RoutineEditorModalProps> = ({
         </div>
 
         {/* Footer Actions */}
-        <div className="p-4 border-t border-white/10 bg-[#121828] flex items-center justify-between gap-2">
+        <div className="p-4 border-t border-white/10 bg-[#1d161c] flex items-center justify-between gap-2">
           {editingRoutine ? (
             <motion.button
               whileTap={{ scale: 0.98 }}
               type="button"
               onClick={handleDelete}
-              className="py-3 px-3.5 rounded-2xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 font-bold text-xs flex items-center gap-1 transition-colors"
+              className="py-3 px-3.5 rounded-2xl bg-nar-500/10 hover:bg-nar-500/20 text-nar-400 font-bold text-xs flex items-center gap-1 transition-colors"
             >
               <Trash2 className="h-3.5 w-3.5" />
               <span>Sil</span>
@@ -528,7 +530,7 @@ export const RoutineEditorModal: React.FC<RoutineEditorModalProps> = ({
               whileTap={{ scale: 0.98 }}
               type="button"
               onClick={onClose}
-              className="py-3 px-4 rounded-2xl bg-white/5 hover:bg-white/10 text-slate-300 font-bold text-xs transition-colors"
+              className="py-3 px-4 rounded-2xl bg-white/5 hover:bg-white/10 text-ink-300 font-bold text-xs transition-colors"
             >
               Ləğv et
             </motion.button>
@@ -539,7 +541,7 @@ export const RoutineEditorModal: React.FC<RoutineEditorModalProps> = ({
             whileHover={{ scale: 1.02 }}
             type="button"
             onClick={handleSave}
-            className="flex-1 py-3 rounded-2xl bg-violet-600 hover:bg-violet-500 text-white font-black text-xs shadow-lg flex items-center justify-center gap-1.5 transition-colors"
+            className="flex-1 py-3 rounded-2xl btn-gold text-ink-950 font-black text-xs shadow-lg flex items-center justify-center gap-1.5 transition-colors"
           >
             <Save className="h-4 w-4" />
             <span>Yadda saxla</span>

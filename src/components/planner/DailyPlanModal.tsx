@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useEscapeKey } from '../../hooks/useEscapeKey';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Sparkles,
@@ -53,6 +54,7 @@ export const DailyPlanModal: React.FC<DailyPlanModalProps> = ({
   onPlanConfirmed,
   onOpenFocus,
 }) => {
+  useEscapeKey(onClose);
   const [step, setStep] = useState<'input' | 'review' | 'edit_task'>('input');
   const [inputText, setInputText] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
@@ -247,7 +249,7 @@ export const DailyPlanModal: React.FC<DailyPlanModalProps> = ({
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 0.2 }}
-      className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-black/75 backdrop-blur-md"
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-3 bg-ink-950/70 backdrop-blur-sm"
       style={{
         paddingTop: 'max(env(safe-area-inset-top, 0px), 12px)',
         paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 12px)',
@@ -260,19 +262,19 @@ export const DailyPlanModal: React.FC<DailyPlanModalProps> = ({
         exit={{ opacity: 0, scale: 0.94, y: 10 }}
         transition={{ duration: 0.22, ease: [0.25, 1, 0.5, 1] }}
         onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-md bg-[#0D1322] border border-violet-500/30 rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh]"
+        className="w-full max-w-md bg-[#130e13] border border-zer-500/30 rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh]"
       >
         {/* Header */}
-        <div className="p-4 border-b border-white/5 bg-[#12182B] flex items-center justify-between shrink-0">
+        <div className="p-4 border-b border-white/5 bg-[#1d161c] flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2.5">
-            <div className="h-9 w-9 rounded-xl bg-violet-600/20 border border-violet-500/30 flex items-center justify-center text-violet-300">
+            <div className="h-9 w-9 rounded-xl bg-zer-600/20 border border-zer-500/30 flex items-center justify-center text-zer-300">
               <Sparkles className="h-4 w-4" />
             </div>
             <div>
               <h2 className="text-sm font-extrabold text-white tracking-tight">
                 {step === 'review' ? 'Bugünkü planın' : step === 'edit_task' ? 'Tapşırığı dəyiş' : 'Gününü planla'}
               </h2>
-              <p className="text-[11px] text-slate-400">
+              <p className="text-[13px] text-ink-400">
                 {step === 'review'
                   ? 'Optimal gün cədvəlin'
                   : 'Bütün işlərini bir cümlə ilə de'}
@@ -283,7 +285,7 @@ export const DailyPlanModal: React.FC<DailyPlanModalProps> = ({
           <button
             onClick={onClose}
             aria-label="Bağla"
-            className="h-11 w-11 -mr-1.5 rounded-full bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white flex items-center justify-center transition-colors active:scale-95 shrink-0"
+            className="h-11 w-11 -mr-1.5 rounded-full bg-white/5 hover:bg-white/10 text-ink-400 hover:text-white flex items-center justify-center transition-colors active:scale-95 shrink-0"
           >
             <X className="h-4 w-4" />
           </button>
@@ -300,15 +302,15 @@ export const DailyPlanModal: React.FC<DailyPlanModalProps> = ({
                   onChange={(e) => setInputText(e.target.value)}
                   placeholder="Məsələn: Bu gün saat 2-də görüşüm var, hesabatı bitirməliyəm, marketə getməliyəm və 30 dəqiqə idman etmək istəyirəm..."
                   rows={4}
-                  className="w-full rounded-2xl bg-[#141C2E] border border-white/10 p-3.5 text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-violet-500 resize-none transition-colors"
+                  className="w-full rounded-2xl bg-[#251c24] border border-white/10 p-3.5 text-xs text-white placeholder:text-ink-500 focus:outline-none focus:border-zer-500 resize-none transition-colors"
                 />
 
                 <button
                   onClick={toggleListening}
                   className={`absolute right-3 bottom-3 h-8 w-8 rounded-xl flex items-center justify-center transition-all ${
                     isListening
-                      ? 'bg-rose-500 text-white animate-pulse'
-                      : 'bg-violet-600/20 text-violet-300 border border-violet-500/30 hover:bg-violet-600/40'
+                      ? 'bg-nar-500 text-white animate-pulse'
+                      : 'bg-zer-600/20 text-zer-300 border border-zer-500/30 hover:bg-zer-600/40'
                   }`}
                   title={isListening ? 'Mikrofonu dayandır' : 'Səslə de'}
                 >
@@ -317,15 +319,15 @@ export const DailyPlanModal: React.FC<DailyPlanModalProps> = ({
               </div>
 
               {isListening && (
-                <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-violet-950/40 border border-violet-500/30 text-[11px] text-violet-300">
-                  <span className="h-2 w-2 rounded-full bg-rose-500 animate-ping" />
+                <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-zer-950/40 border border-zer-500/30 text-[13px] text-zer-300">
+                  <span className="h-2 w-2 rounded-full bg-nar-500 animate-ping" />
                   <span>Dinləyirəm... Bütün günün planını sərbəst danış.</span>
                 </div>
               )}
 
               {/* Example Prompts */}
               <div className="space-y-1.5">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                <span className="text-[12px] font-bold text-ink-400">
                   Nümunə təkliflər:
                 </span>
                 <div className="space-y-1.5">
@@ -336,9 +338,9 @@ export const DailyPlanModal: React.FC<DailyPlanModalProps> = ({
                         setInputText(promptText);
                         handleGeneratePlan(promptText);
                       }}
-                      className="w-full text-left p-2.5 rounded-xl bg-[#121929] hover:bg-[#182136] border border-white/5 text-[11px] text-slate-300 transition-colors flex items-start gap-2"
+                      className="w-full text-left p-2.5 rounded-xl bg-[#1d161c] hover:bg-[#251c24] border border-white/5 text-[13px] text-ink-300 transition-colors flex items-start gap-2"
                     >
-                      <Sparkles className="h-3.5 w-3.5 text-violet-400 shrink-0 mt-0.5" />
+                      <Sparkles className="h-3.5 w-3.5 text-zer-400 shrink-0 mt-0.5" />
                       <span className="leading-snug">{promptText}</span>
                     </button>
                   ))}
@@ -348,7 +350,7 @@ export const DailyPlanModal: React.FC<DailyPlanModalProps> = ({
               <button
                 onClick={() => handleGeneratePlan()}
                 disabled={!inputText.trim() || isGenerating}
-                className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-[0.98]"
+                className="w-full py-3.5 rounded-2xl hover:from-zer-500 hover:to-zer-500 btn-gold text-ink-950 font-bold text-xs flex items-center justify-center gap-2 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-[0.98]"
               >
                 {isGenerating ? (
                   <>
@@ -369,16 +371,16 @@ export const DailyPlanModal: React.FC<DailyPlanModalProps> = ({
           {step === 'review' && proposal && (
             <div className="space-y-3">
               <div className="flex items-center justify-between pb-1">
-                <span className="text-[11px] font-bold text-slate-300">
+                <span className="text-[13px] font-bold text-ink-300">
                   {proposal.tasks.length} tapşırıq ardıcıllığı:
                 </span>
 
                 <button
                   onClick={() => setIsInlineEditMode(!isInlineEditMode)}
-                  className={`px-2.5 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1 transition-colors ${
+                  className={`px-2.5 py-1 rounded-lg text-[12px] font-bold flex items-center gap-1 transition-colors ${
                     isInlineEditMode
-                      ? 'bg-violet-600 text-white'
-                      : 'bg-[#182032] text-slate-300 hover:text-white border border-white/5'
+                      ? ' btn-gold text-ink-950'
+                      : 'bg-[#251c24] text-ink-300 hover:text-white border border-white/5'
                   }`}
                 >
                   <SlidersHorizontal className="h-3 w-3" />
@@ -397,14 +399,14 @@ export const DailyPlanModal: React.FC<DailyPlanModalProps> = ({
                       className={`p-3 rounded-2xl border transition-all ${
                         task.hasConflict
                           ? 'bg-amber-950/25 border-amber-500/40'
-                          : 'bg-[#131A2B] border-white/5 hover:border-violet-500/20'
+                          : 'bg-[#1d161c] border-white/5 hover:border-zer-500/20'
                       }`}
                     >
                       <div className="flex items-start justify-between gap-2.5">
                         {/* Time Badge */}
-                        <div className="flex flex-col items-center justify-center h-11 w-14 rounded-xl bg-[#1A2238] border border-white/10 shrink-0 text-white">
+                        <div className="flex flex-col items-center justify-center h-11 w-14 rounded-xl bg-[#251c24] border border-white/10 shrink-0 text-white">
                           <span className="text-xs font-black tracking-tight">{task.timeString}</span>
-                          <span className="text-[9px] text-slate-400">
+                          <span className="text-[12px] text-ink-400">
                             {task.isFixedTime ? 'Dəqiq' : 'Planlı'}
                           </span>
                         </div>
@@ -418,7 +420,7 @@ export const DailyPlanModal: React.FC<DailyPlanModalProps> = ({
 
                             {/* Focus Indicator */}
                             {task.isFocusReady && (
-                              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-violet-500/20 border border-violet-500/30 text-[9px] font-extrabold text-violet-300">
+                              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-zer-500/20 border border-zer-500/30 text-[12px] font-extrabold text-zer-300">
                                 <Flame className="h-2.5 w-2.5 text-amber-400" />
                                 Fokus
                               </span>
@@ -426,21 +428,21 @@ export const DailyPlanModal: React.FC<DailyPlanModalProps> = ({
                           </div>
 
                           {/* Details Row: duration & priority */}
-                          <div className="flex items-center gap-2 text-[10px] text-slate-400">
+                          <div className="flex items-center gap-2 text-[12px] text-ink-400">
                             {task.durationMinutes && (
                               <span className="flex items-center gap-1">
-                                <Clock className="h-2.5 w-2.5 text-slate-400" />
+                                <Clock className="h-2.5 w-2.5 text-ink-400" />
                                 {task.durationMinutes} dəq
                               </span>
                             )}
 
                             <span
-                              className={`px-1.5 py-0.2 rounded text-[9px] font-bold ${
+                              className={`px-1.5 py-0.2 rounded text-[12px] font-bold ${
                                 task.priority === 'high'
-                                  ? 'text-rose-400 bg-rose-500/10'
+                                  ? 'text-nar-400 bg-nar-500/10'
                                   : task.priority === 'medium'
                                   ? 'text-amber-400 bg-amber-500/10'
-                                  : 'text-slate-400 bg-slate-500/10'
+                                  : 'text-ink-400 bg-ink-500/10'
                               }`}
                             >
                               {task.priority === 'high' ? 'Yüksək' : task.priority === 'medium' ? 'Orta' : 'Aşağı'}
@@ -453,14 +455,14 @@ export const DailyPlanModal: React.FC<DailyPlanModalProps> = ({
                           <div className="flex items-center gap-1 shrink-0">
                             <button
                               onClick={() => handleStartEditTask(task)}
-                              className="h-7 w-7 rounded-lg bg-white/5 hover:bg-violet-600/30 text-slate-400 hover:text-white flex items-center justify-center transition-colors"
+                              className="h-7 w-7 rounded-lg bg-white/5 hover:bg-zer-600/30 text-ink-400 hover:text-white flex items-center justify-center transition-colors"
                               title="Dəyiş"
                             >
                               <Edit2 className="h-3 w-3" />
                             </button>
                             <button
                               onClick={() => handleDeleteTask(task.id)}
-                              className="h-7 w-7 rounded-lg bg-white/5 hover:bg-rose-600/30 text-slate-400 hover:text-rose-300 flex items-center justify-center transition-colors"
+                              className="h-7 w-7 rounded-lg bg-white/5 hover:bg-nar-600/30 text-ink-400 hover:text-nar-300 flex items-center justify-center transition-colors"
                               title="Sil"
                             >
                               <Trash2 className="h-3 w-3" />
@@ -472,24 +474,24 @@ export const DailyPlanModal: React.FC<DailyPlanModalProps> = ({
                       {/* Conflict Alert & Suggested Slot */}
                       {task.hasConflict && (
                         <div className="mt-2.5 pt-2 border-t border-amber-500/20 space-y-1.5">
-                          <div className="flex items-center gap-1.5 text-[11px] font-semibold text-amber-300">
+                          <div className="flex items-center gap-1.5 text-[13px] font-semibold text-amber-300">
                             <AlertTriangle className="h-3.5 w-3.5 text-amber-400 shrink-0" />
                             <span>Bu saatda artıq planın var</span>
                           </div>
                           {task.conflictReason && (
-                            <p className="text-[10px] text-amber-200/70 pl-5">
+                            <p className="text-[12px] text-amber-200/70 pl-5">
                               {task.conflictReason}
                             </p>
                           )}
 
                           {task.suggestedAlternativeTime && (
                             <div className="flex items-center justify-between gap-2 pl-5 pt-1">
-                              <span className="text-[11px] text-slate-300 font-medium">
-                                Təklif: <b className="text-violet-300 font-bold">{task.suggestedAlternativeTime}</b>
+                              <span className="text-[13px] text-ink-300 font-medium">
+                                Təklif: <b className="text-zer-300 font-bold">{task.suggestedAlternativeTime}</b>
                               </span>
                               <button
                                 onClick={() => handleApplyAlternativeSlot(task.id)}
-                                className="px-2.5 py-1 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/30 text-amber-300 text-[10px] font-bold active:scale-95 transition-all"
+                                className="px-2.5 py-1 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/30 text-amber-300 text-[12px] font-bold active:scale-95 transition-all"
                               >
                                 Təklifi tətbiq et
                               </button>
@@ -506,7 +508,7 @@ export const DailyPlanModal: React.FC<DailyPlanModalProps> = ({
               {isInlineEditMode && (
                 <button
                   onClick={handleAddNewTask}
-                  className="w-full py-2.5 rounded-xl border border-dashed border-white/15 hover:border-violet-500/40 text-slate-400 hover:text-white text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors"
+                  className="w-full py-2.5 rounded-xl border border-dashed border-white/15 hover:border-zer-500/40 text-ink-400 hover:text-white text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors"
                 >
                   <Plus className="h-3.5 w-3.5" />
                   <span>Yeni tapşırıq əlavə et</span>
@@ -515,7 +517,7 @@ export const DailyPlanModal: React.FC<DailyPlanModalProps> = ({
 
               {/* Focus suggestion announcement if confirmed */}
               {focusSuggestionNotice && (
-                <div className="p-3 rounded-2xl bg-violet-950/60 border border-violet-500/40 text-xs text-violet-200 flex items-center gap-2 animate-fade-in">
+                <div className="p-3 rounded-2xl bg-zer-950/60 border border-zer-500/40 text-xs text-zer-200 flex items-center gap-2 animate-fade-in">
                   <Flame className="h-4 w-4 text-amber-400 shrink-0" />
                   <span>
                     Plan təsdiqləndi! <b>"{focusSuggestionNotice}"</b> üzrə Fokus rejiminə keçilir...
@@ -527,21 +529,21 @@ export const DailyPlanModal: React.FC<DailyPlanModalProps> = ({
               <div className="pt-2 flex items-center gap-2">
                 <button
                   onClick={onClose}
-                  className="flex-1 py-3 rounded-2xl bg-[#151C2C] hover:bg-[#1C253B] text-slate-300 font-bold text-xs border border-white/5 active:scale-95 transition-all"
+                  className="flex-1 py-3 rounded-2xl bg-[#251c24] hover:bg-[#2e242d] text-ink-300 font-bold text-xs border border-white/5 active:scale-95 transition-all"
                 >
                   Ləğv et
                 </button>
 
                 <button
                   onClick={() => setIsInlineEditMode(!isInlineEditMode)}
-                  className="flex-1 py-3 rounded-2xl bg-[#1C243B] hover:bg-[#25304E] text-violet-300 font-bold text-xs border border-violet-500/20 active:scale-95 transition-all"
+                  className="flex-1 py-3 rounded-2xl bg-[#2e242d] hover:bg-[#2e242d] text-zer-300 font-bold text-xs border border-zer-500/20 active:scale-95 transition-all"
                 >
                   {isInlineEditMode ? 'Bitir' : 'Dəyiş'}
                 </button>
 
                 <button
                   onClick={handleConfirmPlan}
-                  className="flex-[1.5] py-3 rounded-2xl bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white font-black text-xs shadow-lg flex items-center justify-center gap-1.5 active:scale-95 transition-all"
+                  className="flex-[1.5] py-3 rounded-2xl hover:from-zer-500 hover:to-zer-500 btn-gold text-ink-950 font-black text-xs shadow-lg flex items-center justify-center gap-1.5 active:scale-95 transition-all"
                 >
                   <Check className="h-4 w-4" />
                   <span>Təsdiq et</span>
@@ -554,20 +556,20 @@ export const DailyPlanModal: React.FC<DailyPlanModalProps> = ({
           {step === 'edit_task' && editingTask && (
             <div className="space-y-3.5">
               <div>
-                <label className="text-[11px] font-bold text-slate-400 block mb-1">
+                <label className="text-[13px] font-bold text-ink-400 block mb-1">
                   Tapşırığın adı
                 </label>
                 <input
                   type="text"
                   value={editingTask.title}
                   onChange={(e) => setEditingTask({ ...editingTask, title: e.target.value })}
-                  className="w-full px-3 py-2.5 rounded-xl bg-[#141C2E] border border-white/10 text-xs text-white focus:outline-none focus:border-violet-500"
+                  className="w-full px-3 py-2.5 rounded-xl bg-[#251c24] border border-white/10 text-xs text-white focus:outline-none focus:border-zer-500"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="text-[11px] font-bold text-slate-400 block mb-1">
+                  <label className="text-[13px] font-bold text-ink-400 block mb-1">
                     Vaxt (Saat)
                   </label>
                   <input
@@ -578,12 +580,12 @@ export const DailyPlanModal: React.FC<DailyPlanModalProps> = ({
                       const updated = dailyPlannerService.updateTaskTime(editingTask, newTime);
                       setEditingTask(updated);
                     }}
-                    className="w-full px-3 py-2.5 rounded-xl bg-[#141C2E] border border-white/10 text-xs text-white focus:outline-none focus:border-violet-500"
+                    className="w-full px-3 py-2.5 rounded-xl bg-[#251c24] border border-white/10 text-xs text-white focus:outline-none focus:border-zer-500"
                   />
                 </div>
 
                 <div>
-                  <label className="text-[11px] font-bold text-slate-400 block mb-1">
+                  <label className="text-[13px] font-bold text-ink-400 block mb-1">
                     Müddət (dəqiqə)
                   </label>
                   <input
@@ -598,13 +600,13 @@ export const DailyPlanModal: React.FC<DailyPlanModalProps> = ({
                         durationMinutes: parseInt(e.target.value, 10) || 30,
                       })
                     }
-                    className="w-full px-3 py-2.5 rounded-xl bg-[#141C2E] border border-white/10 text-xs text-white focus:outline-none focus:border-violet-500"
+                    className="w-full px-3 py-2.5 rounded-xl bg-[#251c24] border border-white/10 text-xs text-white focus:outline-none focus:border-zer-500"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="text-[11px] font-bold text-slate-400 block mb-1">
+                <label className="text-[13px] font-bold text-ink-400 block mb-1">
                   Prioritet
                 </label>
                 <div className="grid grid-cols-3 gap-1.5">
@@ -615,8 +617,8 @@ export const DailyPlanModal: React.FC<DailyPlanModalProps> = ({
                       onClick={() => setEditingTask({ ...editingTask, priority: p })}
                       className={`py-2 rounded-xl text-xs font-bold transition-colors ${
                         editingTask.priority === p
-                          ? 'bg-violet-600 text-white'
-                          : 'bg-[#141C2E] text-slate-400 border border-white/5'
+                          ? ' btn-gold text-ink-950'
+                          : 'bg-[#251c24] text-ink-400 border border-white/5'
                       }`}
                     >
                       {p === 'high' ? 'Yüksək' : p === 'medium' ? 'Orta' : 'Aşağı'}
@@ -625,7 +627,7 @@ export const DailyPlanModal: React.FC<DailyPlanModalProps> = ({
                 </div>
               </div>
 
-              <div className="flex items-center justify-between p-3 rounded-xl bg-[#141C2E] border border-white/5">
+              <div className="flex items-center justify-between p-3 rounded-xl bg-[#251c24] border border-white/5">
                 <div className="flex items-center gap-2">
                   <Flame className="h-4 w-4 text-amber-400" />
                   <span className="text-xs font-bold text-white">Fokus tapşırığı</span>
@@ -636,7 +638,7 @@ export const DailyPlanModal: React.FC<DailyPlanModalProps> = ({
                   onChange={(e) =>
                     setEditingTask({ ...editingTask, isFocusReady: e.target.checked })
                   }
-                  className="h-4 w-4 accent-violet-600 rounded"
+                  className="h-4 w-4 accent-zer-600 rounded"
                 />
               </div>
 
@@ -646,13 +648,13 @@ export const DailyPlanModal: React.FC<DailyPlanModalProps> = ({
                     setEditingTask(null);
                     setStep('review');
                   }}
-                  className="flex-1 py-3 rounded-2xl bg-[#151C2C] text-slate-300 font-bold text-xs"
+                  className="flex-1 py-3 rounded-2xl bg-[#251c24] text-ink-300 font-bold text-xs"
                 >
                   Geri
                 </button>
                 <button
                   onClick={handleSaveEditTask}
-                  className="flex-1 py-3 rounded-2xl bg-violet-600 text-white font-bold text-xs shadow-lg"
+                  className="flex-1 py-3 rounded-2xl btn-gold text-ink-950 font-bold text-xs shadow-lg"
                 >
                   Yadda saxla
                 </button>

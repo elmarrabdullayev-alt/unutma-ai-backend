@@ -119,8 +119,8 @@ const HourglassScene: React.FC<{ progress: number; isPaused: boolean }> = ({ pro
       const gradient = ctx.createRadialGradient(16, 16, 0, 16, 16, 16);
       gradient.addColorStop(0, 'rgba(255, 255, 255, 1)');
       gradient.addColorStop(0.35, 'rgba(196, 181, 253, 0.9)');
-      gradient.addColorStop(0.7, 'rgba(139, 92, 246, 0.4)');
-      gradient.addColorStop(1, 'rgba(139, 92, 246, 0)');
+      gradient.addColorStop(0.7, 'rgba(226, 163, 50, 0.4)');
+      gradient.addColorStop(1, 'rgba(226, 163, 50, 0)');
       ctx.fillStyle = gradient;
       ctx.fillRect(0, 0, 32, 32);
     }
@@ -221,34 +221,34 @@ const HourglassScene: React.FC<{ progress: number; isPaused: boolean }> = ({ pro
       <mesh position={[0, 2.18, 0]}>
         <cylinderGeometry args={[1.45, 1.45, 0.16, 28]} />
         <meshStandardMaterial
-          color="#161C2C"
+          color="#251c24"
           metalness={0.75}
           roughness={0.25}
-          emissive="#2A1B4E"
+          emissive="#251c24"
           emissiveIntensity={0.2}
         />
       </mesh>
       {/* Top Cap Metallic Rim Bevel */}
       <mesh position={[0, 2.1, 0]}>
         <torusGeometry args={[1.35, 0.04, 12, 28]} />
-        <meshStandardMaterial color="#A78BFA" metalness={0.9} roughness={0.1} />
+        <meshStandardMaterial color="#f1c868" metalness={0.9} roughness={0.1} />
       </mesh>
 
       {/* Bottom Cap Pedestal */}
       <mesh position={[0, -2.18, 0]}>
         <cylinderGeometry args={[1.45, 1.45, 0.16, 28]} />
         <meshStandardMaterial
-          color="#161C2C"
+          color="#251c24"
           metalness={0.75}
           roughness={0.25}
-          emissive="#2A1B4E"
+          emissive="#251c24"
           emissiveIntensity={0.2}
         />
       </mesh>
       {/* Bottom Cap Metallic Rim Bevel */}
       <mesh position={[0, -2.1, 0]}>
         <torusGeometry args={[1.35, 0.04, 12, 28]} />
-        <meshStandardMaterial color="#A78BFA" metalness={0.9} roughness={0.1} />
+        <meshStandardMaterial color="#f1c868" metalness={0.9} roughness={0.1} />
       </mesh>
 
       {/* 3 Outer Vertical Support Brass Columns for realistic classic frame */}
@@ -259,10 +259,10 @@ const HourglassScene: React.FC<{ progress: number; isPaused: boolean }> = ({ pro
         >
           <cylinderGeometry args={[0.04, 0.04, 4.3, 12]} />
           <meshStandardMaterial
-            color="#252D42"
+            color="#2e242d"
             metalness={0.85}
             roughness={0.2}
-            emissive="#3B256B"
+            emissive="#2e242d"
             emissiveIntensity={0.15}
           />
         </mesh>
@@ -276,8 +276,8 @@ const HourglassScene: React.FC<{ progress: number; isPaused: boolean }> = ({ pro
         position={[0, 1.0, 0]}
       >
         <meshStandardMaterial
-          color="#8B5CF6"
-          emissive="#7C3AED"
+          color="#e2a332"
+          emissive="#e2a332"
           emissiveIntensity={0.65}
           roughness={0.85}
           metalness={0.1}
@@ -291,8 +291,8 @@ const HourglassScene: React.FC<{ progress: number; isPaused: boolean }> = ({ pro
         position={[0, -1.2, 0]}
       >
         <meshStandardMaterial
-          color="#A78BFA"
-          emissive="#8B5CF6"
+          color="#f1c868"
+          emissive="#e2a332"
           emissiveIntensity={0.6}
           roughness={0.85}
           metalness={0.1}
@@ -303,7 +303,7 @@ const HourglassScene: React.FC<{ progress: number; isPaused: boolean }> = ({ pro
       <mesh ref={streamRef} position={[0, -0.9, 0]}>
         <cylinderGeometry args={[0.025, 0.035, 2, 12]} />
         <meshBasicMaterial
-          color="#EDE9FE"
+          color="#fdf8ea"
           transparent
           opacity={0.85}
         />
@@ -327,7 +327,7 @@ const HourglassScene: React.FC<{ progress: number; isPaused: boolean }> = ({ pro
       {/* ----------------- TRANSPARENT GLASS ENVELOPE ----------------- */}
       <mesh geometry={glassGeometry}>
         <meshPhysicalMaterial
-          color="#E0E7FF"
+          color="#f8f2ec"
           transmission={0.92}
           opacity={0.88}
           transparent
@@ -344,7 +344,7 @@ const HourglassScene: React.FC<{ progress: number; isPaused: boolean }> = ({ pro
       {isStreaming && (
         <pointLight
           position={[0, -0.6, 0]}
-          color="#A78BFA"
+          color="#f1c868"
           intensity={1.2}
           distance={1.5}
         />
@@ -353,7 +353,7 @@ const HourglassScene: React.FC<{ progress: number; isPaused: boolean }> = ({ pro
       {/* Center Chamber Ambient Point Glow */}
       <pointLight
         position={[0, 0, 0]}
-        color="#8B5CF6"
+        color="#e2a332"
         intensity={isCompleted ? 2.2 : 1.0}
         distance={3.5}
       />
@@ -427,7 +427,7 @@ export const Hourglass3D: React.FC<Hourglass3DProps> = ({ progress, isPaused }) 
       <div className="relative w-full h-[230px] xs:h-[250px] sm:h-[280px] max-w-[280px] mx-auto flex items-center justify-center select-none overflow-visible">
         {/* Soft Ambient Violet Backglow */}
         <div
-          className={`absolute inset-0 m-auto w-48 h-56 rounded-full bg-violet-600/25 blur-3xl pointer-events-none transition-opacity duration-700 ${
+          className={`absolute inset-0 m-auto w-48 h-56 rounded-full bg-zer-600/25 blur-3xl pointer-events-none transition-opacity duration-700 ${
             safeProgress >= 0.999
               ? 'opacity-80'
               : isPaused
@@ -451,8 +451,8 @@ export const Hourglass3D: React.FC<Hourglass3DProps> = ({ progress, isPaused }) 
             {/* Soft Ambient & Directional Lighting */}
             <ambientLight intensity={0.8} />
             <directionalLight position={[4, 5, 4]} intensity={1.4} color="#FFFFFF" />
-            <directionalLight position={[-4, 3, -3]} intensity={0.6} color="#A78BFA" />
-            <directionalLight position={[0, -4, 2]} intensity={0.5} color="#6D28D9" />
+            <directionalLight position={[-4, 3, -3]} intensity={0.6} color="#f1c868" />
+            <directionalLight position={[0, -4, 2]} intensity={0.5} color="#c78626" />
 
             <HourglassScene progress={safeProgress} isPaused={isPaused} />
           </Canvas>

@@ -273,18 +273,18 @@ export const AiAssistantScreen: React.FC<AiAssistantScreenProps> = ({
       {/* Top Header */}
       <div className="flex items-center justify-between pb-3">
         <div className="flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-violet-500/20 text-violet-300 border border-violet-500/30">
+          <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-zer-500/20 text-zer-300 border border-zer-500/30">
             <Sparkles className="h-4 w-4" />
           </div>
           <div>
             <h1 className="text-base font-extrabold text-white">AI köməkçi</h1>
-            <p className="text-[10px] font-medium text-slate-400">Sual ver və ya gününü planla</p>
+            <p className="text-[12px] font-medium text-ink-400">Sual ver və ya gününü planla</p>
           </div>
         </div>
 
         <button
           onClick={handleClearChat}
-          className="flex h-8 w-8 items-center justify-center rounded-xl text-slate-400 hover:text-white hover:bg-slate-800"
+          className="flex h-8 w-8 items-center justify-center rounded-xl text-ink-400 hover:text-white hover:bg-ink-800"
           title="Təmizlə"
         >
           <RotateCcw className="h-3.5 w-3.5" />
@@ -303,7 +303,7 @@ export const AiAssistantScreen: React.FC<AiAssistantScreenProps> = ({
               className={`flex items-end gap-2 ${isUser ? 'justify-end' : 'justify-start'}`}
             >
               {!isUser && (
-                <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#7C3AED]/20 text-[#A78BFA] text-[10px] font-bold">
+                <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#e2a332]/20 text-[#f1c868] text-[12px] font-bold">
                   <Bot className="h-3.5 w-3.5" />
                 </div>
               )}
@@ -311,21 +311,21 @@ export const AiAssistantScreen: React.FC<AiAssistantScreenProps> = ({
               <div
                 className={`max-w-[85%] rounded-[18px] p-3 text-xs leading-relaxed ${
                   isUser
-                    ? 'bg-[#7C3AED] text-white rounded-br-none shadow-sm'
-                    : 'bg-[#121827] text-[#F5F6FA] border border-white/[0.06] rounded-bl-none shadow-sm'
+                    ? 'bg-[#e2a332] text-white rounded-br-none shadow-sm'
+                    : 'bg-[#1d161c] text-[#f8f2ec] border border-white/[0.06] rounded-bl-none shadow-sm'
                 }`}
               >
                 <p className="whitespace-pre-wrap">{msg.text}</p>
 
                 {/* AI DAILY PLANNER PROPOSAL CARD */}
                 {payload?.action === 'plan_day' && payload.dailyPlanProposal && !msg.executed && (
-                  <div className="mt-3 pt-3 border-t border-violet-500/20 space-y-2.5">
+                  <div className="mt-3 pt-3 border-t border-zer-500/20 space-y-2.5">
                     <div className="flex items-center justify-between">
                       <span className="text-xs font-black text-white tracking-tight flex items-center gap-1.5">
-                        <Sparkles className="h-3.5 w-3.5 text-violet-400" />
+                        <Sparkles className="h-3.5 w-3.5 text-zer-400" />
                         Bugünkü planın
                       </span>
-                      <span className="text-[10px] text-violet-300/80 font-semibold">
+                      <span className="text-[12px] text-zer-300/80 font-semibold">
                         {payload.dailyPlanProposal.tasks.length} tapşırıq
                       </span>
                     </div>
@@ -335,15 +335,15 @@ export const AiAssistantScreen: React.FC<AiAssistantScreenProps> = ({
                       {payload.dailyPlanProposal.tasks.map((task) => (
                         <div
                           key={task.id}
-                          className={`p-2 rounded-xl border text-[11px] ${
+                          className={`p-2 rounded-xl border text-[13px] ${
                             task.hasConflict
                               ? 'bg-amber-950/30 border-amber-500/40'
-                              : 'bg-[#151D30] border-white/5'
+                              : 'bg-[#251c24] border-white/5'
                           }`}
                         >
                           <div className="flex items-center justify-between gap-1.5">
                             <div className="flex items-center gap-2 min-w-0">
-                              <span className="font-extrabold text-violet-300 text-xs shrink-0">
+                              <span className="font-extrabold text-zer-300 text-xs shrink-0">
                                 {task.timeString}
                               </span>
                               <span className="font-semibold text-white truncate max-w-[150px]">
@@ -353,23 +353,23 @@ export const AiAssistantScreen: React.FC<AiAssistantScreenProps> = ({
 
                             <div className="flex items-center gap-1 shrink-0">
                               {task.isFocusReady && (
-                                <span className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded bg-violet-500/20 text-violet-300 text-[9px] font-bold">
+                                <span className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded bg-zer-500/20 text-zer-300 text-[12px] font-bold">
                                   <Flame className="h-2.5 w-2.5 text-amber-400" />
                                   Fokus
                                 </span>
                               )}
                               {task.durationMinutes && (
-                                <span className="text-[10px] text-slate-400">
+                                <span className="text-[12px] text-ink-400">
                                   {task.durationMinutes}d
                                 </span>
                               )}
                               <span
-                                className={`px-1 py-0.2 rounded text-[9px] font-bold ${
+                                className={`px-1 py-0.2 rounded text-[12px] font-bold ${
                                   task.priority === 'high'
-                                    ? 'text-rose-400 bg-rose-500/10'
+                                    ? 'text-nar-400 bg-nar-500/10'
                                     : task.priority === 'medium'
                                     ? 'text-amber-400 bg-amber-500/10'
-                                    : 'text-slate-400 bg-slate-500/10'
+                                    : 'text-ink-400 bg-ink-500/10'
                                 }`}
                               >
                                 {task.priority === 'high' ? 'Y' : task.priority === 'medium' ? 'O' : 'A'}
@@ -379,11 +379,11 @@ export const AiAssistantScreen: React.FC<AiAssistantScreenProps> = ({
 
                           {/* Conflict Alert */}
                           {task.hasConflict && (
-                            <div className="mt-1.5 pt-1.5 border-t border-amber-500/20 text-[10px] text-amber-300 flex items-center gap-1">
+                            <div className="mt-1.5 pt-1.5 border-t border-amber-500/20 text-[12px] text-amber-300 flex items-center gap-1">
                               <AlertTriangle className="h-3 w-3 text-amber-400 shrink-0" />
                               <span>Bu saatda artıq planın var</span>
                               {task.suggestedAlternativeTime && (
-                                <span className="text-violet-300 font-bold ml-auto">
+                                <span className="text-zer-300 font-bold ml-auto">
                                   Təklif: {task.suggestedAlternativeTime}
                                 </span>
                               )}
@@ -397,19 +397,19 @@ export const AiAssistantScreen: React.FC<AiAssistantScreenProps> = ({
                     <div className="pt-1 flex items-center gap-1.5">
                       <button
                         onClick={() => handleCancelPlanInChat(msg.id)}
-                        className="flex-1 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 text-[10px] font-bold transition-all active:scale-95"
+                        className="flex-1 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-ink-300 text-[12px] font-bold transition-all active:scale-95"
                       >
                         Ləğv et
                       </button>
                       <button
                         onClick={() => onOpenDailyPlanner?.(payload.dailyPlanProposal)}
-                        className="flex-1 py-2 rounded-xl bg-[#1C253B] hover:bg-[#25304E] text-violet-300 text-[10px] font-bold border border-violet-500/20 transition-all active:scale-95"
+                        className="flex-1 py-2 rounded-xl bg-[#2e242d] hover:bg-[#2e242d] text-zer-300 text-[12px] font-bold border border-zer-500/20 transition-all active:scale-95"
                       >
                         Dəyiş
                       </button>
                       <button
                         onClick={() => handleConfirmPlanInChat(msg.id, payload.dailyPlanProposal!)}
-                        className="flex-[1.4] py-2 rounded-xl bg-violet-600 hover:bg-violet-500 text-white text-[10px] font-black shadow-md flex items-center justify-center gap-1 transition-all active:scale-95"
+                        className="flex-[1.4] py-2 rounded-xl btn-gold text-ink-950 text-[12px] font-black shadow-md flex items-center justify-center gap-1 transition-all active:scale-95"
                       >
                         <Check className="h-3 w-3" />
                         <span>Təsdiq et</span>
@@ -420,13 +420,13 @@ export const AiAssistantScreen: React.FC<AiAssistantScreenProps> = ({
 
                 {/* AI ROUTINE PROPOSAL CARD */}
                 {payload?.action === 'create_routine' && payload.routineProposal && !msg.executed && (
-                  <div className="mt-3 pt-3 border-t border-violet-500/20 space-y-2.5">
+                  <div className="mt-3 pt-3 border-t border-zer-500/20 space-y-2.5">
                     <div className="flex items-center justify-between">
                       <span className="text-xs font-black text-white tracking-tight flex items-center gap-1.5">
-                        <Sparkles className="h-3.5 w-3.5 text-violet-400" />
+                        <Sparkles className="h-3.5 w-3.5 text-zer-400" />
                         Rutinin
                       </span>
-                      <span className="text-[10px] text-violet-300/80 font-semibold">
+                      <span className="text-[12px] text-zer-300/80 font-semibold">
                         {payload.routineProposal.title} • {payload.routineProposal.startTime}
                       </span>
                     </div>
@@ -436,10 +436,10 @@ export const AiAssistantScreen: React.FC<AiAssistantScreenProps> = ({
                       {payload.routineProposal.steps.map((step, sIdx) => (
                         <div
                           key={sIdx}
-                          className="flex items-center justify-between p-2 rounded-xl bg-[#151D30] border border-white/5 text-[11px]"
+                          className="flex items-center justify-between p-2 rounded-xl bg-[#251c24] border border-white/5 text-[13px]"
                         >
                           <div className="flex items-center gap-2 min-w-0">
-                            <span className="h-4 w-4 rounded-full bg-violet-600/30 text-violet-300 text-[10px] font-bold flex items-center justify-center shrink-0">
+                            <span className="h-4 w-4 rounded-full bg-zer-600/30 text-zer-300 text-[12px] font-bold flex items-center justify-center shrink-0">
                               {sIdx + 1}
                             </span>
                             <span className="font-semibold text-white truncate max-w-[160px]">
@@ -447,10 +447,10 @@ export const AiAssistantScreen: React.FC<AiAssistantScreenProps> = ({
                             </span>
                           </div>
 
-                          <div className="flex items-center gap-1.5 shrink-0 text-[10px] text-slate-400">
-                            {step.time && <span className="text-violet-300 font-bold">{step.time}</span>}
+                          <div className="flex items-center gap-1.5 shrink-0 text-[12px] text-ink-400">
+                            {step.time && <span className="text-zer-300 font-bold">{step.time}</span>}
                             {step.duration && <span>• {step.duration}d</span>}
-                            {step.notificationEnabled && <Bell className="h-2.5 w-2.5 text-violet-400" />}
+                            {step.notificationEnabled && <Bell className="h-2.5 w-2.5 text-zer-400" />}
                           </div>
                         </div>
                       ))}
@@ -460,19 +460,19 @@ export const AiAssistantScreen: React.FC<AiAssistantScreenProps> = ({
                     <div className="pt-1 flex items-center gap-1.5">
                       <button
                         onClick={() => handleCancelRoutineInChat(msg.id)}
-                        className="flex-1 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 text-[10px] font-bold transition-all active:scale-95"
+                        className="flex-1 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-ink-300 text-[12px] font-bold transition-all active:scale-95"
                       >
                         Ləğv et
                       </button>
                       <button
                         onClick={() => onOpenRoutineReview?.(payload.routineProposal!)}
-                        className="flex-1 py-2 rounded-xl bg-[#1C253B] hover:bg-[#25304E] text-violet-300 text-[10px] font-bold border border-violet-500/20 transition-all active:scale-95"
+                        className="flex-1 py-2 rounded-xl bg-[#2e242d] hover:bg-[#2e242d] text-zer-300 text-[12px] font-bold border border-zer-500/20 transition-all active:scale-95"
                       >
                         Dəyiş
                       </button>
                       <button
                         onClick={() => handleConfirmRoutineInChat(msg.id, payload.routineProposal!)}
-                        className="flex-[1.4] py-2 rounded-xl bg-violet-600 hover:bg-violet-500 text-white text-[10px] font-black shadow-md flex items-center justify-center gap-1 transition-all active:scale-95"
+                        className="flex-[1.4] py-2 rounded-xl btn-gold text-ink-950 text-[12px] font-black shadow-md flex items-center justify-center gap-1 transition-all active:scale-95"
                       >
                         <Check className="h-3 w-3" />
                         <span>Təsdiq et</span>
@@ -483,7 +483,7 @@ export const AiAssistantScreen: React.FC<AiAssistantScreenProps> = ({
 
                 {/* Interactive Action Confirmation Badge */}
                 {payload && payload.action && payload.action !== 'general_chat' && (
-                  <div className="mt-2.5 pt-2 border-t border-white/10 flex items-center gap-1.5 text-[10px] font-semibold text-emerald-400">
+                  <div className="mt-2.5 pt-2 border-t border-white/10 flex items-center gap-1.5 text-[12px] font-semibold text-pista-400">
                     <CheckCircle2 className="h-3 w-3 shrink-0" />
                     <span>
                       {payload.action === 'create_reminder' && 'Xatırlatma təqvimə əlavə edildi'}
@@ -498,7 +498,7 @@ export const AiAssistantScreen: React.FC<AiAssistantScreenProps> = ({
                   </div>
                 )}
 
-                <div className="mt-1.5 flex items-center justify-end gap-2 text-[9px] opacity-60">
+                <div className="mt-1.5 flex items-center justify-end gap-2 text-[12px] opacity-60">
                   <span>{msg.timestamp}</span>
                   {!isUser && (
                     <button
@@ -513,7 +513,7 @@ export const AiAssistantScreen: React.FC<AiAssistantScreenProps> = ({
               </div>
 
               {isUser && (
-                <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-slate-700 text-slate-300 text-[10px] font-bold">
+                <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-ink-700 text-ink-300 text-[12px] font-bold">
                   <User className="h-3.5 w-3.5" />
                 </div>
               )}
@@ -523,11 +523,11 @@ export const AiAssistantScreen: React.FC<AiAssistantScreenProps> = ({
 
         {isLoading && (
           <div className="flex items-center gap-2">
-            <div className="flex h-6 w-6 items-center justify-center rounded-full bg-violet-600/30 text-violet-300">
+            <div className="flex h-6 w-6 items-center justify-center rounded-full bg-zer-600/30 text-zer-300">
               <Bot className="h-3.5 w-3.5" />
             </div>
-            <div className="rounded-2xl rounded-bl-none bg-[#121828] border border-white/5 px-3 py-2 text-xs text-slate-400 flex items-center gap-2">
-              <Loader2 className="h-3.5 w-3.5 animate-spin text-violet-400" />
+            <div className="rounded-2xl rounded-bl-none bg-[#1d161c] border border-white/5 px-3 py-2 text-xs text-ink-400 flex items-center gap-2">
+              <Loader2 className="h-3.5 w-3.5 animate-spin text-zer-400" />
               <span>Düşünürəm və icra edirəm...</span>
             </div>
           </div>
@@ -543,7 +543,7 @@ export const AiAssistantScreen: React.FC<AiAssistantScreenProps> = ({
             <button
               key={idx}
               onClick={() => handleSendMessage(chip)}
-              className="shrink-0 rounded-[14px] border border-white/[0.06] bg-[#121827] px-3 py-1.5 text-[11px] font-medium text-[#94A3B8] hover:text-[#F5F6FA] hover:border-[#7C3AED]/30 active:scale-95 transition-all"
+              className="shrink-0 rounded-[14px] border border-white/[0.06] bg-[#1d161c] px-3 py-1.5 text-[13px] font-medium text-[#c3b2ba] hover:text-[#f8f2ec] hover:border-[#e2a332]/30 active:scale-95 transition-all"
             >
               {chip}
             </button>
@@ -557,12 +557,12 @@ export const AiAssistantScreen: React.FC<AiAssistantScreenProps> = ({
           e.preventDefault();
           handleSendMessage(inputText);
         }}
-        className="flex items-center gap-2 rounded-[18px] border border-white/[0.08] bg-[#0D1220] p-1.5 shadow-lg"
+        className="flex items-center gap-2 rounded-[18px] border border-white/[0.08] bg-[#1d161c] p-1.5 shadow-lg"
       >
         <button
           type="button"
           onClick={onOpenVoice}
-          className="flex h-9 w-9 items-center justify-center rounded-[12px] bg-[#7C3AED]/15 text-[#A78BFA] hover:bg-[#7C3AED]/25 active:scale-90 transition-transform"
+          className="flex h-9 w-9 items-center justify-center rounded-[12px] bg-[#e2a332]/15 text-[#f1c868] hover:bg-[#e2a332]/25 active:scale-90 transition-transform"
           title="Səslə danış"
         >
           <Mic className="h-4 w-4" />
@@ -573,13 +573,13 @@ export const AiAssistantScreen: React.FC<AiAssistantScreenProps> = ({
           value={inputText}
           onChange={(e) => setInputText(e.target.value)}
           placeholder="AI-yə əmr ver və ya sual yaz..."
-          className="flex-1 bg-transparent px-2 text-xs text-[#F5F6FA] placeholder-[#94A3B8]/60 focus:outline-none"
+          className="flex-1 bg-transparent px-2 text-xs text-[#f8f2ec] placeholder-[#c3b2ba]/60 focus:outline-none"
         />
 
         <button
           type="submit"
           disabled={!inputText.trim() || isLoading}
-          className="flex h-9 w-9 items-center justify-center rounded-[12px] bg-[#7C3AED] hover:bg-[#6D28D9] text-white disabled:opacity-30 active:scale-90 transition-transform"
+          className="flex h-9 w-9 items-center justify-center rounded-[12px] bg-[#e2a332] hover:bg-[#c78626] text-white disabled:opacity-30 active:scale-90 transition-transform"
         >
           <Send className="h-4 w-4" />
         </button>

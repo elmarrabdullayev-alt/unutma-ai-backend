@@ -99,20 +99,20 @@ export const FocusSetupScreen: React.FC<FocusSetupScreenProps> = ({
   const renderVisualIcon = (themeId: FocusVisualTheme) => {
     switch (themeId) {
       case 'memory-ring':
-        return <Orbit className="h-4 w-4 text-violet-400" />;
+        return <Orbit className="h-4 w-4 text-zer-400" />;
       case 'energy-core':
-        return <Zap className="h-4 w-4 text-fuchsia-400" />;
+        return <Zap className="h-4 w-4 text-zer-400" />;
       case 'sound-wave':
-        return <Activity className="h-4 w-4 text-indigo-400" />;
+        return <Activity className="h-4 w-4 text-zer-400" />;
       default:
-        return <Orbit className="h-4 w-4 text-violet-400" />;
+        return <Orbit className="h-4 w-4 text-zer-400" />;
     }
   };
 
   const renderAudioIcon = (iconName: string) => {
     switch (iconName) {
       case 'Music':
-        return <Music className="h-4 w-4 text-violet-400" />;
+        return <Music className="h-4 w-4 text-zer-400" />;
       case 'CloudRain':
         return <CloudRain className="h-4 w-4 text-cyan-400" />;
       case 'Coffee':
@@ -120,12 +120,12 @@ export const FocusSetupScreen: React.FC<FocusSetupScreenProps> = ({
       case 'Waves':
         return <Waves className="h-4 w-4 text-blue-400" />;
       case 'Zap':
-        return <Zap className="h-4 w-4 text-indigo-400" />;
+        return <Zap className="h-4 w-4 text-zer-400" />;
       case 'Trees':
-        return <Trees className="h-4 w-4 text-emerald-400" />;
+        return <Trees className="h-4 w-4 text-pista-400" />;
       case 'VolumeX':
       default:
-        return <VolumeX className="h-4 w-4 text-slate-400" />;
+        return <VolumeX className="h-4 w-4 text-ink-400" />;
     }
   };
 
@@ -160,7 +160,7 @@ export const FocusSetupScreen: React.FC<FocusSetupScreenProps> = ({
 
   return (
     <div
-      className="flex flex-col h-full bg-[#090D16] text-white px-5 pb-5 overflow-y-auto select-none relative"
+      className="flex flex-col h-full bg-[#130e13] text-white px-5 pb-5 overflow-y-auto select-none relative"
       style={{
         paddingTop: 'max(env(safe-area-inset-top, 0px), 20px)',
       }}
@@ -168,52 +168,52 @@ export const FocusSetupScreen: React.FC<FocusSetupScreenProps> = ({
       {/* Top Header */}
       <div className="flex items-start justify-between mb-6">
         <div>
-          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-violet-500/10 border border-violet-500/20 text-violet-300 text-[11px] font-bold mb-1.5">
-            <Flame className="h-3.5 w-3.5 text-violet-400" />
+          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-zer-500/10 border border-zer-500/20 text-zer-300 text-[13px] font-bold mb-1.5">
+            <Flame className="h-3.5 w-3.5 text-zer-400" />
             Fokus Rejimi
           </div>
-          <h2 className="text-2xl font-black tracking-tight text-white">Fokuslan</h2>
-          <p className="text-xs text-slate-400 mt-0.5">
+          <h2 className="font-display text-[30px] leading-[1.1] font-normal text-ink-50">Fokuslan</h2>
+          <p className="text-xs text-ink-400 mt-0.5">
             Bir iş seç və diqqətini yalnız ona ver.
           </p>
         </div>
         <button
           onClick={onClose}
           aria-label="Bağla"
-          className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-xl bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition-colors active:scale-95 shrink-0"
+          className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-xl bg-white/5 hover:bg-white/10 text-ink-400 hover:text-white transition-colors active:scale-95 shrink-0"
         >
           <X className="h-4 w-4" />
         </button>
       </div>
 
       {/* Today Stats Summary Bar */}
-      <div className="flex items-center justify-between p-3 rounded-2xl bg-[#121826] border border-white/5 mb-6">
+      <div className="flex items-center justify-between p-3 rounded-2xl bg-[#1d161c] border border-white/5 mb-6">
         <div className="flex items-center gap-2.5">
-          <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-violet-500/15 text-violet-400">
+          <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-zer-500/15 text-zer-400">
             <Sparkles className="h-4 w-4" />
           </div>
           <div>
-            <p className="text-[10px] uppercase tracking-wider font-extrabold text-slate-400">
+            <p className="text-[12px] font-extrabold text-ink-400">
               Bu gün
             </p>
-            <p className="text-xs font-bold text-slate-200">
+            <p className="text-xs font-bold text-ink-200">
               {todayStats.count > 0
                 ? `${todayStats.count} sessiya • ${todayStats.totalMinutes} dəqiqə`
                 : 'Hələ fokus sessiyası olmayıb'}
             </p>
           </div>
         </div>
-        <span className="text-[11px] font-semibold text-violet-400">Daimi inkişaf</span>
+        <span className="text-[13px] font-semibold text-zer-400">Daimi inkişaf</span>
       </div>
 
       {/* SECTION 1: TASK SELECTION */}
       <div className="space-y-3 mb-6">
-        <label className="block text-[11px] font-extrabold uppercase tracking-wider text-slate-400">
+        <label className="block text-[13px] font-extrabold text-ink-400">
           Tapşırıq Seçimi
         </label>
 
         {/* Source Segmented Control */}
-        <div className="flex bg-[#101524] p-1 rounded-xl border border-white/5">
+        <div className="flex bg-[#1d161c] p-1 rounded-xl border border-white/5">
           <button
             type="button"
             onClick={() => {
@@ -222,8 +222,8 @@ export const FocusSetupScreen: React.FC<FocusSetupScreenProps> = ({
             }}
             className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${
               taskSource === 'manual'
-                ? 'bg-violet-600 text-white shadow-md'
-                : 'text-slate-400 hover:text-slate-200'
+                ? ' btn-gold text-ink-950 shadow-md'
+                : 'text-ink-400 hover:text-ink-200'
             }`}
           >
             Sərbəst Tapşırıq
@@ -236,8 +236,8 @@ export const FocusSetupScreen: React.FC<FocusSetupScreenProps> = ({
             }}
             className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${
               taskSource === 'reminder'
-                ? 'bg-violet-600 text-white shadow-md'
-                : 'text-slate-400 hover:text-slate-200'
+                ? ' btn-gold text-ink-950 shadow-md'
+                : 'text-ink-400 hover:text-ink-200'
             }`}
           >
             Xatırlatmalardan ({activeReminders.length})
@@ -255,7 +255,7 @@ export const FocusSetupScreen: React.FC<FocusSetupScreenProps> = ({
                 if (errorText) setErrorText('');
               }}
               placeholder="İndi nəyə fokuslanırsan? (məs: Yarımçıq hesabatı bitir)"
-              className="w-full h-12 px-4 rounded-xl bg-[#121826] border border-white/10 text-white placeholder-slate-500 text-xs focus:border-violet-500 outline-none transition-colors"
+              className="w-full h-12 px-4 rounded-xl bg-[#1d161c] border border-white/10 text-white placeholder-ink-500 text-xs focus:border-zer-500 outline-none transition-colors"
             />
           </div>
         )}
@@ -278,15 +278,15 @@ export const FocusSetupScreen: React.FC<FocusSetupScreenProps> = ({
                       }}
                       className={`w-full flex items-center justify-between p-3 rounded-xl border text-left transition-all ${
                         isSelected
-                          ? 'bg-violet-500/15 border-violet-500 text-white'
-                          : 'bg-[#121826] border-white/5 text-slate-300 hover:bg-[#161e30]'
+                          ? 'bg-zer-500/15 border-zer-500 text-white'
+                          : 'bg-[#1d161c] border-white/5 text-ink-300 hover:bg-[#251c24]'
                       }`}
                     >
                       <div className="min-w-0 flex-1 pr-2">
                         <p className="text-xs font-bold truncate">{r.title}</p>
                         {time && (
-                          <p className="text-[10px] text-slate-400 flex items-center gap-1 mt-0.5">
-                            <Clock className="h-3 w-3 text-violet-400" />
+                          <p className="text-[12px] text-ink-400 flex items-center gap-1 mt-0.5">
+                            <Clock className="h-3 w-3 text-zer-400" />
                             {time}
                           </p>
                         )}
@@ -294,8 +294,8 @@ export const FocusSetupScreen: React.FC<FocusSetupScreenProps> = ({
                       <div
                         className={`h-4 w-4 rounded-full border flex items-center justify-center shrink-0 ${
                           isSelected
-                            ? 'border-violet-400 bg-violet-600 text-white'
-                            : 'border-slate-600'
+                            ? 'border-zer-400 btn-gold text-ink-950'
+                            : 'border-ink-600'
                         }`}
                       >
                         {isSelected && <div className="h-1.5 w-1.5 rounded-full bg-white" />}
@@ -305,12 +305,12 @@ export const FocusSetupScreen: React.FC<FocusSetupScreenProps> = ({
                 })}
               </div>
             ) : (
-              <div className="p-4 rounded-xl bg-[#121826] border border-white/5 text-center">
-                <p className="text-xs text-slate-400">Aktiv xatırlatma tapılmadı.</p>
+              <div className="p-4 rounded-xl bg-[#1d161c] border border-white/5 text-center">
+                <p className="text-xs text-ink-400">Aktiv xatırlatma tapılmadı.</p>
                 <button
                   type="button"
                   onClick={() => setTaskSource('manual')}
-                  className="mt-2 text-xs font-bold text-violet-400 hover:underline"
+                  className="mt-2 text-xs font-bold text-zer-400 hover:underline"
                 >
                   Sərbəst tapşırıq yazın
                 </button>
@@ -323,10 +323,10 @@ export const FocusSetupScreen: React.FC<FocusSetupScreenProps> = ({
       {/* SECTION 2: DURATION SELECTOR (Presets: 15, 25, 30, 45, 60) */}
       <div className="space-y-3 mb-6">
         <div className="flex items-center justify-between">
-          <label className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400">
+          <label className="text-[13px] font-extrabold text-ink-400">
             Fokus Müddəti
           </label>
-          <span className="text-xs font-black text-violet-400">
+          <span className="text-xs font-black text-zer-400">
             {selectedMinutes} dəqiqə
           </span>
         </div>
@@ -345,8 +345,8 @@ export const FocusSetupScreen: React.FC<FocusSetupScreenProps> = ({
                 }}
                 className={`py-2.5 rounded-xl text-xs font-bold transition-all border ${
                   isSelected
-                    ? 'bg-violet-600 border-violet-400 text-white shadow-md'
-                    : 'bg-[#121826] border-white/5 text-slate-300 hover:bg-[#161e30]'
+                    ? ' border-zer-400 btn-gold text-ink-950 shadow-md'
+                    : 'bg-[#1d161c] border-white/5 text-ink-300 hover:bg-[#251c24]'
                 }`}
               >
                 {min} dəq
@@ -356,8 +356,8 @@ export const FocusSetupScreen: React.FC<FocusSetupScreenProps> = ({
         </div>
 
         {/* Custom Duration Option */}
-        <div className="p-3 rounded-xl bg-[#121826] border border-white/5 flex items-center justify-between">
-          <span className="text-xs font-semibold text-slate-300">Xüsusi vaxt (5–180 dəq)</span>
+        <div className="p-3 rounded-xl bg-[#1d161c] border border-white/5 flex items-center justify-between">
+          <span className="text-xs font-semibold text-ink-300">Xüsusi vaxt (5–180 dəq)</span>
           <div className="flex items-center gap-2">
             <button
               type="button"
@@ -365,7 +365,7 @@ export const FocusSetupScreen: React.FC<FocusSetupScreenProps> = ({
                 setIsCustomDuration(true);
                 setSelectedMinutes((prev) => Math.max(5, prev - 5));
               }}
-              className="h-8 w-8 rounded-lg bg-[#1a2337] flex items-center justify-center text-slate-300 active:scale-95"
+              className="h-8 w-8 rounded-lg bg-[#251c24] flex items-center justify-center text-ink-300 active:scale-95"
             >
               <Minus className="h-3.5 w-3.5" />
             </button>
@@ -378,7 +378,7 @@ export const FocusSetupScreen: React.FC<FocusSetupScreenProps> = ({
                 setIsCustomDuration(true);
                 setSelectedMinutes((prev) => Math.min(180, prev + 5));
               }}
-              className="h-8 w-8 rounded-lg bg-[#1a2337] flex items-center justify-center text-slate-300 active:scale-95"
+              className="h-8 w-8 rounded-lg bg-[#251c24] flex items-center justify-center text-ink-300 active:scale-95"
             >
               <Plus className="h-3.5 w-3.5" />
             </button>
@@ -389,10 +389,10 @@ export const FocusSetupScreen: React.FC<FocusSetupScreenProps> = ({
       {/* SECTION 3: FOCUS AUDIO PRESET */}
       <div className="space-y-2 mb-6">
         <div>
-          <h4 className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400">
+          <h4 className="text-[13px] font-extrabold text-ink-400">
             Fokus səsi
           </h4>
-          <p className="text-xs text-slate-400 mt-0.5">
+          <p className="text-xs text-ink-400 mt-0.5">
             Diqqətini toplamağa kömək edən fon səsini seç.
           </p>
         </div>
@@ -401,30 +401,30 @@ export const FocusSetupScreen: React.FC<FocusSetupScreenProps> = ({
         <button
           type="button"
           onClick={() => setIsAudioModalOpen(true)}
-          className="w-full flex items-center justify-between p-3.5 rounded-2xl bg-[#121826] border border-white/5 hover:border-violet-500/30 transition-all text-left group"
+          className="w-full flex items-center justify-between p-3.5 rounded-2xl bg-[#1d161c] border border-white/5 hover:border-zer-500/30 transition-all text-left group"
         >
           <div className="flex items-center gap-3 min-w-0 flex-1">
-            <div className="h-10 w-10 rounded-xl bg-violet-500/15 border border-violet-500/20 flex items-center justify-center shrink-0">
+            <div className="h-10 w-10 rounded-xl bg-zer-500/15 border border-zer-500/20 flex items-center justify-center shrink-0">
               {renderAudioIcon(selectedAudioOption.iconName)}
             </div>
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-1.5">
-                <p className="text-xs font-bold text-white group-hover:text-violet-300 transition-colors">
+                <p className="text-xs font-bold text-white group-hover:text-zer-300 transition-colors">
                   {selectedAudioOption.name}
                 </p>
                 {audioSettings.preset !== 'silent' && (
-                  <span className="px-1.5 py-0.5 rounded-md bg-violet-500/20 text-[10px] font-bold text-violet-300 font-mono">
+                  <span className="px-1.5 py-0.5 rounded-md bg-zer-500/20 text-[12px] font-bold text-zer-300 font-mono">
                     {Math.round(audioSettings.volume * 100)}%
                   </span>
                 )}
               </div>
-              <p className="text-[11px] text-slate-400 truncate mt-0.5">
+              <p className="text-[13px] text-ink-400 truncate mt-0.5">
                 {selectedAudioOption.subtitle || 'Səssiz mühit'}
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-1 text-slate-400 group-hover:text-violet-400 transition-colors text-xs font-bold pl-2">
+          <div className="flex items-center gap-1 text-ink-400 group-hover:text-zer-400 transition-colors text-xs font-bold pl-2">
             <span>Seç</span>
             <ChevronRight className="h-4 w-4" />
           </div>
@@ -434,10 +434,10 @@ export const FocusSetupScreen: React.FC<FocusSetupScreenProps> = ({
       {/* SECTION 4: FOCUS VISUAL THEME SELECTOR */}
       <div className="space-y-2 mb-6">
         <div>
-          <h4 className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400">
+          <h4 className="text-[13px] font-extrabold text-ink-400">
             Fokus görünüşü
           </h4>
-          <p className="text-xs text-slate-400 mt-0.5">
+          <p className="text-xs text-ink-400 mt-0.5">
             Sessiya zamanı göstəriləcək animasiya üslubunu seç.
           </p>
         </div>
@@ -446,28 +446,28 @@ export const FocusSetupScreen: React.FC<FocusSetupScreenProps> = ({
         <button
           type="button"
           onClick={() => setIsVisualModalOpen(true)}
-          className="w-full flex items-center justify-between p-3.5 rounded-2xl bg-[#121826] border border-white/5 hover:border-violet-500/30 transition-all text-left group"
+          className="w-full flex items-center justify-between p-3.5 rounded-2xl bg-[#1d161c] border border-white/5 hover:border-zer-500/30 transition-all text-left group"
         >
           <div className="flex items-center gap-3 min-w-0 flex-1">
-            <div className="h-10 w-10 rounded-xl bg-violet-500/15 border border-violet-500/20 flex items-center justify-center shrink-0">
+            <div className="h-10 w-10 rounded-xl bg-zer-500/15 border border-zer-500/20 flex items-center justify-center shrink-0">
               {renderVisualIcon(visualTheme)}
             </div>
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-1.5">
-                <p className="text-xs font-bold text-white group-hover:text-violet-300 transition-colors">
+                <p className="text-xs font-bold text-white group-hover:text-zer-300 transition-colors">
                   {selectedVisualOption.title}
                 </p>
-                <span className="px-1.5 py-0.5 rounded-md bg-violet-500/20 text-[10px] font-bold text-violet-300">
+                <span className="px-1.5 py-0.5 rounded-md bg-zer-500/20 text-[12px] font-bold text-zer-300">
                   Animasiya
                 </span>
               </div>
-              <p className="text-[11px] text-slate-400 truncate mt-0.5">
+              <p className="text-[13px] text-ink-400 truncate mt-0.5">
                 {selectedVisualOption.subtitle}
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-1 text-slate-400 group-hover:text-violet-400 transition-colors text-xs font-bold pl-2">
+          <div className="flex items-center gap-1 text-ink-400 group-hover:text-zer-400 transition-colors text-xs font-bold pl-2">
             <span>Dəyiş</span>
             <ChevronRight className="h-4 w-4" />
           </div>
@@ -475,7 +475,7 @@ export const FocusSetupScreen: React.FC<FocusSetupScreenProps> = ({
       </div>
 
       {errorText && (
-        <p className="text-xs text-rose-400 font-semibold mb-4 text-center animate-fade-in">
+        <p className="text-xs text-nar-400 font-semibold mb-4 text-center animate-fade-in">
           {errorText}
         </p>
       )}
@@ -485,7 +485,7 @@ export const FocusSetupScreen: React.FC<FocusSetupScreenProps> = ({
         <button
           type="button"
           onClick={handleStart}
-          className="w-full h-12 rounded-2xl bg-gradient-to-r from-violet-600 via-indigo-600 to-violet-600 text-white font-extrabold text-sm shadow-lg shadow-violet-600/30 active:scale-[0.98] hover:brightness-110 transition-all flex items-center justify-center gap-2"
+          className="w-full h-12 rounded-2xl btn-gold text-ink-950 font-extrabold text-sm shadow-lg shadow-zer-600/30 active:scale-[0.98] hover:brightness-110 transition-all flex items-center justify-center gap-2"
         >
           <Flame className="h-4 w-4" />
           Fokuslan ({selectedMinutes} dəq)

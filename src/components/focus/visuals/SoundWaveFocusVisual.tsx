@@ -110,10 +110,10 @@ export const SoundWaveFocusVisual: React.FC<FocusVisualProps> = ({ progress, isP
       <div
         className={`absolute inset-0 m-auto w-40 h-40 rounded-full blur-3xl pointer-events-none transition-all duration-700 ${
           isCompleted
-            ? 'bg-violet-500/40 opacity-90'
+            ? 'bg-zer-500/40 opacity-90'
             : isPaused
-            ? 'bg-violet-600/10 opacity-25'
-            : 'bg-indigo-600/25 opacity-65'
+            ? 'bg-zer-600/10 opacity-25'
+            : 'bg-zer-600/25 opacity-65'
         }`}
       />
 
@@ -125,17 +125,17 @@ export const SoundWaveFocusVisual: React.FC<FocusVisualProps> = ({ progress, isP
         <defs>
           {/* Wave linear gradient */}
           <linearGradient id={`soundWaveGrad_${uniqueId}`} x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%" stopColor="#818CF8" stopOpacity="0.3" />
-            <stop offset="25%" stopColor="#C084FC" stopOpacity="0.9" />
-            <stop offset="50%" stopColor="#FAF5FF" stopOpacity="1" />
-            <stop offset="75%" stopColor="#C084FC" stopOpacity="0.9" />
-            <stop offset="100%" stopColor="#818CF8" stopOpacity="0.3" />
+            <stop offset="0%" stopColor="#f1c868" stopOpacity="0.3" />
+            <stop offset="25%" stopColor="#f1c868" stopOpacity="0.9" />
+            <stop offset="50%" stopColor="#fdf8ea" stopOpacity="1" />
+            <stop offset="75%" stopColor="#f1c868" stopOpacity="0.9" />
+            <stop offset="100%" stopColor="#f1c868" stopOpacity="0.3" />
           </linearGradient>
 
           {/* Progress arc gradient */}
           <linearGradient id={`soundProgressGrad_${uniqueId}`} x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%" stopColor="#6366F1" />
-            <stop offset="50%" stopColor="#A855F7" />
+            <stop offset="0%" stopColor="#e2a332" />
+            <stop offset="50%" stopColor="#ecb74a" />
             <stop offset="100%" stopColor="#E879F9" />
           </linearGradient>
 
@@ -159,7 +159,7 @@ export const SoundWaveFocusVisual: React.FC<FocusVisualProps> = ({ progress, isP
           cy="120"
           r={trackRadius}
           fill="none"
-          stroke="rgba(139, 92, 246, 0.12)"
+          stroke="rgba(226, 163, 50, 0.12)"
           strokeWidth="3.5"
         />
 
@@ -188,7 +188,7 @@ export const SoundWaveFocusVisual: React.FC<FocusVisualProps> = ({ progress, isP
               cy="120"
               r={narrowedOuterRadius}
               fill="none"
-              stroke="rgba(168, 85, 247, 0.18)"
+              stroke="rgba(236, 183, 74, 0.18)"
               strokeWidth="1"
               strokeDasharray="3 5"
               className="transition-[r] duration-500 ease-out"
@@ -220,7 +220,7 @@ export const SoundWaveFocusVisual: React.FC<FocusVisualProps> = ({ progress, isP
               cy="120"
               r={middleRadius}
               fill="none"
-              stroke="#A855F7"
+              stroke="#ecb74a"
               strokeWidth="1.5"
               className={`sound-pulse-ring-${uniqueId}`}
               style={{ animationPlayState: playState }}
@@ -230,7 +230,7 @@ export const SoundWaveFocusVisual: React.FC<FocusVisualProps> = ({ progress, isP
               cy="120"
               r={innerRadius}
               fill="none"
-              stroke="#C084FC"
+              stroke="#f1c868"
               strokeWidth="1.2"
               className={`sound-pulse-ring-lag-${uniqueId}`}
               style={{ animationPlayState: playState }}
@@ -255,7 +255,7 @@ export const SoundWaveFocusVisual: React.FC<FocusVisualProps> = ({ progress, isP
                 width={barWidth}
                 height={height}
                 rx={1.5}
-                fill={index % 2 === 0 ? '#C084FC' : '#818CF8'}
+                fill={index % 2 === 0 ? '#f1c868' : '#f1c868'}
                 opacity={0.8}
                 className={`freq-bar-${uniqueId}`}
                 style={{
@@ -291,7 +291,7 @@ export const SoundWaveFocusVisual: React.FC<FocusVisualProps> = ({ progress, isP
                 cx="120"
                 cy="120"
                 r="6"
-                fill="#FAF5FF"
+                fill="#fdf8ea"
                 filter={`url(#soundGlow_${uniqueId})`}
               />
             </g>
@@ -342,7 +342,7 @@ export const SoundWaveFocusVisual: React.FC<FocusVisualProps> = ({ progress, isP
           cx="120"
           cy="120"
           r={isCompleted ? 7 : 4}
-          fill="#FAF5FF"
+          fill="#fdf8ea"
           filter={`url(#soundGlow_${uniqueId})`}
           className="transition-all duration-300"
         />

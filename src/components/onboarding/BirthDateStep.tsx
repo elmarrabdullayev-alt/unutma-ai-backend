@@ -72,9 +72,9 @@ export const BirthDateStep: React.FC<BirthDateStepProps> = ({
   };
 
   return (
-    <div className="relative flex flex-col justify-between flex-1 px-6 py-6 min-h-0 bg-[#090D16] select-none">
+    <div className="relative flex flex-col justify-between flex-1 px-6 py-6 min-h-0 bg-[#130e13] select-none">
       {/* Background ambient glow */}
-      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-violet-600/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-zer-600/10 rounded-full blur-3xl pointer-events-none" />
 
       <div>
         {/* Progress Bar & Header */}
@@ -82,41 +82,41 @@ export const BirthDateStep: React.FC<BirthDateStepProps> = ({
           <button
             type="button"
             onClick={onBack}
-            className="text-xs font-semibold text-slate-400 hover:text-white transition-colors"
+            className="text-xs font-semibold text-ink-400 hover:text-white transition-colors"
           >
             ← Geri
           </button>
-          <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-violet-500/10 border border-violet-500/20 text-[11px] font-bold text-violet-300">
+          <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-zer-500/10 border border-zer-500/20 text-[13px] font-bold text-zer-300">
             <span>3</span>
-            <span className="text-violet-500">/</span>
+            <span className="text-zer-500">/</span>
             <span>3</span>
           </div>
         </div>
 
         {/* Title & Subtitle */}
         <div className="space-y-2 mb-8">
-          <h2 className="text-2xl font-black tracking-tight text-white">
+          <h2 className="font-display text-[30px] leading-[1.1] font-normal text-ink-50">
             Doğum tarixini qeyd et
           </h2>
-          <p className="text-sm text-slate-300/80 leading-relaxed">
+          <p className="text-sm text-ink-300/80 leading-relaxed">
             Bu məlumat gələcəkdə təcrübəni daha fərdi etmək üçün istifadə oluna bilər.
           </p>
         </div>
 
         {/* Date Display Pill */}
-        <div className="flex items-center justify-between p-4 mb-6 rounded-2xl bg-violet-500/10 border border-violet-500/30 backdrop-blur-sm">
+        <div className="flex items-center justify-between p-4 mb-6 rounded-2xl bg-zer-500/10 border border-zer-500/30 backdrop-blur-sm">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-600/30 text-violet-300">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-zer-600/30 text-zer-300">
               <Calendar className="h-5 w-5" />
             </div>
             <div>
-              <p className="text-[11px] font-bold uppercase tracking-wider text-violet-300/80">
+              <p className="text-[13px] font-bold text-zer-300/80">
                 Seçilmiş Tarix
               </p>
               <p className="text-lg font-black text-white">{formattedPreview}</p>
             </div>
           </div>
-          <div className="text-xs font-semibold text-slate-400">
+          <div className="text-xs font-semibold text-ink-400">
             {currentYear - year} yaş
           </div>
         </div>
@@ -125,7 +125,7 @@ export const BirthDateStep: React.FC<BirthDateStepProps> = ({
         <div className="grid grid-cols-3 gap-2.5">
           {/* Day Selector */}
           <div>
-            <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">
+            <label className="block text-[13px] font-bold text-ink-400 mb-1.5">
               Gün
             </label>
             <select
@@ -134,10 +134,10 @@ export const BirthDateStep: React.FC<BirthDateStepProps> = ({
                 setDay(Number(e.target.value));
                 if (error) setError(null);
               }}
-              className="w-full h-13 px-3 rounded-2xl bg-[#101524] border border-white/10 text-white font-semibold text-base outline-none focus:border-violet-500 focus:ring-2 focus:ring-violet-500/25 appearance-none cursor-pointer"
+              className="w-full h-13 px-3 rounded-2xl bg-[#1d161c] border border-white/10 text-white font-semibold text-base outline-none focus:border-zer-500 focus:ring-2 focus:ring-zer-500/25 appearance-none cursor-pointer"
             >
               {days.map((d) => (
-                <option key={d} value={d} className="bg-[#101524] text-white">
+                <option key={d} value={d} className="bg-[#1d161c] text-white">
                   {d}
                 </option>
               ))}
@@ -146,7 +146,7 @@ export const BirthDateStep: React.FC<BirthDateStepProps> = ({
 
           {/* Month Selector */}
           <div>
-            <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">
+            <label className="block text-[13px] font-bold text-ink-400 mb-1.5">
               Ay
             </label>
             <select
@@ -155,10 +155,10 @@ export const BirthDateStep: React.FC<BirthDateStepProps> = ({
                 setMonth(Number(e.target.value));
                 if (error) setError(null);
               }}
-              className="w-full h-13 px-3 rounded-2xl bg-[#101524] border border-white/10 text-white font-semibold text-sm outline-none focus:border-violet-500 focus:ring-2 focus:ring-violet-500/25 appearance-none cursor-pointer truncate"
+              className="w-full h-13 px-3 rounded-2xl bg-[#1d161c] border border-white/10 text-white font-semibold text-sm outline-none focus:border-zer-500 focus:ring-2 focus:ring-zer-500/25 appearance-none cursor-pointer truncate"
             >
               {AZ_MONTHS.map((mName, idx) => (
-                <option key={idx + 1} value={idx + 1} className="bg-[#101524] text-white">
+                <option key={idx + 1} value={idx + 1} className="bg-[#1d161c] text-white">
                   {mName}
                 </option>
               ))}
@@ -167,7 +167,7 @@ export const BirthDateStep: React.FC<BirthDateStepProps> = ({
 
           {/* Year Selector */}
           <div>
-            <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">
+            <label className="block text-[13px] font-bold text-ink-400 mb-1.5">
               İl
             </label>
             <select
@@ -176,10 +176,10 @@ export const BirthDateStep: React.FC<BirthDateStepProps> = ({
                 setYear(Number(e.target.value));
                 if (error) setError(null);
               }}
-              className="w-full h-13 px-3 rounded-2xl bg-[#101524] border border-white/10 text-white font-semibold text-base outline-none focus:border-violet-500 focus:ring-2 focus:ring-violet-500/25 appearance-none cursor-pointer"
+              className="w-full h-13 px-3 rounded-2xl bg-[#1d161c] border border-white/10 text-white font-semibold text-base outline-none focus:border-zer-500 focus:ring-2 focus:ring-zer-500/25 appearance-none cursor-pointer"
             >
               {years.map((y) => (
-                <option key={y} value={y} className="bg-[#101524] text-white">
+                <option key={y} value={y} className="bg-[#1d161c] text-white">
                   {y}
                 </option>
               ))}
@@ -188,7 +188,7 @@ export const BirthDateStep: React.FC<BirthDateStepProps> = ({
         </div>
 
         {error && (
-          <div className="mt-4 flex items-center gap-2 p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-xs text-rose-300">
+          <div className="mt-4 flex items-center gap-2 p-3 rounded-xl bg-nar-500/10 border border-nar-500/20 text-xs text-nar-300">
             <AlertCircle className="h-4 w-4 shrink-0" />
             <span>{error}</span>
           </div>
@@ -200,7 +200,7 @@ export const BirthDateStep: React.FC<BirthDateStepProps> = ({
         <button
           type="button"
           onClick={handleValidateAndNext}
-          className="w-full h-14 rounded-2xl bg-gradient-to-r from-violet-600 to-indigo-600 text-white font-bold text-base shadow-[0_4px_20px_rgba(124,58,237,0.35)] flex items-center justify-center gap-2 hover:brightness-110 active:scale-[0.98] transition-all duration-200"
+          className="w-full h-14 rounded-2xl btn-gold text-ink-950 font-bold text-base flex items-center justify-center gap-2 hover:brightness-110 active:scale-[0.98] transition-all duration-200"
         >
           <span>Davam et</span>
           <ArrowRight className="h-5 w-5" />

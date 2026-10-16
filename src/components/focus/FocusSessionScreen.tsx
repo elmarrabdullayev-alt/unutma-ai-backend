@@ -133,7 +133,7 @@ export const FocusSessionScreen: React.FC<FocusSessionScreenProps> = ({
   const renderAudioIcon = (iconName: string) => {
     switch (iconName) {
       case 'Music':
-        return <Music className="h-3.5 w-3.5 text-violet-400" />;
+        return <Music className="h-3.5 w-3.5 text-zer-400" />;
       case 'CloudRain':
         return <CloudRain className="h-3.5 w-3.5 text-cyan-400" />;
       case 'Coffee':
@@ -141,18 +141,18 @@ export const FocusSessionScreen: React.FC<FocusSessionScreenProps> = ({
       case 'Waves':
         return <Waves className="h-3.5 w-3.5 text-blue-400" />;
       case 'Zap':
-        return <Zap className="h-3.5 w-3.5 text-indigo-400" />;
+        return <Zap className="h-3.5 w-3.5 text-zer-400" />;
       case 'Trees':
-        return <Trees className="h-3.5 w-3.5 text-emerald-400" />;
+        return <Trees className="h-3.5 w-3.5 text-pista-400" />;
       case 'VolumeX':
       default:
-        return <VolumeX className="h-3.5 w-3.5 text-slate-400" />;
+        return <VolumeX className="h-3.5 w-3.5 text-ink-400" />;
     }
   };
 
   return (
     <div
-      className="flex flex-col h-full bg-gradient-to-b from-[#0D1322] via-[#090D16] to-[#070A12] text-white p-4 sm:p-5 justify-between relative select-none rounded-[28px] sm:rounded-[32px] border border-violet-500/20 shadow-[0_0_50px_rgba(139,92,246,0.12)] overflow-hidden"
+      className="flex flex-col h-full bg-gradient-to-b from-[#130e13] via-[#130e13] to-[#130e13] text-white p-4 sm:p-5 justify-between relative select-none rounded-[28px] sm:rounded-[32px] border border-zer-500/20 shadow-[0_0_50px_rgba(226,163,50,0.12)] overflow-hidden"
       style={{
         paddingTop: 'max(env(safe-area-inset-top, 0px), 16px)',
       }}
@@ -161,14 +161,14 @@ export const FocusSessionScreen: React.FC<FocusSessionScreenProps> = ({
       <div className="flex items-center justify-between gap-2 z-10">
         {/* Top Left: Focus Brand & Time Span */}
         <div className="flex items-center gap-2.5">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-violet-600/20 border border-violet-500/30 text-violet-400 shadow-inner">
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-zer-600/20 border border-zer-500/30 text-zer-400 shadow-inner">
             <Flame className="h-4 w-4" />
           </div>
           <div>
-            <h3 className="text-xs font-black uppercase tracking-wider text-slate-200">
+            <h3 className="text-xs font-black text-ink-200">
               FOKUS
             </h3>
-            <p className="text-[11px] text-slate-400 font-medium">
+            <p className="text-[13px] text-ink-400 font-medium">
               {startTimeStr} → {endTimeStr}
             </p>
           </div>
@@ -180,15 +180,15 @@ export const FocusSessionScreen: React.FC<FocusSessionScreenProps> = ({
           <button
             type="button"
             onClick={() => setIsVisualSheetOpen(true)}
-            className="flex h-8 w-8 items-center justify-center rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-slate-400 hover:text-slate-200 transition-colors"
+            className="flex h-8 w-8 items-center justify-center rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-ink-400 hover:text-ink-200 transition-colors"
             title="Görünüş"
           >
             {visualTheme === 'memory-ring' ? (
-              <Orbit className="h-3.5 w-3.5 text-violet-400" />
+              <Orbit className="h-3.5 w-3.5 text-zer-400" />
             ) : visualTheme === 'energy-core' ? (
-              <Zap className="h-3.5 w-3.5 text-fuchsia-400" />
+              <Zap className="h-3.5 w-3.5 text-zer-400" />
             ) : (
-              <Activity className="h-3.5 w-3.5 text-indigo-400" />
+              <Activity className="h-3.5 w-3.5 text-zer-400" />
             )}
           </button>
 
@@ -196,32 +196,32 @@ export const FocusSessionScreen: React.FC<FocusSessionScreenProps> = ({
           <button
             type="button"
             onClick={() => setIsAudioSheetOpen(true)}
-            className="flex h-8 w-8 items-center justify-center rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-slate-400 hover:text-slate-200 transition-colors relative"
+            className="flex h-8 w-8 items-center justify-center rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-ink-400 hover:text-ink-200 transition-colors relative"
             title="Səs"
           >
             {isAudioPlaying ? (
-              <Volume2 className="h-3.5 w-3.5 text-violet-400" />
+              <Volume2 className="h-3.5 w-3.5 text-zer-400" />
             ) : (
               renderAudioIcon(selectedAudioOption.iconName)
             )}
             {isAudioPlaying && (
               <span className="absolute top-1.5 right-1.5 flex h-1.5 w-1.5">
-                <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-violet-400"></span>
+                <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-zer-400"></span>
               </span>
             )}
           </button>
 
           {/* Status Badge */}
           <div
-            className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border flex items-center gap-1.5 ${
+            className={`px-2.5 py-1 rounded-full text-[12px] font-bold border flex items-center gap-1.5 ${
               session.status === 'running'
-                ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
+                ? 'bg-pista-500/10 border-pista-500/30 text-pista-400'
                 : 'bg-amber-500/10 border-amber-500/30 text-amber-400'
             }`}
           >
             {session.status === 'running' ? (
               <>
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400"></span>
+                <span className="h-1.5 w-1.5 rounded-full bg-pista-400"></span>
                 <span>Aktiv</span>
               </>
             ) : (
@@ -238,7 +238,7 @@ export const FocusSessionScreen: React.FC<FocusSessionScreenProps> = ({
       {session.taskTitle && (
         <div className="flex justify-center my-1 z-10">
           <div className="max-w-[85%] px-4 py-1.5 rounded-full bg-white/5 border border-white/10 text-center backdrop-blur-md">
-            <p className="text-xs font-semibold text-slate-200 truncate">
+            <p className="text-xs font-semibold text-ink-200 truncate">
               {session.taskTitle}
             </p>
           </div>
@@ -258,11 +258,11 @@ export const FocusSessionScreen: React.FC<FocusSessionScreenProps> = ({
           <div className="text-4xl sm:text-5xl font-black tracking-tight text-white font-mono drop-shadow-[0_4px_12px_rgba(0,0,0,0.5)]">
             {timeFormatted}
           </div>
-          <div className="text-[10px] sm:text-[11px] font-bold text-violet-300 mt-1.5 uppercase tracking-[0.25em] flex items-center justify-center gap-1.5">
+          <div className="text-[12px] sm:text-[13px] font-bold text-zer-300 mt-1.5 flex items-center justify-center gap-1.5">
             {session.status !== 'running' ? (
               <span className="text-amber-400 font-extrabold">• FASİLƏDƏ •</span>
             ) : remainingSeconds <= 0 ? (
-              <span className="text-violet-400 font-extrabold">• TAMAMLANDI •</span>
+              <span className="text-zer-400 font-extrabold">• TAMAMLANDI •</span>
             ) : (
               <span>• QALAN VAXT •</span>
             )}
@@ -270,7 +270,7 @@ export const FocusSessionScreen: React.FC<FocusSessionScreenProps> = ({
         </div>
 
         {/* 4. MOTIVATION TEXT */}
-        <p className="text-xs text-slate-400 mt-2 text-center max-w-[270px] leading-relaxed line-clamp-2">
+        <p className="text-xs text-ink-400 mt-2 text-center max-w-[270px] leading-relaxed line-clamp-2">
           {session.status === 'running'
             ? 'Diqqətini cəmlə və diqqətini yayındıran amillərdən uzaq dur.'
             : 'Fokus donduruldu. Hazır olduqda davam et.'}
@@ -285,8 +285,8 @@ export const FocusSessionScreen: React.FC<FocusSessionScreenProps> = ({
           onClick={handleTogglePause}
           className={`h-12 rounded-2xl font-bold text-xs flex items-center justify-center gap-1.5 transition-all active:scale-95 shadow-md ${
             session.status === 'running'
-              ? 'bg-[#131A2B]/90 border border-white/10 hover:border-violet-500/40 text-slate-200 hover:text-white'
-              : 'bg-gradient-to-r from-violet-600 to-indigo-600 border border-violet-400 text-white shadow-lg shadow-violet-600/30'
+              ? 'bg-[#1d161c]/90 border border-white/10 hover:border-zer-500/40 text-ink-200 hover:text-white'
+              : ' border border-zer-400 btn-gold text-ink-950 shadow-lg shadow-zer-600/30'
           }`}
         >
           {session.status === 'running' ? (
@@ -306,10 +306,10 @@ export const FocusSessionScreen: React.FC<FocusSessionScreenProps> = ({
         <button
           type="button"
           onClick={handleAddMinute}
-          className="h-12 rounded-2xl bg-[#131A2B]/90 border border-white/10 hover:border-violet-500/40 text-slate-200 hover:text-white font-bold text-xs flex items-center justify-center gap-1 active:scale-95 transition-all shadow-md"
+          className="h-12 rounded-2xl bg-[#1d161c]/90 border border-white/10 hover:border-zer-500/40 text-ink-200 hover:text-white font-bold text-xs flex items-center justify-center gap-1 active:scale-95 transition-all shadow-md"
           title="1 dəqiqə əlavə et"
         >
-          <Plus className="h-3.5 w-3.5 text-violet-400" />
+          <Plus className="h-3.5 w-3.5 text-zer-400" />
           <span>+1 dəq</span>
         </button>
 
@@ -317,7 +317,7 @@ export const FocusSessionScreen: React.FC<FocusSessionScreenProps> = ({
         <button
           type="button"
           onClick={() => setShowConfirmStop(true)}
-          className="h-12 rounded-2xl bg-[#131A2B]/90 border border-white/10 hover:border-rose-500/40 hover:bg-rose-500/10 text-slate-300 hover:text-rose-400 font-bold text-xs flex items-center justify-center gap-1.5 active:scale-95 transition-all shadow-md"
+          className="h-12 rounded-2xl bg-[#1d161c]/90 border border-white/10 hover:border-nar-500/40 hover:bg-nar-500/10 text-ink-300 hover:text-nar-400 font-bold text-xs flex items-center justify-center gap-1.5 active:scale-95 transition-all shadow-md"
         >
           <Square className="h-3.5 w-3.5" />
           <span>Bitir</span>
@@ -326,16 +326,16 @@ export const FocusSessionScreen: React.FC<FocusSessionScreenProps> = ({
 
       {/* Early Finish Confirmation Modal */}
       {showConfirmStop && (
-        <div className="absolute inset-0 bg-[#070A12]/95 backdrop-blur-md z-50 flex items-center justify-center p-6 animate-fade-in">
-          <div className="w-full max-w-xs rounded-2xl bg-[#121826] border border-white/10 p-5 text-center shadow-2xl space-y-4">
-            <div className="h-10 w-10 rounded-full bg-rose-500/10 text-rose-400 flex items-center justify-center mx-auto">
+        <div className="absolute inset-0 bg-[#130e13]/95 backdrop-blur-md z-50 flex items-center justify-center p-6 animate-fade-in">
+          <div className="w-full max-w-xs rounded-2xl bg-[#1d161c] border border-white/10 p-5 text-center shadow-2xl space-y-4">
+            <div className="h-10 w-10 rounded-full bg-nar-500/10 text-nar-400 flex items-center justify-center mx-auto">
               <Square className="h-5 w-5" />
             </div>
             <div>
               <h4 className="text-sm font-bold text-white">
                 Fokus sessiyasını bitirmək istəyirsən?
               </h4>
-              <p className="text-xs text-slate-400 mt-1">
+              <p className="text-xs text-ink-400 mt-1">
                 İndiyə qədər olan fokus vaxtınız qeyd olunacaq.
               </p>
             </div>
@@ -343,7 +343,7 @@ export const FocusSessionScreen: React.FC<FocusSessionScreenProps> = ({
               <button
                 type="button"
                 onClick={() => setShowConfirmStop(false)}
-                className="flex-1 h-10 rounded-xl bg-white/5 text-slate-300 text-xs font-bold hover:bg-white/10 active:scale-95 transition-all"
+                className="flex-1 h-10 rounded-xl bg-white/5 text-ink-300 text-xs font-bold hover:bg-white/10 active:scale-95 transition-all"
               >
                 Davam et
               </button>
@@ -353,7 +353,7 @@ export const FocusSessionScreen: React.FC<FocusSessionScreenProps> = ({
                   setShowConfirmStop(false);
                   onStopEarly();
                 }}
-                className="flex-1 h-10 rounded-xl bg-rose-600 text-white text-xs font-bold hover:bg-rose-500 active:scale-95 transition-all shadow-lg shadow-rose-600/30"
+                className="flex-1 h-10 rounded-xl bg-nar-600 text-white text-xs font-bold hover:bg-nar-500 active:scale-95 transition-all shadow-lg shadow-nar-600/30"
               >
                 Bitir
               </button>

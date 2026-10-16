@@ -75,17 +75,17 @@ export const ReminderCard: React.FC<ReminderCardProps> = ({
 
   // Determine vertical accent bar color based on status/priority/category
   const getAccentBarColor = () => {
-    if (isCompleted) return 'bg-slate-600';
-    if (isOverdue) return 'bg-rose-500 shadow-sm shadow-rose-500/50';
-    if (isNear) return 'bg-gradient-to-b from-rose-400 to-rose-600 shadow-[0_0_10px_rgba(244,63,94,0.7)]';
-    if (reminder.priority === 'high') return 'bg-rose-500 shadow-sm shadow-rose-500/50';
+    if (isCompleted) return 'bg-ink-600';
+    if (isOverdue) return 'bg-nar-500 shadow-sm shadow-nar-500/50';
+    if (isNear) return 'bg-gradient-to-b from-nar-400 to-nar-600 shadow-[0_0_10px_rgba(244,63,94,0.7)]';
+    if (reminder.priority === 'high') return 'bg-nar-500 shadow-sm shadow-nar-500/50';
     if (isUrgent) return 'bg-amber-500 shadow-sm shadow-amber-500/50';
-    if (reminder.category === 'personal') return 'bg-violet-500 shadow-sm shadow-violet-500/50';
-    if (reminder.category === 'work') return 'bg-indigo-500 shadow-sm shadow-indigo-500/50';
-    if (reminder.category === 'finance') return 'bg-emerald-500 shadow-sm shadow-emerald-500/50';
-    if (reminder.category === 'health') return 'bg-rose-400 shadow-sm shadow-rose-400/50';
+    if (reminder.category === 'personal') return 'bg-zer-500 shadow-sm shadow-zer-500/50';
+    if (reminder.category === 'work') return 'bg-zer-500 shadow-sm shadow-zer-500/50';
+    if (reminder.category === 'finance') return 'bg-pista-500 shadow-sm shadow-pista-500/50';
+    if (reminder.category === 'health') return 'bg-nar-400 shadow-sm shadow-nar-400/50';
     if (reminder.category === 'shopping') return 'bg-amber-400 shadow-sm shadow-amber-400/50';
-    return 'bg-violet-500';
+    return 'bg-zer-500';
   };
 
   return (
@@ -93,15 +93,15 @@ export const ReminderCard: React.FC<ReminderCardProps> = ({
       id={`reminder-card-${reminder.id}`}
       className={`group relative rounded-2xl border transition-all duration-200 ${
         isCompleted
-          ? 'border-white/5 bg-slate-900/40 opacity-60'
+          ? 'border-white/5 bg-ink-900/40 opacity-60'
           : isOverdue
-          ? 'border-rose-500/30 bg-[#151a29] shadow-md shadow-rose-500/5'
+          ? 'border-nar-500/30 bg-[#1d161c] shadow-md shadow-nar-500/5'
           : isNear
-          ? 'border-rose-500/35 bg-gradient-to-r from-[#171324] via-[#141829] to-[#141829] shadow-[0_4px_24px_-4px_rgba(244,63,94,0.22)] hover:border-rose-500/50'
+          ? 'border-nar-500/35 bg-gradient-to-r from-[#1d161c] via-[#1d161c] to-[#1d161c] shadow-[0_4px_24px_-4px_rgba(244,63,94,0.22)] hover:border-nar-500/50'
           : isUrgent
-          ? 'border-amber-500/30 bg-slate-800/60 shadow-lg shadow-amber-500/5'
-          : 'border-white/5 bg-slate-800/40 hover:border-white/15 hover:bg-slate-800/70 shadow-sm'
-      } p-4 text-slate-50`}
+          ? 'border-amber-500/30 bg-ink-800/60 shadow-lg shadow-amber-500/5'
+          : 'border-white/5 bg-ink-800/40 hover:border-white/15 hover:bg-ink-800/70 shadow-sm'
+      } p-4 text-ink-50`}
     >
       <div className="flex items-center gap-3.5">
         {/* Sleek Vertical Left Accent Bar */}
@@ -112,7 +112,7 @@ export const ReminderCard: React.FC<ReminderCardProps> = ({
           <div className="flex flex-wrap items-center gap-1.5 mb-1">
             {/* Category Tag */}
             <span
-              className={`inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${categoryInfo.bgColor}`}
+              className={`inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[12px] font-semibold ${categoryInfo.bgColor}`}
             >
               <CategoryIcon className="h-3 w-3" />
               {categoryInfo.label}
@@ -120,7 +120,7 @@ export const ReminderCard: React.FC<ReminderCardProps> = ({
 
             {/* Recurrence badge */}
             {recurrenceLabel && (
-              <span className="inline-flex items-center gap-1 rounded-md border border-violet-500/30 bg-violet-500/10 px-1.5 py-0.5 text-[10px] font-medium text-violet-300">
+              <span className="inline-flex items-center gap-1 rounded-md border border-zer-500/30 bg-zer-500/10 px-1.5 py-0.5 text-[12px] font-medium text-zer-300">
                 <Repeat className="h-2.5 w-2.5" />
                 {recurrenceLabel}
               </span>
@@ -128,8 +128,8 @@ export const ReminderCard: React.FC<ReminderCardProps> = ({
 
             {/* Priority tag */}
             {reminder.priority === 'high' && (
-              <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-rose-400">
-                <span className="h-1.5 w-1.5 rounded-full bg-rose-500 animate-pulse" />
+              <span className="inline-flex items-center gap-1 text-[12px] font-semibold text-nar-400">
+                <span className="h-1.5 w-1.5 rounded-full bg-nar-500 animate-pulse" />
                 Vacib
               </span>
             )}
@@ -138,7 +138,7 @@ export const ReminderCard: React.FC<ReminderCardProps> = ({
           {/* Title */}
           <h3
             className={`text-sm font-medium tracking-tight transition-all ${
-              reminder.isCompleted ? 'text-slate-400 line-through' : 'text-slate-100'
+              reminder.isCompleted ? 'text-ink-400 line-through' : 'text-ink-100'
             }`}
           >
             {reminder.title}
@@ -146,7 +146,7 @@ export const ReminderCard: React.FC<ReminderCardProps> = ({
 
           {/* Description / Notes if any */}
           {reminder.description && (
-            <p className="mt-0.5 text-xs text-slate-400 line-clamp-1">{reminder.description}</p>
+            <p className="mt-0.5 text-xs text-ink-400 line-clamp-1">{reminder.description}</p>
           )}
 
           {/* Time & Relative Timing */}
@@ -155,24 +155,24 @@ export const ReminderCard: React.FC<ReminderCardProps> = ({
               <span
                 className={`inline-flex items-center gap-1 font-bold ${
                   isCompleted
-                    ? 'text-slate-500'
+                    ? 'text-ink-500'
                     : isOverdue
-                    ? 'text-rose-400'
+                    ? 'text-nar-400'
                     : isNear
-                    ? 'text-rose-400'
-                    : 'text-slate-200'
+                    ? 'text-nar-400'
+                    : 'text-ink-200'
                 }`}
               >
                 {isNear && (
-                  <span className="h-1.5 w-1.5 rounded-full bg-rose-500 animate-pulse shrink-0" />
+                  <span className="h-1.5 w-1.5 rounded-full bg-nar-500 animate-pulse shrink-0" />
                 )}
                 {timeOnly}
               </span>
             )}
 
             {isNear && (
-              <span className="inline-flex items-center gap-1 rounded-md border border-rose-500/30 bg-rose-500/10 px-1.5 py-0.5 text-[9px] font-extrabold uppercase tracking-wider text-rose-300">
-                <Clock3 className="h-2.5 w-2.5 text-rose-400" />
+              <span className="inline-flex items-center gap-1 rounded-md border border-nar-500/30 bg-nar-500/10 px-1.5 py-0.5 text-[12px] font-extrabold text-nar-300">
+                <Clock3 className="h-2.5 w-2.5 text-nar-400" />
                 2 saat içində
               </span>
             )}
@@ -180,21 +180,21 @@ export const ReminderCard: React.FC<ReminderCardProps> = ({
             <span
               className={`inline-flex items-center gap-1 font-medium ${
                 isCompleted
-                  ? 'text-slate-500'
+                  ? 'text-ink-500'
                   : isOverdue
-                  ? 'text-rose-400 font-semibold'
+                  ? 'text-nar-400 font-semibold'
                   : isNear
-                  ? 'text-rose-400 font-semibold'
+                  ? 'text-nar-400 font-semibold'
                   : isUrgent
                   ? 'text-amber-400'
-                  : 'text-slate-400'
+                  : 'text-ink-400'
               }`}
             >
-              <Clock className="h-3.5 w-3.5 text-slate-400" />
+              <Clock className="h-3.5 w-3.5 text-ink-400" />
               {relativeTime}
             </span>
 
-            <span className="text-[11px] text-slate-500">
+            <span className="text-[13px] text-ink-500">
               • {formatDateAz(reminder.dueDateTime)}
             </span>
           </div>
@@ -206,7 +206,7 @@ export const ReminderCard: React.FC<ReminderCardProps> = ({
           <button
             id={`speak-reminder-${reminder.id}`}
             onClick={handleSpeak}
-            className="flex h-8 w-8 items-center justify-center rounded-xl text-slate-400 hover:bg-slate-700/50 hover:text-violet-400 transition-colors"
+            className="flex h-8 w-8 items-center justify-center rounded-xl text-ink-400 hover:bg-ink-700/50 hover:text-zer-400 transition-colors"
             title="Səsləndir"
           >
             <Volume2 className="h-4 w-4" />
@@ -220,14 +220,14 @@ export const ReminderCard: React.FC<ReminderCardProps> = ({
                 setShowMenu(!showMenu);
                 setShowSnoozeMenu(false);
               }}
-              className="flex h-8 w-8 items-center justify-center rounded-xl text-slate-400 hover:bg-slate-700/50 hover:text-white transition-colors"
+              className="flex h-8 w-8 items-center justify-center rounded-xl text-ink-400 hover:bg-ink-700/50 hover:text-white transition-colors"
             >
               <MoreVertical className="h-4 w-4" />
             </button>
 
             {showMenu && (
               <div
-                className="absolute right-0 top-9 z-30 w-44 rounded-2xl border border-white/10 bg-slate-900/95 p-1.5 shadow-2xl backdrop-blur-xl animate-fade-in"
+                className="absolute right-0 top-9 z-30 w-44 rounded-2xl border border-white/10 bg-ink-900/95 p-1.5 shadow-2xl backdrop-blur-xl animate-fade-in"
                 onClick={(e) => e.stopPropagation()}
               >
                 <button
@@ -236,9 +236,9 @@ export const ReminderCard: React.FC<ReminderCardProps> = ({
                     setShowMenu(false);
                     onEdit(reminder);
                   }}
-                  className="flex w-full items-center gap-2 rounded-xl px-2.5 py-1.5 text-xs text-slate-300 hover:bg-slate-800 hover:text-white transition-colors"
+                  className="flex w-full items-center gap-2 rounded-xl px-2.5 py-1.5 text-xs text-ink-300 hover:bg-ink-800 hover:text-white transition-colors"
                 >
-                  <Edit2 className="h-3.5 w-3.5 text-indigo-400" />
+                  <Edit2 className="h-3.5 w-3.5 text-zer-400" />
                   Redaktə et
                 </button>
 
@@ -246,23 +246,23 @@ export const ReminderCard: React.FC<ReminderCardProps> = ({
                 <button
                   id={`snooze-toggle-${reminder.id}`}
                   onClick={() => setShowSnoozeMenu(!showSnoozeMenu)}
-                  className="flex w-full items-center justify-between rounded-xl px-2.5 py-1.5 text-xs text-slate-300 hover:bg-slate-800 hover:text-white transition-colors"
+                  className="flex w-full items-center justify-between rounded-xl px-2.5 py-1.5 text-xs text-ink-300 hover:bg-ink-800 hover:text-white transition-colors"
                 >
                   <span className="flex items-center gap-2">
                     <Clock3 className="h-3.5 w-3.5 text-amber-400" />
                     Təxirə sal
                   </span>
-                  <span className="text-[10px] text-slate-500">▶</span>
+                  <span className="text-[12px] text-ink-500">▶</span>
                 </button>
 
                 {showSnoozeMenu && (
-                  <div className="my-1 rounded-xl border border-white/5 bg-slate-950/90 p-1">
+                  <div className="my-1 rounded-xl border border-white/5 bg-ink-950/90 p-1">
                     <button
                       onClick={() => {
                         onSnooze(reminder.id, 15);
                         setShowMenu(false);
                       }}
-                      className="w-full text-left rounded-lg px-2 py-1 text-[11px] text-slate-300 hover:bg-slate-800 hover:text-amber-300"
+                      className="w-full text-left rounded-lg px-2 py-1 text-[13px] text-ink-300 hover:bg-ink-800 hover:text-amber-300"
                     >
                       +15 dəqiqə
                     </button>
@@ -271,7 +271,7 @@ export const ReminderCard: React.FC<ReminderCardProps> = ({
                         onSnooze(reminder.id, 60);
                         setShowMenu(false);
                       }}
-                      className="w-full text-left rounded-lg px-2 py-1 text-[11px] text-slate-300 hover:bg-slate-800 hover:text-amber-300"
+                      className="w-full text-left rounded-lg px-2 py-1 text-[13px] text-ink-300 hover:bg-ink-800 hover:text-amber-300"
                     >
                       +1 saat
                     </button>
@@ -280,7 +280,7 @@ export const ReminderCard: React.FC<ReminderCardProps> = ({
                         onSnooze(reminder.id, 24 * 60);
                         setShowMenu(false);
                       }}
-                      className="w-full text-left rounded-lg px-2 py-1 text-[11px] text-slate-300 hover:bg-slate-800 hover:text-amber-300"
+                      className="w-full text-left rounded-lg px-2 py-1 text-[13px] text-ink-300 hover:bg-ink-800 hover:text-amber-300"
                     >
                       Sabah bu vaxta
                     </button>
@@ -295,9 +295,9 @@ export const ReminderCard: React.FC<ReminderCardProps> = ({
                     setShowMenu(false);
                     onDelete(reminder.id);
                   }}
-                  className="flex w-full items-center gap-2 rounded-xl px-2.5 py-1.5 text-xs text-rose-400 hover:bg-rose-500/10 transition-colors"
+                  className="flex w-full items-center gap-2 rounded-xl px-2.5 py-1.5 text-xs text-nar-400 hover:bg-nar-500/10 transition-colors"
                 >
-                  <Trash2 className="h-3.5 w-3.5 text-rose-400" />
+                  <Trash2 className="h-3.5 w-3.5 text-nar-400" />
                   Sil
                 </button>
               </div>
@@ -310,8 +310,8 @@ export const ReminderCard: React.FC<ReminderCardProps> = ({
             onClick={() => onToggleComplete(reminder.id)}
             className={`flex h-6 w-6 items-center justify-center rounded-lg border transition-all active:scale-90 ${
               reminder.isCompleted
-                ? 'border-violet-500 bg-violet-600 text-white shadow-md shadow-violet-500/30'
-                : 'border-slate-600 bg-slate-800/50 hover:border-violet-400 text-transparent'
+                ? 'border-zer-500 btn-gold text-ink-950 shadow-md shadow-zer-500/30'
+                : 'border-ink-600 bg-ink-800/50 hover:border-zer-400 text-transparent'
             }`}
             title={reminder.isCompleted ? 'Tamamlanmamış et' : 'Tamamla'}
           >
