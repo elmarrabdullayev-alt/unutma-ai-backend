@@ -8,6 +8,7 @@ import {
 import { getReminderStorageProvider, ReminderStorageProvider } from '../storage/ReminderStorageProvider';
 import { notificationService } from './notificationService';
 import { getLocalYMD } from '../utils/dateUtils';
+import { getNextOccurrence } from '../utils/recurrence';
 
 type ReminderListener = (reminders: Reminder[]) => void;
 
@@ -400,59 +401,15 @@ class ReminderService {
     this.notifySubscribers();
   }
 
-  /** Adds months without overflowing (Jan 31 + 1 month = Feb 28/29, not Mar 3). */
-  private addMonths(date: Date, months: number, dayOfMonth?: number): Date {
-    const result = new Date(date);
-    const wantedDay = dayOfMonth || date.getDate();
-    result.setDate(1);
-    result.setMonth(result.getMonth() + months);
-    const lastDay = new Date(result.getFullYear(), result.getMonth() + 1, 0).getDate();
-    result.setDate(Math.min(wantedDay, lastDay));
-    return result;
-  }
-
-  private nextOccurrence(r: Reminder, from: Date): Date | null {
-    const next = new Date(from);
-    if (r.recurrenceInterval && r.recurrenceUnit) {
-      const n = Math.max(1, r.recurrenceInterval);
-      if (r.recurrenceUnit === 'day') next.setDate(next.getDate() + n);
-      else if (r.recurrenceUnit === 'week') next.setDate(next.getDate() + n * 7);
-      else if (r.recurrenceUnit === 'month') return this.addMonths(next, n, r.recurrenceDayOfMonth);
-      else if (r.recurrenceUnit === 'year') next.setFullYear(next.getFullYear() + n);
-      else return null;
-      return next;
-    }
-    switch (r.recurrence) {
-      case 'daily':
-        next.setDate(next.getDate() + 1);
-        return next;
-      case 'weekly':
-        next.setDate(next.getDate() + 7);
-        return next;
-      case 'monthly':
-        return this.addMonths(next, 1, r.recurrenceDayOfMonth);
-      case 'yearly':
-        next.setFullYear(next.getFullYear() + 1);
-        return next;
-      case 'weekdays': {
-        const day = next.getDay();
-        next.setDate(next.getDate() + (day === 5 ? 3 : day === 6 ? 2 : 1));
-        return next;
-      }
-      default:
-        return null;
-    }
-  }
-
   private scheduleNextRecurringInstance(r: Reminder) {
-    let next = this.nextOccurrence(r, new Date(r.dueDateTime));
+    let next = getNextOccurrence(r, new Date(r.dueDateTime));
     if (!next) return;
 
     // If the reminder was completed late, skip occurrences that are already in
     // the past so the new instance doesn't fire immediately.
     let guard = 0;
     while (next && next.getTime() <= Date.now() && guard++ < 1000) {
-      next = this.nextOccurrence(r, next);
+      next = getNextOccurrence(r, next);
     }
     if (!next) return;
 

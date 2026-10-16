@@ -88,6 +88,8 @@ export function normalizeAz(text: string): string {
     .replace(/İ/g, 'i')
     .replace(/I/g, 'ı')
     .toLowerCase()
+    // "İ".toLowerCase() in JS is "i" + U+0307 (combining dot); drop the dot
+    .replace(/\u0307/g, '')
     .replace(/[.,!?;:'"()]/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
@@ -104,7 +106,89 @@ const AZ_WORD_NUMBERS: Record<string, number> = {
  * Temporal words alone (sabah, bu gün, axşam, həftə) must NEVER imply create_reminder.
  */
 export const EXPLICIT_CREATE_REGEX =
-  /\b(xatırlat|xatirlat|xatırlatsın|xatirlatsin|xatırlatmaq|xatirlatmaq|əlavə et|elave et|əlavə elə|elave ele|yarat|yaratsın|yaratmaq|qeyd et|qeyd elə|qeyd apar|planlaşdır|planlasdir|yadıma sal|yadima sal|yadına sal|yadina sal|yada sal|unutma)\b/i;
+  // JS \b only understands ASCII letters, so "\bəlavə et" never matched. Use
+  // Unicode-aware boundaries instead. "Unutma AI" (the app name) is not a verb.
+  /(?<!\p{L})(?:xat[ıi]rlat(?:s[ıi]n|maq|ma[ğg][ıi])?|[əe]lav[əe] (?:et|el[əe])|yarat(?:s[ıi]n|maq)?|qeyd (?:et|el[əe]|apar)|planla[şs]d[ıi]r|yad[ıi]ma sal|yad[ıi]na sal|yada sal|unutma(?! a[iı](?!\p{L})))(?!\p{L})/iu;
+
+/** Whole-word test that also works for Azerbaijani letters (ə, ş, ç, ğ, ı, ö, ü). */
+function hasWord(text: string, words: string): boolean {
+  return new RegExp(`(?<!\\p{L})(?:${words})(?!\\p{L})`, 'iu').test(text);
+}
+
+/** "Bu gün evdə nə edək?" is a question, not a request to create a reminder. */
+export function looksLikeQuestion(text: string): boolean {
+  const norm = normalizeAz(text);
+  if (/\?\s*$/.test(text.trim())) return true;
+  return hasWord(norm, 'nə|ne|necə|nece|niyə|niye|nədir|nedir|hara|harada|haraya|kim|kimə|hansı|hansi|neçə|nəyə|edək|edek|edim mi|olar mı|varmı|varmi');
+}
+
+/** Weekday mentioned as a whole word ("bazara getmək" is NOT Sunday). */
+export function findWeekday(text: string): number | null {
+  const lower = text.toLocaleLowerCase('az-AZ');
+  for (const [name, idx] of Object.entries(AZ_WEEKDAYS)) {
+    if (new RegExp(`(?<!\\p{L})${name}(?:\\s+gün[üu])?(?!\\p{L})`, 'iu').test(lower)) return idx;
+  }
+  return null;
+}
+
+const WEEKDAY_NAMES_REGEX =
+  /(?<!\p{L})(?:bazar\s+ert[əe]si|[çc][əe]r[şs][əe]nb[əe]\s+ax[şs]am[ıi]|c[üu]m[əe]\s+ax[şs]am[ıi]|[çc][əe]r[şs][əe]nb[əe]|c[üu]m[əe]|[şs][əe]nb[əe]|bazar)(?:\s+g[üu]n[üu])?(?!\p{L})/giu;
+
+const DURATION_WORD = '(\\d+|bir|iki|üç|uc|dörd|beş|altı|yeddi|səkkiz|doqquz|on|yarım|yarim)';
+const RELATIVE_TIME_REGEX = new RegExp(
+  `${DURATION_WORD}\\s*(saat|dəqiqə|deqiqe|gün|gun|həftə|hefte)(?:dan|dən|den)?\\s+sonra`,
+  'iu'
+);
+
+/** Words that describe the command itself, not which reminder is meant. */
+const TARGET_STOPWORDS = new Set([
+  'sil', 'silin', 'ləğv', 'legv', 'yox', 'et', 'elə', 'tamamla', 'tamamlandı', 'bitirdim', 'bitmiş', 'kimi', 'qeyd',
+  'yerinə', 'yetirildi', 'başa', 'çatdı', 'gecikdir', 'təxirə', 'sal', 'sonraya', 'saxla', 'uzat', 'dəqiqə', 'saat',
+  'gün', 'yarım', 'bir', 'iki', 'xatırlatmanı', 'xatırlatmasını', 'xatırlatma', 'planı', 'tapşırığı', 'görüşümü',
+  'işi', 'bu', 'o', 'ilə', 'mənim', 'olan', 'sabahkı', 'bugünkü',
+]);
+
+function wordsOf(text: string): string[] {
+  return normalizeAz(text)
+    .split(/[^\p{L}\p{N}]+/u)
+    .filter(Boolean);
+}
+
+/** Shared prefix test that tolerates Azerbaijani suffixes ("iclası" ~ "iclas"). */
+function wordsMatch(a: string, b: string): boolean {
+  const need = Math.min(4, a.length, b.length);
+  if (need < 3) return a === b;
+  let i = 0;
+  while (i < a.length && i < b.length && a[i] === b[i]) i++;
+  return i >= need;
+}
+
+/**
+ * Finds the reminder the user is talking about by comparing words in the
+ * command with words in reminder titles. Returns null when nothing matches —
+ * never "the first reminder in the list".
+ */
+export function findTargetReminder(command: string, reminders: Reminder[]): Reminder | null {
+  const queryWords = wordsOf(command).filter((w) => w.length >= 3 && !TARGET_STOPWORDS.has(w) && !/^\d+$/.test(w));
+  if (queryWords.length === 0) return null;
+
+  let best: { r: Reminder; score: number } | null = null;
+  const now = Date.now();
+  for (const r of reminders) {
+    const titleWords = wordsOf(r.title);
+    const score = queryWords.filter((q) => titleWords.some((t) => wordsMatch(q, t))).length;
+    if (score === 0) continue;
+    if (
+      !best ||
+      score > best.score ||
+      (score === best.score &&
+        Math.abs(new Date(r.dueDateTime).getTime() - now) < Math.abs(new Date(best.r.dueDateTime).getTime() - now))
+    ) {
+      best = { r, score };
+    }
+  }
+  return best ? best.r : null;
+}
 
 /**
  * Mandatory Rule: Query/view phrases MUST NEVER create reminders.
@@ -337,18 +421,23 @@ export class IntelligentRouter {
     }
 
     // D. COMPLETION COMMANDS
+    // Whole words only: "Sabah hesabatı tamamlaMAĞI xatırlat" is a NEW reminder,
+    // not a command to complete the existing "Hesabatı tamamla".
     if (
-      /(tamamla|tamamlandı|bitmiş kimi qeyd et|bitirdim|yerinə yetirildi|başa çatdı)/i.test(lower) &&
-      !/(necə|nə vaxt|əlavə et)/i.test(lower)
+      hasWord(lower, 'tamamla|tamamlandı|bitmiş kimi qeyd et|bitirdim|yerinə yetirildi|başa çatdı') &&
+      !this.hasExplicitCreateVerb(lower.replace(/bitmiş kimi qeyd et/g, '')) &&
+      !/(necə|nə vaxt)/i.test(lower)
     ) {
       const res = this.handleCompleteCommand(lower, currentReminders);
       return { handledLocally: true, action: res.payload.action, ...res };
     }
 
     // E. DELETION COMMANDS
+    // Whole words only: "evi təmizləmək işini xatırlat" used to DELETE the
+    // "Evi təmizlə" reminder ("təmizlə" + "işi" matched inside other words).
     if (
-      /(sil|ləğv et|yox et|təmizlə)/i.test(lower) &&
-      /(xatırlatmanı|görüşümü|planı|tapşırığı|iclası|işi)/i.test(lower)
+      hasWord(lower, 'sil|silin|ləğv et|legv et|yox et') &&
+      !this.hasExplicitCreateVerb(lower)
     ) {
       const res = this.handleDeleteCommand(lower, currentReminders);
       return { handledLocally: true, action: res.payload.action, ...res };
@@ -356,8 +445,9 @@ export class IntelligentRouter {
 
     // F. SNOOZE / UPDATE COMMANDS
     if (
-      /(gecikdir|təxirə sal|sonraya saxla|uzat)/i.test(lower) &&
-      /(\d+|bir|iki|yarım)\s*(dəqiqə|saat|gün)/i.test(lower)
+      hasWord(lower, 'gecikdir|təxirə sal|sonraya saxla|uzat') &&
+      /(\d+|bir|iki|yarım)\s*(dəqiqə|saat|gün)/i.test(lower) &&
+      !this.hasExplicitCreateVerb(lower)
     ) {
       const res = this.handleSnoozeCommand(lower, currentReminders);
       return { handledLocally: true, action: res.payload.action, ...res };
@@ -405,7 +495,9 @@ export class IntelligentRouter {
 
     // I. REMINDER CREATION & RECURRENCE (e.g. "Sabah saat 10-da Anara zəng et, 2-də maşınlar, axşam dərmanı al", "Sabah saat 10-da Anara zəng etməyi xatırlat")
     const isQuery = this.isRetrievalQuery(clean);
-    const isActionable = (this.hasExplicitCreateVerb(clean) || this.hasActionDirective(clean)) && !isQuery;
+    const hasCreateVerb = this.hasExplicitCreateVerb(clean);
+    const isActionable =
+      (hasCreateVerb || (this.hasActionDirective(clean) && !looksLikeQuestion(clean))) && !isQuery;
 
     if (isActionable) {
       const parsedReminders = this.parseDeterministicReminders(prompt);
@@ -493,7 +585,7 @@ export class IntelligentRouter {
     if (this.isRetrievalQuery(clean) && !this.hasExplicitCreateVerb(clean)) {
       return [];
     }
-    if (!this.hasExplicitCreateVerb(clean) && !this.hasActionDirective(clean)) {
+    if (!this.hasExplicitCreateVerb(clean) && (!this.hasActionDirective(clean) || looksLikeQuestion(clean))) {
       return [];
     }
 
@@ -503,8 +595,19 @@ export class IntelligentRouter {
     const results: ParsedDeterministicItem[] = [];
     let contextDate: Date | null = null;
 
-    for (const segment of segments) {
+    let carry = '';
+    for (const rawSegment of segments) {
+      const segment = carry ? `${carry} ${rawSegment}` : rawSegment;
+      carry = '';
       const item = this.parseSingleReminderSegment(segment, contextDate);
+      if (!item) {
+        // "Bazar ertəsi" | "saat 9-da iclas": a piece that only says WHEN belongs
+        // to the next piece instead of being dropped.
+        if (/(sabah|birigün|bu\s*gün|bugün|ayın|saat|\d|ertəsi|ertesi|çərşənbə|cümə|şənbə|bazar|axşam|səhər|günorta|gecə)/iu.test(segment)) {
+          carry = segment;
+        }
+        continue;
+      }
       if (item) {
         console.log('[RECURRENCE-TEST] recurrenceInterval:', item.recurrenceInterval);
         console.log('[RECURRENCE-TEST] recurrenceUnit:', item.recurrenceUnit);
@@ -525,8 +628,11 @@ export class IntelligentRouter {
     }
 
     // 2. Split by conjunctions: və, ardınca, sonra, daha sonra
-    if (/\s+(?:və|ardınca|sonra|daha sonra)\s+/i.test(text)) {
-      const parts = text.split(/\s+(?:və|ardınca|sonra|daha sonra)\s+/i).map((s) => s.trim().replace(/\.+$/, '')).filter(Boolean);
+    // "2 saat sonra" / "30 dəqiqədən sonra" is a time, not "and then".
+    const conjunctionRegex =
+      /(?<!(?:saat|saatdan|dəqiqə|dəqiqədən|deqiqe|deqiqeden|gün|gündən|gun|gunden|həftə|həftədən))\s+(?:və|ardınca|sonra|daha sonra)\s+/iu;
+    if (conjunctionRegex.test(text)) {
+      const parts = text.split(new RegExp(conjunctionRegex.source, 'giu')).map((s) => s.trim().replace(/\.+$/, '')).filter(Boolean);
       if (parts.length > 1) return parts;
     }
 
@@ -657,18 +763,23 @@ export class IntelligentRouter {
     }
 
     // 2. Relative time offsets (e.g. "2 saat sonra", "30 dəqiqə sonra")
-    const relativeMatch = lower.match(/(\d+)\s*(saat|dəqiqə|gün)\s*sonra/i);
+    // Also "yarım saat sonra", "1 saatdan sonra", "iki gün sonra".
+    const relativeMatch = lower.match(RELATIVE_TIME_REGEX);
     if (relativeMatch) {
-      const amount = parseInt(relativeMatch[1], 10);
+      const rawAmount = relativeMatch[1].toLowerCase();
+      const isHalf = rawAmount === 'yarım' || rawAmount === 'yarim';
+      const amount = /^\d+$/.test(rawAmount) ? parseInt(rawAmount, 10) : AZ_WORD_NUMBERS[rawAmount] || 1;
       const unit = relativeMatch[2].toLowerCase();
       const targetDate = new Date(now);
 
       if (unit.startsWith('dəqiqə') || unit.startsWith('deqiqe')) {
-        targetDate.setMinutes(now.getMinutes() + amount);
+        targetDate.setMinutes(now.getMinutes() + (isHalf ? 0.5 : amount));
       } else if (unit.startsWith('saat')) {
-        targetDate.setHours(now.getHours() + amount);
+        targetDate.setTime(now.getTime() + (isHalf ? 30 : amount * 60) * 60 * 1000);
       } else if (unit.startsWith('gün') || unit.startsWith('gun')) {
         targetDate.setDate(now.getDate() + amount);
+      } else if (unit.startsWith('həftə') || unit.startsWith('hefte')) {
+        targetDate.setDate(now.getDate() + amount * 7);
       }
 
       const cleanTitle = this.cleanReminderTitle(segment, relativeMatch[0]);
@@ -702,6 +813,12 @@ export class IntelligentRouter {
     let textForTimeSearch = lower.replace(/hər\s+(?:\d+|bir|iki|üç|uc|dörd|dord|beş|bes|altı|alti|yeddi|səkkiz|sekkiz|doqquz|on)\s+(?:gündən|gunden|həftədən|hefteden|aydan|ildən|ilden)\s+bir/giu, ' ');
     textForTimeSearch = textForTimeSearch.replace(/hər\s+ayın\s+\d+(?:[-–]?(?:i|si|ı|sı|u|su|ü|sü))?/giu, ' ');
     textForTimeSearch = textForTimeSearch.replace(/hər\s+(?:gün|gun|həftə|hefte|ay|il|bazar\s*ertəsi|bazar\s*ertesi)/giu, ' ');
+    // "Cümə axşamı" is Thursday, not "evening"; "ayın 15-də" is a date, not 15:00.
+    textForTimeSearch = textForTimeSearch.replace(WEEKDAY_NAMES_REGEX, ' ');
+    const dayOfMonthMatch = /hər\s+ayın/iu.test(lower) ? null : lower.match(/(?<!\p{L})ayın\s+(\d{1,2})(?:\s*[-–]?\s*(?:i|si|ı|sı|u|su|ü|sü|ün|in|ın|un|də|da|nə|na|dək))?(?!\p{L})/iu);
+    textForTimeSearch = textForTimeSearch.replace(/(?<!\p{L})ayın\s+\d{1,2}(?:\s*[-–]?\s*\p{L}*)?/giu, ' ');
+    // Daypart words checked on text without weekday names (see "Cümə axşamı" above)
+    const lowerNoWeekday = lower.replace(WEEKDAY_NAMES_REGEX, ' ');
 
     // 4. Exact or Inferred Time of Day
     let targetHours = 10;
@@ -742,8 +859,8 @@ export class IntelligentRouter {
       timeConfidence = 'exact';
     } else if (nightMatch) {
       const h = nightMatch[1] ? parseInt(nightMatch[1], 10) : (nightMatch[3] ? AZ_WORD_NUMBERS[nightMatch[3]] : 1);
-      // "gecə" keeps 1–4 as 01–04. Explicit 24-hour time must never be changed.
-      targetHours = h >= 1 && h <= 4 ? h : (h === 12 ? 0 : (h === 11 ? 23 : h));
+      // "gecə" keeps 1–4 as 01–04; "gecə 10/11" means 22:00/23:00. Explicit 24-hour time is kept.
+      targetHours = h === 12 ? 0 : h >= 9 && h <= 11 ? h + 12 : h;
       targetMinutes = nightMatch[2] ? parseInt(nightMatch[2], 10) : 0;
       timeConfidence = 'exact';
     } else if (
@@ -758,13 +875,13 @@ export class IntelligentRouter {
 
       // Explicit 24-hour time must never be changed (hours >= 12 preserved)
       if (targetHours >= 1 && targetHours <= 11) {
-        if (/axşam|axsam/i.test(lower)) {
+        if (/axşam|axsam/i.test(lowerNoWeekday)) {
           // "axşam" = PM
           targetHours += 12;
-        } else if (/günorta|gunorta/i.test(lower) && targetHours <= 5) {
+        } else if (/günorta|gunorta/i.test(lowerNoWeekday) && targetHours <= 5) {
           // "günorta" converts 1–5 to 13–17
           targetHours += 12;
-        } else if (/gecə|gece/i.test(lower) && targetHours <= 4) {
+        } else if (/gecə|gece/i.test(lowerNoWeekday) && targetHours <= 4) {
           // "gecə" keeps 1–4 as 01–04
         }
         // Bare 1–11 hours with no daypart = AM (targetHours unchanged)
@@ -774,27 +891,27 @@ export class IntelligentRouter {
       timeConfidence = 'exact';
       // Explicit 24-hour time must never be changed
       if (targetHours >= 1 && targetHours <= 11) {
-        if (/axşam|axsam/i.test(lower)) {
+        if (/axşam|axsam/i.test(lowerNoWeekday)) {
           // "axşam" = PM
           targetHours += 12;
-        } else if (/günorta|gunorta/i.test(lower) && targetHours <= 5) {
+        } else if (/günorta|gunorta/i.test(lowerNoWeekday) && targetHours <= 5) {
           // "günorta" converts 1–5 to 13–17
           targetHours += 12;
-        } else if (/gecə|gece/i.test(lower) && targetHours <= 4) {
+        } else if (/gecə|gece/i.test(lowerNoWeekday) && targetHours <= 4) {
           // "gecə" keeps 1–4 as 01–04
         }
         // Bare 1–11 hours with no daypart = AM (targetHours unchanged)
       }
-    } else if (/axşam|axşamüstü|axsam/i.test(lower)) {
+    } else if (/axşam|axşamüstü|axsam/i.test(lowerNoWeekday)) {
       targetHours = 20;
       targetMinutes = 0;
-    } else if (/səhər|seher/i.test(lower)) {
+    } else if (/səhər|seher/i.test(lowerNoWeekday)) {
       targetHours = 9;
       targetMinutes = 0;
-    } else if (/günorta|gunorta/i.test(lower)) {
+    } else if (/günorta|gunorta/i.test(lowerNoWeekday)) {
       targetHours = 14;
       targetMinutes = 0;
-    } else if (/gecə|gece/i.test(lower)) {
+    } else if (/gecə|gece/i.test(lowerNoWeekday)) {
       targetHours = 23;
       targetMinutes = 0;
     } else {
@@ -840,18 +957,33 @@ export class IntelligentRouter {
       } else if (/\bbu\s*gün\b|\bbugün\b/i.test(lower)) {
         targetDate = new Date(now);
         inferredDate = false;
-      } else if (!contextDate) {
-        let matchedWeekday: number | null = null;
-        for (const [wdName, wdIndex] of Object.entries(AZ_WEEKDAYS)) {
-          if (lower.includes(wdName)) {
-            matchedWeekday = wdIndex;
-            break;
+      } else if (dayOfMonthMatch) {
+        // "ayın 15-də kirayəni ödə" -> the 15th of this month (or next month if past)
+        const dom = parseInt(dayOfMonthMatch[1], 10);
+        if (dom >= 1 && dom <= 31) {
+          targetDate = new Date(now);
+          targetDate.setDate(1);
+          const lastDay = (d: Date) => new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+          targetDate.setDate(Math.min(dom, lastDay(targetDate)));
+          targetDate.setHours(targetHours, targetMinutes, 0, 0);
+          if (targetDate.getTime() < now.getTime()) {
+            targetDate.setDate(1);
+            targetDate.setMonth(targetDate.getMonth() + 1);
+            targetDate.setDate(Math.min(dom, lastDay(targetDate)));
           }
+          inferredDate = false;
         }
+      } else {
+        // A weekday in THIS segment wins over the date carried from an earlier
+        // segment ("sabah ..., cümə günü həkim" -> Friday, not tomorrow).
+        const matchedWeekday = findWeekday(lower);
         if (matchedWeekday !== null) {
+          targetDate = new Date(now);
           let diff = matchedWeekday - now.getDay();
-          if (diff <= 0) diff += 7;
+          if (diff < 0) diff += 7;
           targetDate.setDate(now.getDate() + diff);
+          targetDate.setHours(targetHours, targetMinutes, 0, 0);
+          if (targetDate.getTime() <= now.getTime()) targetDate.setDate(targetDate.getDate() + 7);
           inferredDate = false;
         }
       }
@@ -859,6 +991,14 @@ export class IntelligentRouter {
       targetDate.setHours(targetHours, targetMinutes, 0, 0);
       if (inferredDate && targetDate.getTime() < now.getTime()) {
         targetDate.setDate(targetDate.getDate() + 1);
+      }
+      // "Bu gün ..." without a clock time after the default 10:00 has passed:
+      // don't create a reminder in the past, use the next full hour instead.
+      if (!inferredDate && timeConfidence === 'inferred' && targetDate.getTime() < now.getTime()) {
+        const nextHour = new Date(now);
+        nextHour.setHours(now.getHours() + 1, 0, 0, 0);
+        if (nextHour.toDateString() === targetDate.toDateString()) targetDate = nextHour;
+        else targetDate.setDate(targetDate.getDate() + 1);
       }
     }
 
@@ -917,24 +1057,33 @@ export class IntelligentRouter {
     t = t.replace(/hər\s+ayın\s+\d+(?:[-–]?(?:i|si|ı|sı|u|su|ü|sü))?/giu, ' ');
     t = t.replace(/hər\s+(?:gün|gun|həftə|hefte|ay|il|bazar\s*ertəsi|bazar\s*ertesi|çərşənbə\s*axşamı|cersenbe\s*axsami|çərşənbə|cersenbe|cümə\s*axşamı|cume\s*axsami|cümə|cume|şənbə|senbe|bazar|həftəiçi|hefteici|iş\s*günü|is\s*gunu)/giu, ' ');
 
+    t = t.replace(/(?<!\p{L})ayın\s+\d{1,2}(?:\s*[-–]?\s*\p{L}*)?/giu, ' ');
+
     // Strip out numbers with time suffixes: saat 10-da, 2-də, 2 də
     t = t.replace(/(?:saat\s+)?\d{1,2}(?::\d{2})?(?:\s*[-–]?\s*(?:da|də|de|ta|tə|yə|a|e|dək)(?!\p{L}))?/giu, ' ');
     // Strip out spoken numbers: saat onda, onda, ikidə, saat ikidə
-    t = t.replace(/(?:saat\s+)?(onda|ikidə|üçdə|dörddə|beşdə|altıda|yeddida|səkkizdə|doqquzda|on bir də|on iki də|bir|iki|üç|dörd|beş|altı|yeddi|səkkiz|doqquz|on)(?:\s*[-–]?(?:da|də|de|ta|tə)(?!\p{L}))?/giu, ' ');
+    // (whole words only: this used to cut "on" out of "telefon" -> "Telef")
+    t = t.replace(/(?:saat\s+)?(?<!\p{L})(onda|ikidə|üçdə|dörddə|beşdə|altıda|yeddidə|səkkizdə|doqquzda|on bir də|on iki də|bir|iki|üç|dörd|beş|altı|yeddi|səkkiz|doqquz|on)(?:\s*[-–]?(?:da|də|de|ta|tə))?(?!\p{L})/giu, ' ');
+
+    // Weekday / "ayın 15-i" are dates, not part of the title
+    t = t.replace(WEEKDAY_NAMES_REGEX, ' ');
+    t = t.replace(/(?<!\p{L})ayın\s+\d{1,2}(?:\s*[-–]?\s*\p{L}*)?/giu, ' ');
 
     // Normalize specific possessive nouns to base forms
-    t = t.replace(/\biclasım\b/gi, 'iclas');
-    t = t.replace(/\biclasim\b/gi, 'iclas');
-    t = t.replace(/\bgörüşüm\b/gi, 'görüş');
-    t = t.replace(/\bgorusum\b/gi, 'görüş');
-    t = t.replace(/\bdərsim\b/gi, 'dərs');
-    t = t.replace(/\bdersim\b/gi, 'dərs');
+    t = t.replace(/(?<!\p{L})(iclasım|iclasim)(?!\p{L})/giu, 'iclas');
+    t = t.replace(/(?<!\p{L})(görüşüm|gorusum)(?!\p{L})/giu, 'görüş');
+    t = t.replace(/(?<!\p{L})(dərsim|dersim)(?!\p{L})/giu, 'dərs');
+
+    // Verbal nouns back to the imperative: "zəng etməyi" -> "zəng et",
+    // "dərmanı almağı" -> "dərmanı al" (they used to be deleted, leaving just "Anara").
+    t = t.replace(/(?<!\p{L})(xat[ıi]rlat)(?:ma[ğg][ıi])(?!\p{L})/giu, '$1');
+    t = t.replace(/(?<!\p{L})(\p{L}{2,}?)(?:ma[ğg][ıi]|m[əe]yi)(?!\p{L})/giu, '$1');
 
     // Strip out auxiliary command suffixes, creation verbs and temporal prepositions
-    t = t.replace(/\b(xatırlat|xatirlat|xatırlatsın|xatirlatsin|xatırlatmaq|xatirlatmaq|yadıma sal|yadima sal|yadına sal|yadina sal|yada sal|unutma|əlavə et|elave et|əlavə elə|elave ele|yarat|qeyd et|qeyd elə|planlaşdır|planlasdir|yaz)\b/gi, ' ');
-    t = t.replace(/\b(etməyi|etmeyi|aparmağı|aparmagi|içməyi|icmeyi|alması|almasi|öyrənməyi|yoxlamağı|zəng etməyi|zeng etmeyi)\b/gi, ' ');
-    t = t.replace(/\b(sabah|birigün|biri gün|bu gün|bugün|bu axşam|sabah səhər|sabah axşam|günorta|axşam|axsam|səhər|seher)\b/gi, ' ');
-    t = t.replace(/\b(zəhmət olmasa|lütfən|mənim üçün|mənə|var|olsun|olacaq|etməliyəm|etmeliyem|lazımdır|lazimdir)\b/gi, ' ');
+    const w = (words: string) => new RegExp(`(?<!\\p{L})(?:${words})(?!\\p{L})`, 'giu');
+    t = t.replace(w('xatırlat|xatirlat|xatırlatsın|xatirlatsin|xatırlatmaq|xatirlatmaq|yadıma sal|yadima sal|yadına sal|yadina sal|yada sal|unutma|əlavə et|elave et|əlavə elə|elave ele|yarat|qeyd et|qeyd elə|planlaşdır|planlasdir'), ' ');
+    t = t.replace(w('sabah səhər|sabah axşam|bu axşam|sabah|birigün|biri gün|bu gün|bugün|günorta|gunorta|axşam|axsam|səhər|seher|gecə|gece'), ' ');
+    t = t.replace(w('zəhmət olmasa|lütfən|mənim üçün|mənə|var|olsun|olacaq|etməliyəm|etmeliyem|lazımdır|lazimdir'), ' ');
 
     t = t.replace(/[-–,.;:!?]+/g, ' ').replace(/\s+/g, ' ').trim();
 
@@ -1201,25 +1350,11 @@ export class IntelligentRouter {
       };
     }
 
-    // Match keywords from lower in reminder titles
-    let matchedReminder = activeList.find((r) =>
-      lower.includes(r.title.toLowerCase().slice(0, 10))
-    );
+    let matchedReminder: Reminder | undefined = findTargetReminder(lower, activeList) || undefined;
 
     // If user says "sonuncu" / "axırıncı"
     if (!matchedReminder && /sonuncu|axırıncı/i.test(lower)) {
       matchedReminder = activeList[0];
-    }
-
-    if (!matchedReminder) {
-      // Find highest keyword overlap
-      const words = lower.replace(/(tamamla|bitmiş kimi qeyd et|bitirdim|yerinə yetirildi|xatırlatmanı)/g, '').trim().split(/\s+/);
-      for (const word of words) {
-        if (word.length >= 3) {
-          matchedReminder = activeList.find((r) => r.title.toLowerCase().includes(word));
-          if (matchedReminder) break;
-        }
-      }
     }
 
     if (matchedReminder) {
@@ -1248,19 +1383,7 @@ export class IntelligentRouter {
     lower: string,
     currentReminders: Reminder[]
   ): { payload: AIActionPayload; confidence: number; reason: string } {
-    let matchedReminder = currentReminders.find((r) =>
-      lower.includes(r.title.toLowerCase().slice(0, 10))
-    );
-
-    if (!matchedReminder) {
-      const words = lower.replace(/(sil|ləğv et|xatırlatmanı|görüşümü|planı)/g, '').trim().split(/\s+/);
-      for (const word of words) {
-        if (word.length >= 3) {
-          matchedReminder = currentReminders.find((r) => r.title.toLowerCase().includes(word));
-          if (matchedReminder) break;
-        }
-      }
-    }
+    const matchedReminder = findTargetReminder(lower, currentReminders);
 
     if (matchedReminder) {
       return {
@@ -1291,11 +1414,14 @@ export class IntelligentRouter {
     let delayMinutes = 15;
     const matchMinutes = lower.match(/(\d+)\s*dəqiqə/i);
     const matchHours = lower.match(/(\d+)\s*saat/i);
+    const matchDays = lower.match(/(\d+)\s*gün/i);
 
     if (matchMinutes) {
       delayMinutes = parseInt(matchMinutes[1], 10);
     } else if (matchHours) {
       delayMinutes = parseInt(matchHours[1], 10) * 60;
+    } else if (matchDays) {
+      delayMinutes = parseInt(matchDays[1], 10) * 24 * 60;
     } else if (/yarım\s*saat/i.test(lower)) {
       delayMinutes = 30;
     } else if (/bir\s*saat/i.test(lower)) {
@@ -1303,7 +1429,15 @@ export class IntelligentRouter {
     }
 
     const activeList = currentReminders.filter((r) => !r.isCompleted);
-    const targetReminder = activeList[0];
+    // Named reminder first ("İclası 30 dəqiqə gecikdir"); otherwise the one that is
+    // due now / most recently due (the alarm the user is reacting to). It used to
+    // be simply activeList[0], i.e. whichever reminder was created last.
+    const now = Date.now();
+    const targetReminder =
+      findTargetReminder(lower, activeList) ||
+      [...activeList]
+        .filter((r) => new Date(r.dueDateTime).getTime() <= now + 15 * 60 * 1000)
+        .sort((a, b) => new Date(b.dueDateTime).getTime() - new Date(a.dueDateTime).getTime())[0];
 
     return {
       payload: {
