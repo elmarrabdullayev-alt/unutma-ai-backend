@@ -33,8 +33,8 @@ public class VoiceRecorder: CAPPlugin, CAPBridgedPlugin {
     private var silenceMeterTimer: Timer?
     private var speechBegan: Bool = false
     private var silenceBeganTime: Date?
-    private let speechThresholdDb: Float = -38.0
-    private let silenceAutoStopTimeoutSec: TimeInterval = 1.4
+    private let speechThresholdDb: Float = -46.0
+    private let silenceAutoStopTimeoutSec: TimeInterval = 1.0
     private var isStoppingNative: Bool = false
     private let recordingLock = NSLock()
 
