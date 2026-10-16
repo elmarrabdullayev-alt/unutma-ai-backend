@@ -37,9 +37,9 @@ class GlobalErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySta
   render() {
     if (this.state.hasError) {
       return (
-        <div style={{ padding: '24px', color: '#fff', backgroundColor: '#090D16', minHeight: '100vh', fontFamily: 'sans-serif' }}>
+        <div style={{ padding: '24px', color: '#fff', backgroundColor: '#130e13', minHeight: '100vh', fontFamily: 'sans-serif' }}>
           <h2 style={{ color: '#F87171', fontSize: '18px', marginBottom: '8px' }}>Tətbiq xətası baş verdi</h2>
-          <pre style={{ fontSize: '12px', whiteSpace: 'pre-wrap', color: '#CBD5E1' }}>{this.state.error?.stack || this.state.error?.message}</pre>
+          <pre style={{ fontSize: '12px', whiteSpace: 'pre-wrap', color: '#ddcfcc' }}>{this.state.error?.stack || this.state.error?.message}</pre>
         </div>
       );
     }

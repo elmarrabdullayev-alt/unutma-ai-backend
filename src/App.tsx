@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion, AnimatePresence, MotionConfig } from 'motion/react';
 import { Sparkles } from 'lucide-react';
 import { screenVariants } from './utils/motion';
 import { Reminder, UserProfile } from './types';
@@ -252,7 +252,8 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-[100dvh] w-full bg-[#090D16] text-slate-50 font-sans selection:bg-violet-500/30 selection:text-violet-200 flex justify-center overflow-x-hidden">
+    <MotionConfig reducedMotion="user">
+    <div className="app-backdrop min-h-[100dvh] w-full text-ink-50 font-sans selection:bg-zer-500/30 selection:text-zer-100 flex justify-center overflow-x-hidden">
       {/* 1. Animated Startup Splash */}
       {showSplash && <AnimatedSplash onComplete={handleSplashComplete} />}
 
@@ -266,7 +267,7 @@ export default function App() {
 
       {/* 3. Main Application Canvas */}
       {!showSplash && !showOnboarding && (
-        <div className="w-full max-w-md min-h-[100dvh] bg-[#090D16] flex flex-col relative shadow-2xl safe-top">
+        <div className="w-full max-w-md min-h-[100dvh] flex flex-col relative safe-top">
           {/* Active Alarm Banner */}
           <ActiveAlarmBanner
             activeAlarmReminder={activeAlarmReminder}
@@ -284,14 +285,14 @@ export default function App() {
               className="fixed left-1/2 -translate-x-1/2 z-50 w-[90%] max-w-sm animate-fade-in pointer-events-none"
               style={{ top: 'calc(env(safe-area-inset-top, 0px) + 12px)' }}
             >
-              <div className="flex items-center gap-2.5 rounded-2xl border border-violet-500/40 bg-[#101524]/98 pl-4 pr-2 py-2 shadow-2xl backdrop-blur-xl text-white text-xs pointer-events-auto">
-                <Sparkles className="h-4 w-4 shrink-0 text-violet-400" />
-                <span className="flex-1 font-semibold text-slate-100 py-1">{toastMessage}</span>
+              <div role="status" aria-live="polite" className="flex items-center gap-3 rounded-full border border-white/10 bg-ink-850/95 pl-4 pr-1.5 py-1 shadow-[0_20px_40px_-12px_rgba(0,0,0,0.9)] backdrop-blur-xl text-[14px] pointer-events-auto">
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-pista-400/20 text-pista-300"><Sparkles className="h-3.5 w-3.5" /></span>
+                <span className="flex-1 font-medium text-ink-50 py-1">{toastMessage}</span>
                 <button
                   id="toast-dismiss-btn"
                   onClick={() => setToastMessage(null)}
                   aria-label="Bağla"
-                  className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-xl text-slate-400 hover:text-white active:scale-95 transition-all"
+                  className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-xl text-ink-400 hover:text-white active:scale-95 transition-all"
                 >
                   <span className="text-sm font-bold leading-none">✕</span>
                 </button>
@@ -560,5 +561,6 @@ export default function App() {
         </div>
       )}
     </div>
+    </MotionConfig>
   );
 }

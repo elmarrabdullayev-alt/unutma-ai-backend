@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useEscapeKey } from '../../hooks/useEscapeKey';
 import { motion, AnimatePresence } from 'motion/react';
 import { Reminder, FocusSession, FocusHistoryItem, FocusTodayStats } from '../../types';
 import { focusService } from '../../services/focusService';
@@ -22,6 +23,7 @@ export const FocusModal: React.FC<FocusModalProps> = ({
   initialReminder,
   onToggleCompleteReminder,
 }) => {
+  useEscapeKey(onClose);
   const [activeSession, setActiveSession] = useState<FocusSession | null>(() =>
     focusService.getActiveSession()
   );
@@ -96,14 +98,14 @@ export const FocusModal: React.FC<FocusModalProps> = ({
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 0.2 }}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md"
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-ink-950/70 backdrop-blur-sm"
     >
       <motion.div
         initial={{ opacity: 0, scale: 0.95, y: 8 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 8 }}
         transition={{ duration: 0.22, ease: [0.25, 1, 0.5, 1] }}
-        className="relative w-full max-w-md h-[100dvh] sm:h-[680px] sm:max-h-[92vh] sm:rounded-3xl bg-[#090D16] border border-white/10 shadow-2xl flex flex-col overflow-hidden"
+        className="relative w-full max-w-md h-[100dvh] sm:h-[680px] sm:max-h-[92vh] sm:rounded-3xl bg-[#130e13] border border-white/10 shadow-2xl flex flex-col overflow-hidden"
       >
         {/* Render View depending on state: Result -> Active Session -> Setup */}
         <AnimatePresence mode="wait">

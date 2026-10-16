@@ -1,26 +1,122 @@
 @import "tailwindcss";
 
+/* ==========================================================================
+   Unutma AI — "Nar gecəsi" design system
+   Plum-ink night, saffron gold for action, pomegranate for urgency,
+   pistachio for done. Fraunces for voice/headlines, Onest for the UI.
+   ========================================================================== */
+
+@font-face {
+  font-family: "Fraunces";
+  src: url("/fonts/Fraunces-Variable.woff") format("woff");
+  font-weight: 300 700;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Onest";
+  src: url("/fonts/Onest-Variable.woff") format("woff");
+  font-weight: 100 900;
+  font-display: swap;
+}
+
+@theme {
+  --font-sans: "Onest", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  --font-display: "Fraunces", "Iowan Old Style", Georgia, serif;
+
+  /* Ink: warm plum-tinted neutrals (replaces slate) */
+  --color-ink-50: #f8f2ec;
+  --color-ink-100: #efe5dd;
+  --color-ink-200: #ddcfcc;
+  --color-ink-300: #c3b2ba;
+  --color-ink-400: #a3909c;
+  --color-ink-500: #84727e;
+  --color-ink-600: #64545f;
+  --color-ink-700: #463a44;
+  --color-ink-800: #2e242d;
+  --color-ink-850: #251c24;
+  --color-ink-900: #1d161c;
+  --color-ink-950: #130e13;
+
+  /* Zər: saffron gold — primary action, focus, "now" */
+  --color-zer-50: #fdf8ea;
+  --color-zer-100: #fbedc9;
+  --color-zer-200: #f6dc98;
+  --color-zer-300: #f1c868;
+  --color-zer-400: #ecb74a;
+  --color-zer-500: #e2a332;
+  --color-zer-600: #c78626;
+  --color-zer-700: #a1681f;
+  --color-zer-800: #7c4f1d;
+  --color-zer-900: #5c3b1a;
+  --color-zer-950: #331f0b;
+
+  /* Nar: pomegranate — overdue, delete, recording */
+  --color-nar-50: #fdf0f2;
+  --color-nar-100: #fbdde2;
+  --color-nar-200: #f7bac5;
+  --color-nar-300: #f294a4;
+  --color-nar-400: #ec6a81;
+  --color-nar-500: #e14762;
+  --color-nar-600: #c3304b;
+  --color-nar-700: #9f253c;
+  --color-nar-800: #7d2034;
+  --color-nar-900: #5f1b2b;
+  --color-nar-950: #360b16;
+
+  /* Püstə: pistachio — done, success */
+  --color-pista-50: #f2f9f3;
+  --color-pista-100: #def0e1;
+  --color-pista-200: #bfe2c5;
+  --color-pista-300: #9dd1a7;
+  --color-pista-400: #7fbf8c;
+  --color-pista-500: #63a873;
+  --color-pista-600: #4c8a5b;
+  --color-pista-700: #3e6e4a;
+  --color-pista-800: #33583d;
+  --color-pista-900: #2a4833;
+  --color-pista-950: #14271a;
+
+  /* Lilac kept only as a quiet secondary for "work" and AI chat */
+  --color-lilac-300: #c9b8f0;
+  --color-lilac-400: #ac97e6;
+  --color-lilac-500: #8f78d6;
+
+  --radius-card: 1.375rem;
+  --radius-sheet-lg: 2rem;
+  --radius-sheet: 1.75rem;
+
+  --shadow-lift: 0 1px 0 0 rgb(255 240 225 / 0.05) inset, 0 10px 30px -12px rgb(0 0 0 / 0.7);
+  --shadow-press: 0 1px 0 0 rgb(255 240 225 / 0.04) inset, 0 4px 14px -8px rgb(0 0 0 / 0.8);
+  --shadow-gold: 0 1px 0 0 rgb(255 248 230 / 0.45) inset, 0 -1px 0 0 rgb(90 50 10 / 0.35) inset, 0 12px 28px -10px rgb(226 163 50 / 0.55);
+
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
 @layer base {
   :root {
-    --bg-primary: #080B14;
-    --bg-secondary: #0D1220;
-    --bg-card: #121827;
-    --color-purple-primary: #7C3AED;
-    --color-purple-light: #A78BFA;
-    --text-primary: #F5F6FA;
-    --text-secondary: #94A3B8;
+    color-scheme: dark;
+    --bg-primary: var(--color-ink-950);
+    --bg-secondary: var(--color-ink-900);
+    --bg-card: var(--color-ink-850);
+    --text-primary: var(--color-ink-50);
+    --text-secondary: var(--color-ink-300);
   }
 
   html, body, #root {
-    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Plus Jakarta Sans", system-ui, sans-serif;
-    background-color: #080B14;
-    color: #F5F6FA;
+    font-family: var(--font-sans);
+    font-feature-settings: "ss01", "cv11";
+    background-color: var(--color-ink-950);
+    color: var(--color-ink-50);
     min-height: 100%;
     min-height: 100dvh;
     width: 100%;
     -webkit-tap-highlight-color: transparent;
     -webkit-touch-callout: none;
     overscroll-behavior-y: none;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 
   body {
@@ -28,51 +124,161 @@
     overflow-x: hidden;
     user-select: none;
     -webkit-overflow-scrolling: touch;
-    background-color: #080B14;
+    background-color: var(--color-ink-950);
+  }
+
+  /* Text people type or read at length stays selectable */
+  input, textarea, [contenteditable="true"] {
+    user-select: text;
+  }
+
+  /* Visible keyboard focus, never on tap */
+  :focus-visible {
+    outline: 2px solid var(--color-zer-400);
+    outline-offset: 2px;
+    border-radius: 12px;
+  }
+
+  button {
+    cursor: pointer;
+  }
+
+  .font-display {
+    font-family: var(--font-display);
+    font-optical-sizing: auto;
+    letter-spacing: -0.015em;
+  }
+
+  .tabular {
+    font-variant-numeric: tabular-nums;
   }
 }
 
+/* --------------------------------------------------------------------------
+   Surfaces
+   -------------------------------------------------------------------------- */
+
+@layer components {
+/* App backdrop: a faint warm glow from the top, like lamplight */
+.app-backdrop {
+  background:
+    radial-gradient(120% 60% at 50% -10%, rgb(226 163 50 / 0.09), transparent 60%),
+    radial-gradient(80% 40% at 100% 0%, rgb(225 71 98 / 0.06), transparent 70%),
+    var(--color-ink-950);
+}
+
+/* Raised card with a lit top edge */
+.surface {
+  background: linear-gradient(180deg, rgb(255 240 225 / 0.035), rgb(255 240 225 / 0.01)), var(--color-ink-900);
+  border: 1px solid rgb(255 236 220 / 0.07);
+  box-shadow: var(--shadow-lift);
+}
+
+.surface-quiet {
+  background: rgb(255 240 225 / 0.025);
+  border: 1px solid rgb(255 236 220 / 0.06);
+}
+
+/* Primary gold button with a soft sheen that sweeps on press */
+.btn-gold {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  color: var(--color-ink-950);
+  background: linear-gradient(180deg, var(--color-zer-300) 0%, var(--color-zer-500) 100%);
+  box-shadow: var(--shadow-gold);
+  transition: transform 0.35s var(--ease-spring), box-shadow 0.3s var(--ease-out-expo), filter 0.2s;
+}
+.btn-gold::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(110deg, transparent 30%, rgb(255 255 255 / 0.45) 50%, transparent 70%);
+  transform: translateX(-120%);
+  transition: transform 0.7s var(--ease-out-expo);
+}
+.btn-gold:hover::after,
+.btn-gold:focus-visible::after {
+  transform: translateX(120%);
+}
+.btn-gold:active {
+  transform: scale(0.97);
+  box-shadow: 0 1px 0 0 rgb(255 248 230 / 0.35) inset, 0 6px 16px -10px rgb(226 163 50 / 0.6);
+  filter: brightness(0.97);
+}
+.btn-gold:disabled {
+  filter: grayscale(0.6) brightness(0.7);
+  box-shadow: none;
+}
+
+/* Generic tactile press for any tappable surface */
+.pressable {
+  transition: transform 0.35s var(--ease-spring), background-color 0.2s, border-color 0.2s;
+}
+.pressable:active {
+  transform: scale(0.98);
+}
+}
+
+/* --------------------------------------------------------------------------
+   Motion
+   -------------------------------------------------------------------------- */
+
 @keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(4px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 @keyframes pulseGlow {
-  0%, 100% {
-    opacity: 0.6;
-    transform: scale(1);
-  }
-  50% {
-    opacity: 0.95;
-    transform: scale(1.04);
-  }
+  0%, 100% { opacity: 0.55; transform: scale(1); }
+  50% { opacity: 0.9; transform: scale(1.05); }
 }
 
+/* The mic "breathes" slowly: an invitation, not an alarm */
 @keyframes breathingGlow {
-  0%, 100% {
-    box-shadow: 0 4px 20px -2px rgba(124, 58, 237, 0.35);
-  }
-  50% {
-    box-shadow: 0 4px 28px 4px rgba(124, 58, 237, 0.65);
-  }
+  0%, 100% { box-shadow: var(--shadow-gold), 0 0 0 0 rgb(226 163 50 / 0.28); }
+  50% { box-shadow: var(--shadow-gold), 0 0 0 10px rgb(226 163 50 / 0); }
+}
+
+@keyframes ripple {
+  from { transform: scale(0.9); opacity: 0.55; }
+  to { transform: scale(1.9); opacity: 0; }
+}
+
+@keyframes shimmer {
+  from { background-position: -200% 0; }
+  to { background-position: 200% 0; }
 }
 
 .animate-fade-in {
-  animation: fadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: fadeIn 0.32s var(--ease-out-expo) both;
 }
 
 .animate-pulse-glow {
-  animation: pulseGlow 2.5s ease-in-out infinite;
+  animation: pulseGlow 2.8s ease-in-out infinite;
 }
 
 .animate-breathing-mic {
-  animation: breathingGlow 3s ease-in-out infinite;
+  animation: breathingGlow 3.2s ease-in-out infinite;
+}
+
+.animate-ripple {
+  animation: ripple 2.4s var(--ease-out-expo) infinite;
+}
+
+.skeleton {
+  background: linear-gradient(90deg, rgb(255 240 225 / 0.04) 25%, rgb(255 240 225 / 0.09) 50%, rgb(255 240 225 / 0.04) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.6s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 
 /* Hide scrollbar */
@@ -91,5 +297,3 @@
 .safe-bottom {
   padding-bottom: env(safe-area-inset-bottom, 24px);
 }
-
-

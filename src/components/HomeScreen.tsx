@@ -1,13 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
-import {
-  Bell,
-  Sparkles,
-  ArrowRight,
-  Flame,
-  ChevronRight,
-  CheckCircle2,
-} from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { motion, AnimatePresence, LayoutGroup } from 'motion/react';
+import { Bell, Flame, ChevronRight, Mic, Sparkles, Check, Clock3 } from 'lucide-react';
 import { Reminder, UserProfile, FocusSession, Routine, RoutineType } from '../types';
 import { MobileReminderCard } from './MobileReminderCard';
 import { RoutineHomeSection } from './routine/RoutineHomeSection';
@@ -15,15 +8,14 @@ import {
   staggerContainerVariants,
   staggerCardVariants,
   reminderCardItemVariants,
+  springPress,
+  springLayout,
 } from '../utils/motion';
-import {
-  getGreetingAz,
-  getFormattedTodayAz,
-  isReminderToday,
-  isReminderPast,
-} from '../utils/dateUtils';
+import { getFormattedTodayAz, isReminderToday, isReminderPast, formatTimeOnly } from '../utils/dateUtils';
 import { progressService } from '../services/progressService';
 import { routineService } from '../services/routineService';
+import { CATEGORIES } from '../utils/categoryMeta';
+import { playSuccessSound } from '../utils/soundUtils';
 
 interface HomeScreenProps {
   reminders: Reminder[];
@@ -47,6 +39,26 @@ interface HomeScreenProps {
   onRequestNotificationPermission?: () => void;
 }
 
+function greetingFor(hour: number): string {
+  if (hour >= 5 && hour < 12) return 'Sabahın xeyir';
+  if (hour >= 12 && hour < 18) return 'Günortan xeyir';
+  return 'Axşamın xeyir';
+}
+
+/** "1 saat 20 dəqiqə sonra", "12 dəqiqə sonra", "indi" */
+function countdownAz(dueMs: number, nowMs: number): string {
+  const mins = Math.round((dueMs - nowMs) / 60000);
+  if (mins <= 0) return 'indi';
+  if (mins < 60) return `${mins} dəqiqə sonra`;
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  if (h >= 24) return 'sabah';
+  return m === 0 ? `${h} saat sonra` : `${h} saat ${m} dəqiqə sonra`;
+}
+
+const byDue = (a: Reminder, b: Reminder) =>
+  new Date(a.dueDateTime).getTime() - new Date(b.dueDateTime).getTime();
+
 export const HomeScreen: React.FC<HomeScreenProps> = ({
   reminders,
   userProfile,
@@ -56,13 +68,10 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   onEdit,
   onSnooze,
   onOpenVoice,
-  onOpenManualAdd,
   onOpenFocus,
-  onOpenPlanner,
   onOpenProgress,
   onOpenRoutineSession,
   onOpenCreateRoutine,
-  onOpenCalendar,
   onOpenAssistant,
   activeFocusSession,
   notificationPermission,
@@ -70,196 +79,271 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
 }) => {
   const [showAllTasks, setShowAllTasks] = useState(false);
   const [progressData, setProgressData] = useState(() => progressService.getProgressData());
+  const [now, setNow] = useState(() => Date.now());
 
+  useEffect(() => progressService.subscribe(() => setProgressData(progressService.getProgressData())), []);
+
+  // Keep "in 12 minutes" honest without re-rendering every second
   useEffect(() => {
-    const unsub = progressService.subscribe(() => {
-      setProgressData(progressService.getProgressData());
-    });
-    return unsub;
+    const id = window.setInterval(() => setNow(Date.now()), 30000);
+    return () => window.clearInterval(id);
   }, []);
 
-  const greeting = getGreetingAz(userProfile?.firstName);
+  const firstName = userProfile?.firstName?.trim();
+  const greeting = greetingFor(new Date(now).getHours());
   const todayFormatted = getFormattedTodayAz();
 
-  // Active reminders
-  const activeReminders = reminders.filter((r) => !r.isCompleted);
-  // Today's active reminders
-  const todayActiveReminders = activeReminders.filter((r) => isReminderToday(r) || isReminderPast(r));
-  // Reminders to show in "Bugünkü tapşırıqlar": max 4 unless showAllTasks
-  const displayReminders = showAllTasks
-    ? todayActiveReminders
-    : todayActiveReminders.slice(0, 4);
+  const { overdue, upcomingToday, doneToday, next } = useMemo(() => {
+    const active = reminders.filter((r) => !r.isCompleted);
+    const overdueList = active.filter((r) => isReminderPast(r)).sort(byDue);
+    const upcoming = active.filter((r) => isReminderToday(r) && !isReminderPast(r)).sort(byDue);
+    const done = reminders.filter((r) => r.isCompleted && r.completedAt && isReminderToday({ ...r, dueDateTime: r.completedAt }));
+    // "Next" is the soonest future reminder, even if it's tomorrow
+    const future = active.filter((r) => !isReminderPast(r)).sort(byDue);
+    return { overdue: overdueList, upcomingToday: upcoming, doneToday: done, next: future[0] };
+  }, [reminders, now]);
 
-  const streakCount =
-    routineService.getStreakData().currentStreak || progressData.streakSummary.currentStreak;
+  // Overdue first, then the rest of today in time order (the hero item is not repeated)
+  const timeline = [...overdue, ...upcomingToday].filter((r) => !next || r.id !== next.id);
+  const visible = showAllTasks ? timeline : timeline.slice(0, 5);
+  const streakCount = routineService.getStreakData().currentStreak || progressData.streakSummary.currentStreak;
+
+  const nextCategory = next ? CATEGORIES[next.category as keyof typeof CATEGORIES] || CATEGORIES.other : null;
+  const nextDue = next ? new Date(next.dueDateTime).getTime() : 0;
+  const nextIsToday = next ? isReminderToday(next) : false;
+  const nextSoon = next ? nextDue - now < 30 * 60000 : false;
 
   return (
     <motion.div
       variants={staggerContainerVariants}
       initial="hidden"
       animate="visible"
-      className="w-full px-4 pt-2 pb-32 space-y-4 sm:space-y-5"
+      className="w-full px-5 pt-3 pb-36 space-y-7"
     >
-      {/* 1. HEADER: Zərif salamlama, ad əsas vurğu, yuxarı sağda yalnız bildiriş ikonu */}
-      <motion.div
-        variants={staggerCardVariants}
-        className="flex items-center justify-between gap-3 pt-1"
-      >
+      {/* Greeting */}
+      <motion.header variants={staggerCardVariants} className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
-          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-[#F5F6FA] truncate">
-            {greeting} 👋
-          </h1>
-          <p className="text-xs text-[#94A3B8] mt-0.5 font-normal capitalize">
-            {todayFormatted}
-          </p>
-        </div>
-
-        {/* Yuxarı sağda yalnız bildiriş ikonu */}
-        <div className="flex items-center shrink-0">
-          <motion.button
-            whileTap={{ scale: 0.95 }}
-            onClick={() => {
-              if (onRequestNotificationPermission && notificationPermission !== 'granted') {
-                onRequestNotificationPermission();
-              } else if (onNavigateToProfile) {
-                onNavigateToProfile();
-              }
-            }}
-            className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[#121827] text-[#94A3B8] hover:text-[#F5F6FA] border border-white/[0.06] hover:border-white/[0.12] transition-colors relative"
-            title="Bildirişlər"
-            aria-label="Bildirişlər"
-          >
-            <Bell className="h-4 w-4" />
-            {notificationPermission !== 'granted' && (
-              <span className="absolute top-2.5 right-2.5 h-1.5 w-1.5 rounded-full bg-[#A78BFA]" />
+          <p className="text-[13px] font-medium text-ink-400 capitalize">{todayFormatted}</p>
+          <h1 className="font-display mt-1 text-[34px] leading-[1.05] font-normal text-ink-50">
+            {greeting}
+            {firstName && (
+              <>
+                ,<br />
+                <span className="text-zer-200">{firstName}</span>
+              </>
             )}
+          </h1>
+        </div>
+
+        <motion.button
+          whileTap={{ scale: 0.88 }}
+          transition={springPress}
+          onClick={() => {
+            if (onRequestNotificationPermission && notificationPermission !== 'granted') {
+              onRequestNotificationPermission();
+            } else {
+              onNavigateToProfile?.();
+            }
+          }}
+          className="surface relative mt-1 flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-ink-200"
+          aria-label={notificationPermission !== 'granted' ? 'Bildirişləri aç' : 'Bildiriş ayarları'}
+        >
+          <Bell className="h-[18px] w-[18px]" />
+          {notificationPermission !== 'granted' && (
+            <span className="absolute top-2.5 right-2.5 h-2 w-2 rounded-full bg-nar-400 ring-2 ring-ink-900" />
+          )}
+        </motion.button>
+      </motion.header>
+
+      {/* Next up — the one big moment on the screen */}
+      <motion.section variants={staggerCardVariants} aria-label="Növbəti xatırlatma">
+        {next ? (
+          <motion.div
+            layout
+            transition={springLayout}
+            className="relative overflow-hidden rounded-sheet p-5 pb-4"
+            style={{
+              background:
+                'radial-gradient(140% 120% at 100% 0%, rgb(226 163 50 / 0.22), transparent 55%), linear-gradient(180deg, var(--color-ink-850), var(--color-ink-900))',
+              border: '1px solid rgb(241 200 104 / 0.18)',
+              boxShadow: '0 1px 0 0 rgb(255 240 210 / 0.08) inset, 0 24px 48px -24px rgb(0 0 0 / 0.9)',
+            }}
+          >
+            <div className="flex items-center justify-between">
+              <span className="inline-flex items-center gap-2 text-[13px] font-medium text-zer-200">
+                <span className="relative flex h-2 w-2">
+                  {nextSoon && <span className="absolute inset-0 rounded-full bg-zer-300 animate-ripple" />}
+                  <span className="relative h-2 w-2 rounded-full bg-zer-300" />
+                </span>
+                <span className="sr-only">Növbəti: </span>
+                {countdownAz(nextDue, now)}
+              </span>
+              {nextCategory && <span className={`text-[13px] ${nextCategory.color}`}>{nextCategory.label}</span>}
+            </div>
+
+            <button type="button" onClick={() => onEdit(next)} className="mt-3 block w-full text-left">
+              <div className="flex items-baseline gap-3">
+                <span className="font-display tabular text-[56px] leading-none font-light text-ink-50">
+                  {formatTimeOnly(next.dueDateTime)}
+                </span>
+                {!nextIsToday && <span className="text-[15px] text-ink-300">sabah</span>}
+              </div>
+              <h2 className="mt-2 text-[19px] font-semibold leading-snug text-ink-50 line-clamp-2">{next.title}</h2>
+              {next.description && <p className="mt-1 text-[14px] text-ink-300 line-clamp-1">{next.description}</p>}
+            </button>
+
+            <div className="mt-4 flex gap-2">
+              <motion.button
+                whileTap={{ scale: 0.95 }}
+                transition={springPress}
+                onClick={() => {
+                  playSuccessSound();
+                  onToggleComplete(next.id);
+                }}
+                className="btn-gold flex h-11 flex-1 items-center justify-center gap-2 rounded-full text-[15px] font-semibold"
+              >
+                <Check className="h-[18px] w-[18px]" strokeWidth={2.6} />
+                Tamamla
+              </motion.button>
+              <motion.button
+                whileTap={{ scale: 0.95 }}
+                transition={springPress}
+                onClick={() => onSnooze(next.id, 15)}
+                className="flex h-11 items-center justify-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-4 text-[15px] font-medium text-ink-100 active:bg-white/[0.08] transition-colors"
+              >
+                <Clock3 className="h-[18px] w-[18px] text-ink-300" />
+                15 dəq
+              </motion.button>
+            </div>
+          </motion.div>
+        ) : (
+          <motion.button
+            whileTap={{ scale: 0.98 }}
+            transition={springPress}
+            onClick={onOpenVoice}
+            className="surface flex w-full items-center gap-4 rounded-sheet p-5 text-left"
+          >
+            <span className="btn-gold flex h-12 w-12 shrink-0 items-center justify-center rounded-full">
+              <Mic className="h-5 w-5" strokeWidth={2.2} />
+            </span>
+            <span className="min-w-0">
+              <span className="font-display block text-[22px] leading-tight text-ink-50">Nəyi yadında saxlayım?</span>
+              <span className="mt-1 block text-[14px] text-ink-300">Məsələn: "sabah saat 10-da Anara zəng et"</span>
+            </span>
           </motion.button>
-        </div>
-      </motion.div>
+        )}
+      </motion.section>
 
-      {/* 2. ƏSAS AI KARTI: Bütün kart kliklənəndir, hündürlüyü azaldılmış, minimalist, sağda ox düyməsi */}
-      <motion.div
-        variants={staggerCardVariants}
-        whileTap={{ scale: 0.99 }}
-        onClick={() => {
-          if (onOpenAssistant) {
-            onOpenAssistant();
-          } else {
-            onOpenVoice();
-          }
-        }}
-        className="group relative overflow-hidden rounded-[20px] p-4 sm:p-4.5 bg-[#121827] border border-white/[0.06] hover:border-[#7C3AED]/30 transition-all cursor-pointer shadow-sm"
-      >
-        <div className="flex items-center justify-between gap-3">
-          <div className="space-y-1 min-w-0 flex-1">
-            <h2 className="text-sm sm:text-base font-semibold text-[#F5F6FA] tracking-tight">
-              Bu gün nə planlaşdırırsan?
-            </h2>
-            <p className="text-xs text-[#94A3B8] leading-relaxed">
-              Bir cümlə söylə, qalanını mən həll edim.
-            </p>
-          </div>
-
-          {/* Sağda kiçik, minimalist ox düyməsi */}
-          <div className="h-8 w-8 rounded-full bg-white/[0.04] border border-white/[0.08] flex items-center justify-center text-[#94A3B8] group-hover:text-[#F5F6FA] group-hover:bg-[#7C3AED]/20 group-hover:border-[#7C3AED]/30 transition-all shrink-0">
-            <ChevronRight className="h-4 w-4" />
-          </div>
-        </div>
-      </motion.div>
-
-      {/* 3. AKTİV FOKUS SESİYASI (varsa zərif göstərilir) */}
+      {/* Active focus session */}
       {activeFocusSession && (
-        <motion.div
+        <motion.button
           variants={staggerCardVariants}
           whileTap={{ scale: 0.98 }}
           onClick={() => onOpenFocus?.()}
-          className="flex items-center justify-between p-3.5 rounded-[18px] bg-[#121827] border border-[#7C3AED]/25 cursor-pointer shadow-sm"
+          className="surface flex w-full items-center gap-3 rounded-card p-4 text-left"
         >
-          <div className="flex items-center gap-3 min-w-0 flex-1">
-            <div className="h-8 w-8 rounded-xl bg-[#7C3AED]/15 flex items-center justify-center text-[#A78BFA] shrink-0">
-              <Flame className="h-4 w-4 animate-pulse" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <span className="text-[10px] font-semibold uppercase tracking-wider text-[#A78BFA]">
-                Fokus Aktivdir
-              </span>
-              <p className="text-xs font-medium text-[#F5F6FA] truncate mt-0.5">
-                {activeFocusSession.taskTitle}
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-1 text-xs font-medium text-[#A78BFA] pl-2">
-            <span>Davam et</span>
-            <ChevronRight className="h-3.5 w-3.5" />
-          </div>
-        </motion.div>
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-zer-400/15 text-zer-300">
+            <Flame className="h-5 w-5" />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-[13px] font-medium text-zer-300">Fokus davam edir</span>
+            <span className="block truncate text-[15px] font-semibold text-ink-50">{activeFocusSession.taskTitle}</span>
+          </span>
+          <ChevronRight className="h-5 w-5 text-ink-400" />
+        </motion.button>
       )}
 
-      {/* 4. BUGÜNKÜ TAPŞIRIQLAR: Başlıq, sayğac və tapşırıq kartları */}
-      <motion.section variants={staggerCardVariants} className="space-y-2.5">
-        <div className="flex items-center justify-between px-0.5">
-          <div className="flex items-center gap-2">
-            <h2 className="text-xs font-semibold uppercase tracking-wider text-[#94A3B8]">
-              Bugünkü tapşırıqlar
-            </h2>
-            <span className="text-[11px] text-[#94A3B8]/70">
-              ({todayActiveReminders.length})
+      {/* Today, as a timeline */}
+      <motion.section variants={staggerCardVariants} aria-labelledby="today-heading">
+        <div className="mb-3 flex items-baseline justify-between">
+          <h2 id="today-heading" className="text-[17px] font-semibold text-ink-50">
+            {next && nextIsToday ? 'Daha sonra' : 'Bu gün'}
+            <span className="ml-2 text-[15px] font-normal text-ink-400 tabular">{timeline.length}</span>
+          </h2>
+          {doneToday.length > 0 && (
+            <span className="text-[13px] text-pista-300 tabular">{doneToday.length} tamamlandı</span>
+          )}
+        </div>
+
+        {timeline.length > 0 ? (
+          <LayoutGroup>
+            <ol className="relative space-y-2">
+              <AnimatePresence initial={false}>
+                {visible.map((reminder) => (
+                  <motion.li
+                    key={reminder.id}
+                    variants={reminderCardItemVariants}
+                    initial="initial"
+                    animate="animate"
+                    exit="exit"
+                    layout
+                    transition={springLayout}
+                    className="relative"
+                  >
+                    <MobileReminderCard
+                      reminder={reminder}
+                      variant="default"
+                      onToggleComplete={onToggleComplete}
+                      onDelete={onDelete}
+                      onEdit={onEdit}
+                      onSnooze={onSnooze}
+                      onFocus={onOpenFocus}
+                    />
+                  </motion.li>
+                ))}
+              </AnimatePresence>
+            </ol>
+          </LayoutGroup>
+        ) : next ? (
+          <p className="text-[14px] text-ink-400">Bu gün üçün başqa xatırlatma yoxdur.</p>
+        ) : (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.97 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={springLayout}
+            className="surface-quiet flex flex-col items-center rounded-card px-6 py-8 text-center"
+          >
+            <span className="flex h-12 w-12 items-center justify-center rounded-full bg-pista-400/15 text-pista-300">
+              <Sparkles className="h-5 w-5" />
             </span>
-          </div>
+            <h3 className="font-display mt-3 text-[20px] text-ink-50">Bu gün üçün hər şey hazırdır</h3>
+            <p className="mt-1 max-w-[260px] text-[14px] leading-relaxed text-ink-300">
+              Yeni xatırlatma üçün aşağıdakı mikrofona toxunun və danışın.
+            </p>
+          </motion.div>
+        )}
 
-          {todayActiveReminders.length > 4 && (
-            <button
-              onClick={() => setShowAllTasks((prev) => !prev)}
-              className="text-xs font-medium text-[#A78BFA] hover:text-[#C4B5FD] flex items-center gap-0.5 transition-colors"
-            >
-              <span>{showAllTasks ? 'Qısalt' : 'Hamısına bax'}</span>
-              <ArrowRight className="h-3 w-3" />
-            </button>
-          )}
-        </div>
-
-        {/* Tapşırıqlar Siyahısı */}
-        <div className="space-y-2">
-          <AnimatePresence initial={false}>
-            {displayReminders.map((reminder) => (
-              <motion.div
-                key={reminder.id}
-                variants={reminderCardItemVariants}
-                initial="initial"
-                animate="animate"
-                exit="exit"
-                layout
-              >
-                <MobileReminderCard
-                  reminder={reminder}
-                  onToggleComplete={onToggleComplete}
-                  onDelete={onDelete}
-                  onEdit={onEdit}
-                  onSnooze={onSnooze}
-                  onFocus={onOpenFocus}
-                />
-              </motion.div>
-            ))}
-          </AnimatePresence>
-
-          {/* Boş vəziyyət */}
-          {todayActiveReminders.length === 0 && (
-            <div className="py-7 px-4 text-center rounded-[18px] bg-[#121827] border border-white/[0.04]">
-              <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-[#7C3AED]/10 text-[#A78BFA] mx-auto mb-2">
-                <CheckCircle2 className="h-4 w-4" />
-              </div>
-              <h3 className="text-xs font-semibold text-[#F5F6FA]">
-                Bugünkü bütün işlər tamamlandı
-              </h3>
-              <p className="text-[11px] text-[#94A3B8] mt-0.5 max-w-[240px] mx-auto">
-                Yeni bir iş əlavə etmək üçün mərkəzdəki mikrofona toxunun.
-              </p>
-            </div>
-          )}
-        </div>
+        {timeline.length > 5 && (
+          <motion.button
+            whileTap={{ scale: 0.97 }}
+            transition={springPress}
+            onClick={() => setShowAllTasks((p) => !p)}
+            className="mt-3 flex h-11 w-full items-center justify-center rounded-full border border-white/[0.08] text-[14px] font-medium text-ink-200 active:bg-white/[0.05] transition-colors"
+          >
+            {showAllTasks ? 'Daha az göstər' : `Daha ${timeline.length - 5} xatırlatma`}
+          </motion.button>
+        )}
       </motion.section>
 
-      {/* 5. GÜNLÜK RUTİNLƏR (Yan-yana 2 kompakt kart) */}
+      {/* Ask the assistant */}
+      <motion.button
+        variants={staggerCardVariants}
+        whileTap={{ scale: 0.98 }}
+        transition={springPress}
+        onClick={() => (onOpenAssistant ? onOpenAssistant() : onOpenVoice())}
+        className="surface-quiet group flex w-full items-center gap-4 rounded-card p-4 text-left"
+      >
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-lilac-400/15 text-lilac-300">
+          <Sparkles className="h-[18px] w-[18px]" />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-[15px] font-semibold text-ink-50">Günümü planla</span>
+          <span className="block text-[13px] text-ink-300">Bir cümlə de, saatları mən yerləşdirim</span>
+        </span>
+        <ChevronRight className="h-5 w-5 text-ink-400 transition-transform group-active:translate-x-0.5" />
+      </motion.button>
+
+      {/* Routines */}
       <motion.div variants={staggerCardVariants}>
         <RoutineHomeSection
           onOpenRoutineSession={(routine) => onOpenRoutineSession?.(routine)}
@@ -267,24 +351,22 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
         />
       </motion.div>
 
-      {/* 6. HƏFTƏLİK NƏTİCƏ / STREAK (Sadə, minimalist sətir) */}
+      {/* Streak */}
       {streakCount > 0 && (
-        <motion.div
+        <motion.button
           variants={staggerCardVariants}
-          whileTap={{ scale: 0.99 }}
+          whileTap={{ scale: 0.98 }}
           onClick={() => onOpenProgress?.()}
-          className="flex items-center justify-between p-3 rounded-[16px] bg-[#121827] border border-white/[0.04] text-xs cursor-pointer hover:border-white/[0.08] transition-colors"
+          className="surface-quiet flex w-full items-center justify-between rounded-card p-4 text-left"
         >
-          <div className="flex items-center gap-2 text-[#94A3B8]">
-            <Flame className="h-4 w-4 text-amber-400 fill-amber-400/20" />
-            <span className="text-[#F5F6FA] font-medium">{streakCount} gün ardıcıl</span>
-            <span className="text-white/20">·</span>
-            <span>Məhsuldarlığını qoru</span>
-          </div>
-          <span className="text-[11px] font-medium text-[#A78BFA] flex items-center gap-0.5">
-            Statistika <ChevronRight className="h-3 w-3" />
+          <span className="flex items-center gap-3">
+            <Flame className="h-5 w-5 text-zer-300" />
+            <span className="text-[15px] font-medium text-ink-50">{streakCount} gün ardıcıl</span>
           </span>
-        </motion.div>
+          <span className="flex items-center gap-1 text-[13px] text-ink-300">
+            İrəliləyiş <ChevronRight className="h-4 w-4" />
+          </span>
+        </motion.button>
       )}
     </motion.div>
   );

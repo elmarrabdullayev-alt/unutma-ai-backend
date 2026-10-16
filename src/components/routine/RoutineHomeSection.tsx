@@ -5,7 +5,9 @@ import {
   Flame,
   CheckCircle2,
 } from 'lucide-react';
+import { motion } from 'motion/react';
 import { Routine, RoutineType } from '../../types';
+import { springPress } from '../../utils/motion';
 import { routineService } from '../../services/routineService';
 
 interface RoutineHomeSectionProps {
@@ -38,25 +40,20 @@ export const RoutineHomeSection: React.FC<RoutineHomeSectionProps> = ({
   ];
 
   return (
-    <section className="space-y-2.5">
-      {/* Section Header */}
-      <div className="flex items-center justify-between px-0.5">
-        <div className="flex items-center gap-2">
-          <h2 className="text-xs font-semibold uppercase tracking-wider text-[#94A3B8]">
-            Rutinlərim
-          </h2>
-
-          {streakData.currentStreak > 0 && (
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-400 text-[10px] font-medium">
-              <Flame className="h-2.5 w-2.5 fill-amber-400/20" />
-              <span>{streakData.currentStreak} gün</span>
-            </span>
-          )}
-        </div>
+    <section aria-labelledby="routines-heading">
+      <div className="mb-3 flex items-baseline justify-between">
+        <h2 id="routines-heading" className="text-[17px] font-semibold text-ink-50">
+          Rutinlər
+        </h2>
+        {streakData.currentStreak > 0 && (
+          <span className="inline-flex items-center gap-1 text-[13px] text-zer-300 tabular">
+            <Flame className="h-3.5 w-3.5" />
+            {streakData.currentStreak} gün ardıcıl
+          </span>
+        )}
       </div>
 
-      {/* Səhər və Axşam rutinləri: İki kompakt kart yan-yana */}
-      <div className="grid grid-cols-2 gap-2.5 sm:gap-3">
+      <div className="grid grid-cols-2 gap-3">
         {targetRoutines.map(({ type, defaultTitle, routine }) => {
           const isMorning = type === 'morning';
           const title = routine?.title || defaultTitle;
@@ -64,77 +61,63 @@ export const RoutineHomeSection: React.FC<RoutineHomeSectionProps> = ({
             ? routineService.getRoutineProgress(routine)
             : { completed: 0, total: 3, percent: 0, isCompleted: false };
           const isComplete = progress.isCompleted;
+          const pct = isComplete ? 100 : progress.percent;
+          const R = 17;
+          const C = 2 * Math.PI * R;
 
           return (
-            <div
+            <motion.button
               key={type}
+              type="button"
               id={`routine-card-${type}`}
-              onClick={() => {
-                if (routine) {
-                  onOpenRoutineSession(routine);
-                } else {
-                  onOpenCreateRoutine(type);
-                }
-              }}
-              className="p-3.5 rounded-[18px] bg-[#121827] border border-white/[0.06] hover:border-[#7C3AED]/30 cursor-pointer active:scale-[0.98] transition-all flex flex-col justify-between group min-h-[102px]"
+              whileTap={{ scale: 0.96 }}
+              transition={springPress}
+              onClick={() => (routine ? onOpenRoutineSession(routine) : onOpenCreateRoutine(type))}
+              className="surface relative flex min-h-[132px] flex-col justify-between overflow-hidden rounded-card p-4 text-left"
+              aria-label={`${title}, ${progress.completed} / ${progress.total} addım tamamlanıb`}
             >
-              {/* İkon və Vaxt */}
-              <div className="flex items-center justify-between">
-                <div
-                  className={`h-8 w-8 rounded-xl flex items-center justify-center shrink-0 ${
-                    isMorning
-                      ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
-                      : 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20'
-                  }`}
-                >
-                  {isMorning ? (
-                    <Sunrise className="h-4 w-4" />
-                  ) : (
-                    <Moon className="h-4 w-4" />
-                  )}
-                </div>
-
-                {routine?.startTime && (
-                  <span className="text-[10px] text-[#94A3B8] font-normal">
-                    {routine.startTime}
-                  </span>
-                )}
-              </div>
-
-              {/* Rutin adı və Tamamlanma Göstəricisi */}
-              <div className="mt-2.5 space-y-1.5">
-                <h3 className="text-xs font-semibold text-[#F5F6FA] tracking-tight truncate">
-                  {title}
-                </h3>
-
-                <div className="flex items-center justify-between text-[11px] text-[#94A3B8]">
+              <span
+                aria-hidden="true"
+                className="pointer-events-none absolute -right-10 -top-10 h-28 w-28 rounded-full blur-2xl"
+                style={{ background: isMorning ? 'rgb(236 183 74 / 0.16)' : 'rgb(172 151 230 / 0.16)' }}
+              />
+              <div className="relative flex items-start justify-between">
+                {/* progress ring with the icon inside */}
+                <span className="relative flex h-11 w-11 items-center justify-center">
+                  <svg viewBox="0 0 40 40" className="absolute inset-0 -rotate-90" aria-hidden="true">
+                    <circle cx="20" cy="20" r={R} fill="none" stroke="rgb(255 240 225 / 0.08)" strokeWidth="3" />
+                    <motion.circle
+                      cx="20"
+                      cy="20"
+                      r={R}
+                      fill="none"
+                      stroke={isComplete ? 'var(--color-pista-400)' : isMorning ? 'var(--color-zer-400)' : 'var(--color-lilac-400)'}
+                      strokeWidth="3"
+                      strokeLinecap="round"
+                      strokeDasharray={C}
+                      initial={false}
+                      animate={{ strokeDashoffset: C * (1 - pct / 100) }}
+                      transition={{ type: 'spring', stiffness: 120, damping: 20 }}
+                    />
+                  </svg>
                   {isComplete ? (
-                    <span className="inline-flex items-center gap-1 text-[#10B981] font-medium text-[10px]">
-                      <CheckCircle2 className="h-3 w-3" />
-                      Tamamlandı
-                    </span>
+                    <CheckCircle2 className="h-[18px] w-[18px] text-pista-300" />
+                  ) : isMorning ? (
+                    <Sunrise className="h-[18px] w-[18px] text-zer-300" />
                   ) : (
-                    <span className="text-[10px] text-[#94A3B8]">
-                      {progress.completed}/{progress.total} tamamlandı
-                    </span>
+                    <Moon className="h-[18px] w-[18px] text-lilac-300" />
                   )}
-                </div>
-
-                {/* Zərif Tamamlanma Zolağı */}
-                <div className="h-1 w-full rounded-full bg-white/[0.06] overflow-hidden">
-                  <div
-                    className={`h-full rounded-full transition-all duration-300 ${
-                      isComplete
-                        ? 'bg-[#10B981]'
-                        : isMorning
-                        ? 'bg-gradient-to-r from-amber-400 to-amber-300'
-                        : 'bg-gradient-to-r from-[#7C3AED] to-[#A78BFA]'
-                    }`}
-                    style={{ width: `${isComplete ? 100 : progress.percent}%` }}
-                  />
-                </div>
+                </span>
+                {routine?.startTime && <span className="tabular text-[13px] text-ink-300">{routine.startTime}</span>}
               </div>
-            </div>
+
+              <div className="relative mt-3">
+                <h3 className="truncate text-[15px] font-semibold text-ink-50">{title}</h3>
+                <p className={`mt-0.5 text-[13px] tabular ${isComplete ? 'text-pista-300' : 'text-ink-300'}`}>
+                  {isComplete ? 'Bu gün tamamlandı' : `${progress.completed} / ${progress.total} addım`}
+                </p>
+              </div>
+            </motion.button>
           );
         })}
       </div>

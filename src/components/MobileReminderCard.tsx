@@ -1,22 +1,12 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import {
-  Check,
-  MoreHorizontal,
-  Edit2,
-  Trash2,
-  Volume2,
-  Clock3,
-  Flame,
-} from 'lucide-react';
+import { MoreHorizontal, Pencil, Trash2, Volume2, Clock3, Flame, Repeat2 } from 'lucide-react';
 import { Reminder } from '../types';
 import { CATEGORIES } from '../utils/categoryMeta';
-import {
-  getRelativeTimeAz,
-  formatTimeOnly,
-  getReminderUrgencyStatus,
-} from '../utils/dateUtils';
+import { getRelativeTimeAz, formatTimeOnly, getReminderUrgencyStatus } from '../utils/dateUtils';
 import { speakText, playSuccessSound } from '../utils/soundUtils';
+import { CompletionCheck } from './ui/CompletionCheck';
+import { springPress } from '../utils/motion';
 
 interface MobileReminderCardProps {
   reminder: Reminder;
@@ -26,7 +16,12 @@ interface MobileReminderCardProps {
   onSnooze: (id: string, minutes: number) => void;
   onFocus?: (reminder: Reminder) => void;
   variant?: 'overdue' | 'now' | 'later' | 'default';
+  /** Hide the time line when the parent already shows it (timeline layout) */
+  hideTime?: boolean;
 }
+
+/** Long enough to see the tick draw and the seeds burst before the row leaves */
+const COMPLETE_DELAY_MS = 520;
 
 export const MobileReminderCard: React.FC<MobileReminderCardProps> = ({
   reminder,
@@ -36,239 +31,245 @@ export const MobileReminderCard: React.FC<MobileReminderCardProps> = ({
   onSnooze,
   onFocus,
   variant = 'default',
+  hideTime = false,
 }) => {
   const [showMenu, setShowMenu] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [optimisticDone, setOptimisticDone] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const completeTimer = useRef<number | null>(null);
 
   const categoryInfo = CATEGORIES[reminder.category] || CATEGORIES.other;
   const { label: relativeTime, isPast } = getRelativeTimeAz(reminder.dueDateTime);
   const timeOnly = formatTimeOnly(reminder.dueDateTime);
 
+  useEffect(() => () => {
+    if (completeTimer.current) window.clearTimeout(completeTimer.current);
+  }, []);
+
   // Close menu on click outside or Escape
   useEffect(() => {
     if (!showMenu) return;
-    const handleOutside = (e: MouseEvent) => {
+    const handleOutside = (e: PointerEvent) => {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
         setShowMenu(false);
+        setShowDeleteConfirm(false);
       }
     };
     const handleKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setShowMenu(false);
+      if (e.key === 'Escape') {
+        setShowMenu(false);
+        setShowDeleteConfirm(false);
+      }
     };
-    document.addEventListener('mousedown', handleOutside);
+    document.addEventListener('pointerdown', handleOutside);
     document.addEventListener('keydown', handleKey);
     return () => {
-      document.removeEventListener('mousedown', handleOutside);
+      document.removeEventListener('pointerdown', handleOutside);
       document.removeEventListener('keydown', handleKey);
     };
   }, [showMenu]);
 
   const handleSpeak = (e: React.MouseEvent) => {
     e.stopPropagation();
-    const speechText = `${reminder.title}. ${relativeTime}. ${reminder.description || ''}`;
-    speakText(speechText);
+    speakText(`${reminder.title}. ${relativeTime}. ${reminder.description || ''}`);
   };
 
   const handleComplete = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!reminder.isCompleted) {
-      playSuccessSound();
+    if (reminder.isCompleted) {
+      onToggleComplete(reminder.id);
+      return;
     }
-    onToggleComplete(reminder.id);
+    if (optimisticDone) return;
+    playSuccessSound();
+    setOptimisticDone(true);
+    completeTimer.current = window.setTimeout(() => onToggleComplete(reminder.id), COMPLETE_DELAY_MS);
   };
 
   const urgencyStatus = getReminderUrgencyStatus(reminder);
-  const isCompleted = reminder.isCompleted;
+  const isCompleted = reminder.isCompleted || optimisticDone;
   const isOverdue = !isCompleted && (urgencyStatus === 'overdue' || isPast || variant === 'overdue');
+  const isNow = !isCompleted && !isOverdue && variant === 'now';
+  const isRecurring = reminder.recurrence && reminder.recurrence !== 'none';
+
+  const menuItem =
+    'flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-[14px] text-ink-50 hover:bg-white/[0.06] active:bg-white/[0.09] transition-colors';
 
   return (
     <div
       id={`mobile-reminder-card-${reminder.id}`}
-      className={`group relative rounded-[18px] border transition-all duration-200 ${
+      className={`group relative rounded-card transition-[background-color,border-color,opacity] duration-300 ${
         isCompleted
-          ? 'bg-[#121827]/60 border-white/[0.04] opacity-60'
-          : 'bg-[#121827] border-white/[0.06] hover:border-white/[0.12]'
-      }`}
+          ? 'surface-quiet opacity-70'
+          : isOverdue
+          ? 'surface border-nar-400/25'
+          : isNow
+          ? 'surface border-zer-400/30'
+          : 'surface'
+      } ${showMenu ? 'z-30' : ''}`}
     >
-      <div className="flex items-center gap-3 p-3.5">
-        {/* 1. Solda tamamlanma dairəsi (min touch area 44px) */}
-        <motion.button
-          whileTap={{ scale: 0.9 }}
-          id={`toggle-complete-mobile-${reminder.id}`}
-          onClick={handleComplete}
-          aria-label={isCompleted ? 'Aktiv et' : 'Tamamla'}
-          className="flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center -ml-1 rounded-full text-slate-300"
-        >
-          <div
-            className={`flex h-6 w-6 items-center justify-center rounded-full border transition-all duration-150 ${
-              isCompleted
-                ? 'border-[#10B981] bg-[#10B981] text-white shadow-[0_0_8px_rgba(16,185,129,0.3)]'
-                : 'border-white/20 bg-[#0D1220]/70 hover:border-[#A78BFA]'
-            }`}
-          >
-            {isCompleted && <Check className="h-3.5 w-3.5 stroke-[3]" />}
-          </div>
-        </motion.button>
+      <div className="flex items-center gap-2 py-3 pl-2 pr-1">
+        <CompletionCheck
+          checked={isCompleted}
+          onToggle={handleComplete}
+          tone={isOverdue ? 'overdue' : 'default'}
+          label={isCompleted ? `"${reminder.title}" aktiv et` : `"${reminder.title}" tamamla`}
+        />
 
-        {/* 2. Saat, Tapşırıq adı və Kateqoriya */}
-        <div className="flex-1 min-w-0 pr-1">
-          {/* Saat və yalnız gecikəndə 'Gecikir' statusu */}
-          <div className="flex items-center gap-1.5">
-            {timeOnly && (
+        <button
+          type="button"
+          onClick={() => onEdit(reminder)}
+          className="flex-1 min-w-0 text-left rounded-xl py-0.5 pr-1"
+          aria-label={`${reminder.title}, ${timeOnly}. Redaktə et`}
+        >
+          {!hideTime && timeOnly && (
+            <div className="flex items-center gap-2 mb-0.5">
               <span
-                className={`text-[11px] font-semibold tracking-tight ${
-                  isCompleted
-                    ? 'text-[#94A3B8]'
-                    : isOverdue
-                    ? 'text-[#FF4D73]'
-                    : 'text-[#A78BFA]'
+                className={`tabular text-[13px] font-semibold ${
+                  isCompleted ? 'text-ink-400' : isOverdue ? 'text-nar-300' : 'text-zer-300'
                 }`}
               >
                 {timeOnly}
               </span>
-            )}
-            {isOverdue && (
-              <span className="text-[10px] font-semibold text-[#FF4D73] bg-[#FF4D73]/10 px-1.5 py-0.2 rounded-md">
-                Gecikir
-              </span>
-            )}
-          </div>
+              {isOverdue && <span className="text-[12px] font-medium text-nar-300">gecikir</span>}
+            </div>
+          )}
 
-          {/* Tapşırıq adı əsas vurğudur, uzun adlar düzgün sətirə keçir */}
-          <h3
-            className={`text-sm font-semibold tracking-tight leading-snug mt-0.5 break-words line-clamp-2 ${
-              isCompleted ? 'text-[#94A3B8] line-through font-normal' : 'text-[#F5F6FA]'
-            }`}
-          >
-            {reminder.title}
-          </h3>
+          <span className="relative inline-block max-w-full">
+            <h3
+              className={`text-[16px] font-semibold leading-snug tracking-[-0.01em] break-words line-clamp-2 transition-colors duration-300 ${
+                isCompleted ? 'text-ink-400' : 'text-ink-50'
+              }`}
+            >
+              {reminder.title}
+            </h3>
+            {/* Strike line draws across instead of snapping on */}
+            <motion.span
+              aria-hidden="true"
+              className="absolute left-0 right-0 top-1/2 h-[1.5px] origin-left rounded-full bg-ink-400"
+              initial={false}
+              animate={{ scaleX: isCompleted ? 1 : 0 }}
+              transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1], delay: isCompleted ? 0.12 : 0 }}
+            />
+          </span>
 
-          {/* Kateqoriya və əlavə məlumat daha kiçik, sakit rəngdə */}
-          <div className="flex items-center flex-wrap gap-x-2 gap-y-0.5 mt-1 text-[11px] text-[#94A3B8]">
-            <span className="inline-flex items-center gap-1 font-normal text-[#94A3B8]">
-              <span className="h-1 w-1 rounded-full bg-[#94A3B8]/60" />
-              {categoryInfo.label}
+          <div className="mt-1 flex items-center gap-2 text-[13px] text-ink-400 min-w-0">
+            <span className={`inline-flex items-center gap-1.5 shrink-0 ${categoryInfo.color}`}>
+              <span className="h-1.5 w-1.5 rounded-full bg-current opacity-80" />
+              <span className="text-ink-300">{categoryInfo.label}</span>
             </span>
-
-            {reminder.description && (
-              <>
-                <span className="text-white/20">·</span>
-                <span className="truncate max-w-[160px] text-[#94A3B8]/75">
-                  {reminder.description}
-                </span>
-              </>
-            )}
+            {isRecurring && <Repeat2 className="h-3.5 w-3.5 shrink-0 text-ink-400" aria-label="Təkrarlanır" />}
+            {reminder.description && <span className="truncate text-ink-400">{reminder.description}</span>}
           </div>
-        </div>
+        </button>
 
-        {/* 3. Sağda üç nöqtə əməliyyat menyusu */}
         <div className="relative shrink-0" ref={menuRef}>
           <motion.button
-            whileTap={{ scale: 0.92 }}
+            type="button"
+            whileTap={{ scale: 0.86 }}
+            transition={springPress}
             id={`menu-mobile-${reminder.id}`}
             onClick={(e) => {
               e.stopPropagation();
               setShowMenu((prev) => !prev);
+              setShowDeleteConfirm(false);
             }}
             aria-label="Digər əməliyyatlar"
-            className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full text-[#94A3B8] hover:text-[#F5F6FA] active:bg-white/5 transition-colors"
+            aria-haspopup="menu"
+            aria-expanded={showMenu}
+            className={`flex h-11 w-11 items-center justify-center rounded-full transition-colors ${
+              showMenu ? 'bg-white/[0.08] text-ink-50' : 'text-ink-400 hover:text-ink-100'
+            }`}
           >
-            <MoreHorizontal className="h-4 w-4" />
+            <MoreHorizontal className="h-5 w-5" />
           </motion.button>
 
-          {/* Menyu Popup */}
           <AnimatePresence>
             {showMenu && (
               <motion.div
-                initial={{ opacity: 0, scale: 0.95, y: -4 }}
+                role="menu"
+                initial={{ opacity: 0, scale: 0.9, y: -6 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.95, y: -4 }}
-                transition={{ duration: 0.15 }}
-                className="absolute right-0 top-10 z-30 w-44 rounded-2xl border border-white/[0.08] bg-[#0D1220] p-1.5 shadow-[0_12px_32px_rgba(0,0,0,0.6)] backdrop-blur-xl"
+                exit={{ opacity: 0, scale: 0.94, y: -4, transition: { duration: 0.14 } }}
+                transition={{ type: 'spring', stiffness: 520, damping: 34 }}
+                style={{ transformOrigin: 'top right' }}
+                className="absolute right-1 top-12 z-40 w-56 rounded-2xl border border-white/[0.09] bg-ink-850/95 p-1.5 shadow-[0_24px_48px_-12px_rgba(0,0,0,0.85)] backdrop-blur-xl"
               >
-                {/* Oxu */}
-                <button
-                  onClick={(e) => {
-                    handleSpeak(e);
-                    setShowMenu(false);
-                  }}
-                  className="flex w-full items-center gap-2.5 rounded-xl px-2.5 py-2 text-xs text-[#F5F6FA] hover:bg-white/[0.06] transition-colors"
-                >
-                  <Volume2 className="h-3.5 w-3.5 text-[#A78BFA]" />
+                <button role="menuitem" onClick={(e) => { handleSpeak(e); setShowMenu(false); }} className={menuItem}>
+                  <Volume2 className="h-4 w-4 text-zer-300" />
                   <span>Səsləndir</span>
                 </button>
 
-                {/* Fokus */}
                 {onFocus && !isCompleted && (
                   <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setShowMenu(false);
-                      onFocus(reminder);
-                    }}
-                    className="flex w-full items-center gap-2.5 rounded-xl px-2.5 py-2 text-xs text-[#F5F6FA] hover:bg-white/[0.06] transition-colors"
+                    role="menuitem"
+                    onClick={(e) => { e.stopPropagation(); setShowMenu(false); onFocus(reminder); }}
+                    className={menuItem}
                   >
-                    <Flame className="h-3.5 w-3.5 text-amber-400" />
+                    <Flame className="h-4 w-4 text-zer-300" />
                     <span>Fokuslan</span>
                   </button>
                 )}
 
-                {/* Düzəliş et */}
                 <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setShowMenu(false);
-                    onEdit(reminder);
-                  }}
-                  className="flex w-full items-center gap-2.5 rounded-xl px-2.5 py-2 text-xs text-[#F5F6FA] hover:bg-white/[0.06] transition-colors"
+                  role="menuitem"
+                  onClick={(e) => { e.stopPropagation(); setShowMenu(false); onEdit(reminder); }}
+                  className={menuItem}
                 >
-                  <Edit2 className="h-3.5 w-3.5 text-[#94A3B8]" />
+                  <Pencil className="h-4 w-4 text-ink-300" />
                   <span>Redaktə et</span>
                 </button>
 
-                {/* Təxirə sal */}
                 {!isCompleted && (
                   <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setShowMenu(false);
-                      onSnooze(reminder.id, 15);
-                    }}
-                    className="flex w-full items-center gap-2.5 rounded-xl px-2.5 py-2 text-xs text-[#F5F6FA] hover:bg-white/[0.06] transition-colors"
+                    role="menuitem"
+                    onClick={(e) => { e.stopPropagation(); setShowMenu(false); onSnooze(reminder.id, 15); }}
+                    className={menuItem}
                   >
-                    <Clock3 className="h-3.5 w-3.5 text-[#94A3B8]" />
-                    <span>15 dəq təxirə sal</span>
+                    <Clock3 className="h-4 w-4 text-ink-300" />
+                    <span>15 dəqiqə təxirə sal</span>
                   </button>
                 )}
 
-                <div className="my-1 border-t border-white/[0.06]" />
+                <div className="my-1 h-px bg-white/[0.07]" />
 
-                {/* Sil */}
-                {!showDeleteConfirm ? (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setShowDeleteConfirm(true);
-                    }}
-                    className="flex w-full items-center gap-2.5 rounded-xl px-2.5 py-2 text-xs text-[#FF4D73] hover:bg-[#FF4D73]/10 transition-colors"
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                    <span>Sil</span>
-                  </button>
-                ) : (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setShowMenu(false);
-                      setShowDeleteConfirm(false);
-                      onDelete(reminder.id);
-                    }}
-                    className="flex w-full items-center gap-2.5 rounded-xl px-2.5 py-2 text-xs font-semibold bg-[#FF4D73] text-white hover:bg-[#FF4D73]/90 transition-colors"
-                  >
-                    <span>Təsdiq et (Sil)</span>
-                  </button>
-                )}
+                <AnimatePresence mode="wait" initial={false}>
+                  {!showDeleteConfirm ? (
+                    <motion.button
+                      key="ask"
+                      role="menuitem"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.12 }}
+                      onClick={(e) => { e.stopPropagation(); setShowDeleteConfirm(true); }}
+                      className={`${menuItem} text-nar-300 hover:bg-nar-500/10`}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                      <span>Sil</span>
+                    </motion.button>
+                  ) : (
+                    <motion.button
+                      key="confirm"
+                      role="menuitem"
+                      initial={{ opacity: 0, scale: 0.96 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={springPress}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setShowMenu(false);
+                        setShowDeleteConfirm(false);
+                        onDelete(reminder.id);
+                      }}
+                      className="flex w-full items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-[14px] font-semibold bg-nar-500 text-white active:bg-nar-600 transition-colors"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                      <span>Bəli, sil</span>
+                    </motion.button>
+                  )}
+                </AnimatePresence>
               </motion.div>
             )}
           </AnimatePresence>

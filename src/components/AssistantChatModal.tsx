@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useEscapeKey } from '../hooks/useEscapeKey';
 import {
   Sparkles,
   X,
@@ -38,6 +39,7 @@ export const AssistantChatModal: React.FC<AssistantChatModalProps> = ({
   reminders,
   onOpenVoiceReminder,
 }) => {
+  useEscapeKey(onClose);
   const [messages, setMessages] = useState<AssistantMessage[]>([
     {
       id: 'welcome-msg',
@@ -291,7 +293,7 @@ export const AssistantChatModal: React.FC<AssistantChatModalProps> = ({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in"
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-ink-950/70 backdrop-blur-sm animate-fade-in"
       style={{
         paddingTop: 'max(env(safe-area-inset-top, 0px), 16px)',
         paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 16px)',
@@ -299,20 +301,20 @@ export const AssistantChatModal: React.FC<AssistantChatModalProps> = ({
     >
       <div
         id="assistant-chat-modal"
-        className="relative flex h-[85vh] max-h-[640px] w-full max-w-lg flex-col rounded-3xl border border-white/10 bg-gradient-to-b from-[#111827] to-[#0F172A] p-5 shadow-2xl text-slate-50 overflow-hidden"
+        className="relative flex h-[85vh] max-h-[640px] w-full max-w-lg flex-col rounded-3xl border border-white/10 bg-gradient-to-b from-[#1d161c] to-[#1d161c] p-5 shadow-2xl text-ink-50 overflow-hidden"
       >
         {/* Top Glow */}
-        <div className="pointer-events-none absolute -top-24 left-1/2 h-48 w-48 -translate-x-1/2 rounded-full bg-violet-500/15 blur-3xl" />
+        <div className="pointer-events-none absolute -top-24 left-1/2 h-48 w-48 -translate-x-1/2 rounded-full bg-zer-500/15 blur-3xl" />
 
         {/* Modal Header */}
         <div className="flex items-center justify-between border-b border-white/5 pb-3">
           <div className="flex items-center gap-2.5">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-tr from-violet-600 to-indigo-600 text-white border border-white/10 shadow-md shadow-violet-500/20">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl btn-gold text-ink-950 border border-white/10 shadow-md shadow-zer-500/20">
               <Bot className="h-5 w-5" />
             </div>
             <div>
               <h3 className="font-bold text-sm text-white">AI Yaddaş Köməkçisi</h3>
-              <p className="text-[11px] text-slate-400">Qrafikiniz və xatırlatmalarınız haqqında soruşun</p>
+              <p className="text-[13px] text-ink-400">Qrafikiniz və xatırlatmalarınız haqqında soruşun</p>
             </div>
           </div>
 
@@ -324,7 +326,7 @@ export const AssistantChatModal: React.FC<AssistantChatModalProps> = ({
                 onClose();
               }}
               aria-label="Bağla"
-              className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full bg-slate-800/80 text-slate-400 hover:bg-slate-700 hover:text-white transition-colors active:scale-95 shrink-0"
+              className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full bg-ink-800/80 text-ink-400 hover:bg-ink-700 hover:text-white transition-colors active:scale-95 shrink-0"
             >
               <X className="h-4 w-4" />
             </button>
@@ -339,7 +341,7 @@ export const AssistantChatModal: React.FC<AssistantChatModalProps> = ({
               className={`flex gap-2.5 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
             >
               {msg.role === 'assistant' && (
-                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-violet-500/20 text-violet-400 border border-violet-500/30 mt-0.5">
+                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-zer-500/20 text-zer-400 border border-zer-500/30 mt-0.5">
                   <Sparkles className="h-3.5 w-3.5" />
                 </div>
               )}
@@ -347,28 +349,28 @@ export const AssistantChatModal: React.FC<AssistantChatModalProps> = ({
               <div
                 className={`max-w-[82%] rounded-2xl p-3.5 text-xs sm:text-sm leading-relaxed ${
                   msg.role === 'user'
-                    ? 'bg-gradient-to-tr from-violet-600 to-indigo-600 text-white font-medium rounded-tr-none shadow-md shadow-violet-500/20 border border-white/10'
-                    : 'bg-slate-800/60 text-slate-100 border border-white/5 rounded-tl-none shadow-sm'
+                    ? ' btn-gold text-ink-950 font-medium rounded-tr-none shadow-md shadow-zer-500/20 border border-white/10'
+                    : 'bg-ink-800/60 text-ink-100 border border-white/5 rounded-tl-none shadow-sm'
                 }`}
               >
                 <div className="whitespace-pre-wrap">{msg.text}</div>
 
                 {msg.actionPayload?.hasConflict && !msg.executed && (
                   <div className="mt-2.5 pt-2.5 border-t border-white/10 space-y-2">
-                    <div className="flex items-center gap-1.5 text-amber-300 text-[11px] font-semibold">
+                    <div className="flex items-center gap-1.5 text-amber-300 text-[13px] font-semibold">
                       <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
                       <span>Toqquşma aşkarlandı</span>
                     </div>
                     <div className="flex items-center gap-1.5 flex-wrap">
                       <button
                         onClick={() => handleConflictForceAdd(msg)}
-                        className="px-2.5 py-1 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-[11px] font-bold text-amber-200 active:scale-95 transition-all"
+                        className="px-2.5 py-1 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-[13px] font-bold text-amber-200 active:scale-95 transition-all"
                       >
                         Yenə də əlavə et
                       </button>
                       <button
                         onClick={() => handleConflictChangeTime(msg)}
-                        className="px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/15 border border-white/20 text-[11px] font-bold text-white active:scale-95 transition-all"
+                        className="px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/15 border border-white/20 text-[13px] font-bold text-white active:scale-95 transition-all"
                       >
                         {msg.actionPayload.conflicts?.[0]?.suggestedAlternativeTime
                           ? `Vaxtı ${msg.actionPayload.conflicts[0].suggestedAlternativeTime} et`
@@ -376,7 +378,7 @@ export const AssistantChatModal: React.FC<AssistantChatModalProps> = ({
                       </button>
                       <button
                         onClick={() => handleConflictCancel(msg)}
-                        className="px-2.5 py-1 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-[11px] font-bold text-rose-300 active:scale-95 transition-all"
+                        className="px-2.5 py-1 rounded-lg bg-nar-500/10 hover:bg-nar-500/20 border border-nar-500/30 text-[13px] font-bold text-nar-300 active:scale-95 transition-all"
                       >
                         Ləğv et
                       </button>
@@ -385,8 +387,8 @@ export const AssistantChatModal: React.FC<AssistantChatModalProps> = ({
                 )}
 
                 <div
-                  className={`mt-1.5 flex items-center justify-between text-[10px] ${
-                    msg.role === 'user' ? 'text-violet-200' : 'text-slate-500'
+                  className={`mt-1.5 flex items-center justify-between text-[12px] ${
+                    msg.role === 'user' ? 'text-zer-200' : 'text-ink-500'
                   }`}
                 >
                   <span>{msg.timestamp}</span>
@@ -394,7 +396,7 @@ export const AssistantChatModal: React.FC<AssistantChatModalProps> = ({
                   {msg.role === 'assistant' && (
                     <button
                       onClick={() => handleSpeakToggle(msg.text)}
-                      className="flex items-center gap-1 text-slate-400 hover:text-violet-400 transition-colors"
+                      className="flex items-center gap-1 text-ink-400 hover:text-zer-400 transition-colors"
                       title="Səsi oxu / dayandır"
                     >
                       <Volume2 className="h-3 w-3" />
@@ -407,7 +409,7 @@ export const AssistantChatModal: React.FC<AssistantChatModalProps> = ({
           ))}
 
           {isLoading && (
-            <div className="flex items-center gap-2 text-xs text-violet-400 bg-slate-850 p-3 rounded-2xl border border-white/5 w-fit">
+            <div className="flex items-center gap-2 text-xs text-zer-400 bg-ink-850 p-3 rounded-2xl border border-white/5 w-fit">
               <Loader2 className="h-4 w-4 animate-spin" />
               <span>Unutma AI qrafikinizi yoxlayır...</span>
             </div>
@@ -425,7 +427,7 @@ export const AssistantChatModal: React.FC<AssistantChatModalProps> = ({
                 id={`assistant-preset-q-${idx}`}
                 onClick={() => handleAskQuestion(q)}
                 disabled={isLoading}
-                className="whitespace-nowrap rounded-xl border border-white/5 bg-slate-800/40 px-2.5 py-1 text-[11px] text-slate-300 hover:bg-slate-800 hover:border-violet-500/30 hover:text-white transition-colors"
+                className="whitespace-nowrap rounded-xl border border-white/5 bg-ink-800/40 px-2.5 py-1 text-[13px] text-ink-300 hover:bg-ink-800 hover:border-zer-500/30 hover:text-white transition-colors"
               >
                 {q}
               </button>
@@ -446,14 +448,14 @@ export const AssistantChatModal: React.FC<AssistantChatModalProps> = ({
               }}
               placeholder="Qrafikiniz haqqında soruşun..."
               disabled={isLoading}
-              className="w-full rounded-2xl border border-white/5 bg-slate-800/40 pl-3.5 pr-10 py-2.5 text-xs text-slate-100 placeholder-slate-500 focus:border-violet-500/50 focus:outline-none transition-colors"
+              className="w-full rounded-2xl border border-white/5 bg-ink-800/40 pl-3.5 pr-10 py-2.5 text-xs text-ink-100 placeholder-ink-500 focus:border-zer-500/50 focus:outline-none transition-colors"
             />
 
             <button
               id="send-assistant-query-btn"
               onClick={() => handleAskQuestion()}
               disabled={isLoading || !inputQuery.trim()}
-              className="absolute right-2 top-1/2 -translate-y-1/2 flex h-7 w-7 items-center justify-center rounded-xl bg-gradient-to-tr from-violet-600 to-indigo-600 text-white disabled:opacity-40 disabled:cursor-not-allowed hover:brightness-110 shadow-sm"
+              className="absolute right-2 top-1/2 -translate-y-1/2 flex h-7 w-7 items-center justify-center rounded-xl btn-gold text-ink-950 disabled:opacity-40 disabled:cursor-not-allowed hover:brightness-110 shadow-sm"
             >
               <Send className="h-3.5 w-3.5" />
             </button>
@@ -465,8 +467,8 @@ export const AssistantChatModal: React.FC<AssistantChatModalProps> = ({
             onClick={toggleVoiceQuery}
             className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl transition-all shadow-md active:scale-95 border ${
               isListening
-                ? 'bg-rose-500 text-white border-rose-400 animate-pulse'
-                : 'bg-slate-800 text-violet-400 hover:bg-slate-700 hover:text-white border-white/10'
+                ? 'bg-nar-500 text-white border-nar-400 animate-pulse'
+                : 'bg-ink-800 text-zer-400 hover:bg-ink-700 hover:text-white border-white/10'
             }`}
             title="Səslə soruş"
           >

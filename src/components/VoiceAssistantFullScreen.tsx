@@ -623,7 +623,7 @@ export const VoiceAssistantFullScreen: React.FC<VoiceAssistantFullScreenProps> =
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.98 }}
       transition={{ duration: 0.22, ease: [0.25, 1, 0.5, 1] }}
-      className="fixed inset-0 z-50 flex flex-col bg-[#080B14] text-[#F5F6FA] overflow-y-auto"
+      className="fixed inset-0 z-50 flex flex-col bg-[#130e13] text-[#f8f2ec] overflow-y-auto"
       style={{
         paddingTop: 'max(env(safe-area-inset-top, 0px), 12px)',
         paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 16px)',
@@ -632,10 +632,10 @@ export const VoiceAssistantFullScreen: React.FC<VoiceAssistantFullScreenProps> =
       {/* Top Header Bar */}
       <div className="flex items-center justify-between px-5 pt-1 pb-2 z-20">
         <div className="flex items-center gap-2">
-          <div className="flex h-7 w-7 items-center justify-center rounded-xl bg-[#7C3AED]/20 border border-[#7C3AED]/30 text-[#A78BFA]">
+          <div className="flex h-7 w-7 items-center justify-center rounded-xl bg-[#e2a332]/20 border border-[#e2a332]/30 text-[#f1c868]">
             <Sparkles className="h-3.5 w-3.5" />
           </div>
-          <span className="text-[11px] font-semibold uppercase tracking-wider text-[#A78BFA]">
+          <span className="text-[13px] font-semibold text-[#f1c868]">
             Unutma AI Səs Mühərriki
           </span>
         </div>
@@ -648,7 +648,7 @@ export const VoiceAssistantFullScreen: React.FC<VoiceAssistantFullScreenProps> =
             onClose();
           }}
           aria-label="Bağla"
-          className="flex h-10 w-10 items-center justify-center rounded-full bg-white/[0.04] text-[#94A3B8] hover:text-[#F5F6FA] transition-colors shrink-0"
+          className="flex h-10 w-10 items-center justify-center rounded-full bg-white/[0.04] text-[#c3b2ba] hover:text-[#f8f2ec] transition-colors shrink-0"
         >
           <X className="h-4 w-4" />
         </motion.button>
@@ -661,16 +661,16 @@ export const VoiceAssistantFullScreen: React.FC<VoiceAssistantFullScreenProps> =
           <>
             {/* Top Prompt Section */}
             <div className="text-center pt-4">
-              <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full border border-[#7C3AED]/30 bg-[#7C3AED]/15 text-xs font-medium text-[#A78BFA] mb-3 shadow-sm">
-                <span className={`h-2 w-2 rounded-full ${isListening ? 'bg-[#FF4D73] animate-ping' : 'bg-[#94A3B8]'}`} />
+              <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full border border-[#e2a332]/30 bg-[#e2a332]/15 text-xs font-medium text-[#f1c868] mb-3 shadow-sm">
+                <span className={`h-2 w-2 rounded-full ${isListening ? 'bg-[#e14762] animate-ping' : 'bg-[#c3b2ba]'}`} />
                 <span>{isListening ? `Dinləyirəm... (${formatSeconds(recordingSeconds)})` : isProcessing ? 'Analiz edilir...' : 'Mikrofon dayandırılıb'}</span>
               </div>
 
-              <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-[#F5F6FA]">
+              <h2 className="font-display text-[30px] leading-[1.1] sm:text-[34px] leading-[1.08] font-normal text-[#f8f2ec]">
                 {isListening ? 'Dinləyirəm...' : 'Nəyi yadda saxlayaq?'}
               </h2>
 
-              <p className="text-xs text-[#94A3B8] mt-1 max-w-[280px] mx-auto font-normal">
+              <p className="text-xs text-[#c3b2ba] mt-1 max-w-[280px] mx-auto font-normal">
                 {isListening
                   ? 'Planlarınızı və ya xatırlatmalarınızı söyləyin.'
                   : 'Danışmağa başlamaq üçün mikrofona toxunun.'}
@@ -678,7 +678,7 @@ export const VoiceAssistantFullScreen: React.FC<VoiceAssistantFullScreenProps> =
 
               {/* Localized Error Display */}
               {recordingError && (
-                <div className="mt-2.5 mx-auto max-w-sm rounded-[14px] border border-[#FF4D73]/30 bg-[#FF4D73]/10 px-3 py-2 text-xs text-[#FF4D73] flex items-center justify-center gap-1.5">
+                <div className="mt-2.5 mx-auto max-w-sm rounded-[14px] border border-[#e14762]/30 bg-[#e14762]/10 px-3 py-2 text-xs text-[#e14762] flex items-center justify-center gap-1.5">
                   <AlertCircle className="h-3.5 w-3.5 shrink-0" />
                   <span>{recordingError}</span>
                 </div>
@@ -689,7 +689,7 @@ export const VoiceAssistantFullScreen: React.FC<VoiceAssistantFullScreenProps> =
             <div className="my-auto py-6 flex flex-col items-center justify-center relative">
               {/* Outer Ambient Aura */}
               <div
-                className="absolute h-56 w-56 rounded-full bg-gradient-to-tr from-[#7C3AED]/30 to-[#A78BFA]/20 blur-3xl pointer-events-none transition-all duration-300"
+                className="absolute h-56 w-56 rounded-full bg-gradient-to-tr from-[#e2a332]/30 to-[#f1c868]/20 blur-3xl pointer-events-none transition-all duration-300"
                 style={{
                   transform: `scale(${1 + audioLevel * 0.7})`,
                   opacity: isListening ? 0.95 : 0.2,
@@ -699,11 +699,11 @@ export const VoiceAssistantFullScreen: React.FC<VoiceAssistantFullScreenProps> =
               {/* Pulsing Concentric Rings */}
               <div className="relative flex items-center justify-center">
                 <div
-                  className="absolute h-44 w-44 rounded-full border border-[#7C3AED]/20 transition-all duration-150"
+                  className="absolute h-44 w-44 rounded-full border border-[#e2a332]/20 transition-all duration-150"
                   style={{ transform: `scale(${1 + audioLevel * 0.35})` }}
                 />
                 <div
-                  className="absolute h-32 w-32 rounded-full border border-[#A78BFA]/25 transition-all duration-100"
+                  className="absolute h-32 w-32 rounded-full border border-[#f1c868]/25 transition-all duration-100"
                   style={{ transform: `scale(${1 + audioLevel * 0.2})` }}
                 />
 
@@ -724,14 +724,14 @@ export const VoiceAssistantFullScreen: React.FC<VoiceAssistantFullScreenProps> =
                   }}
                   className={`relative z-10 flex h-24 w-24 items-center justify-center rounded-full shadow-2xl transition-all duration-300 active:scale-95 border border-white/20 ${
                     isListening
-                      ? 'bg-gradient-to-tr from-[#7C3AED] to-[#A78BFA] text-white shadow-[#7C3AED]/40 ring-4 ring-[#7C3AED]/25 animate-pulse-glow'
-                      : 'bg-[#121827] text-[#94A3B8] border-white/[0.08] hover:bg-[#151c2e]'
+                      ? 'bg-gradient-to-tr from-[#e2a332] to-[#f1c868] text-white shadow-[#e2a332]/40 ring-4 ring-[#e2a332]/25 animate-pulse-glow'
+                      : 'bg-[#1d161c] text-[#c3b2ba] border-white/[0.08] hover:bg-[#251c24]'
                   }`}
                 >
                   {isListening ? (
                     <Mic className="h-10 w-10 text-white stroke-[2.2]" />
                   ) : (
-                    <MicOff className="h-8 w-8 text-[#94A3B8]" />
+                    <MicOff className="h-8 w-8 text-[#c3b2ba]" />
                   )}
                 </button>
               </div>
@@ -739,11 +739,11 @@ export const VoiceAssistantFullScreen: React.FC<VoiceAssistantFullScreenProps> =
               {/* Live Recognized Speech Box */}
               <div className="mt-7 w-full text-center">
                 {transcript || interimText ? (
-                  <p className="text-sm font-medium text-[#F5F6FA] italic bg-[#121827] p-3.5 rounded-[18px] border border-white/[0.08] shadow-lg">
+                  <p className="text-sm font-medium text-[#f8f2ec] italic bg-[#1d161c] p-3.5 rounded-[18px] border border-white/[0.08] shadow-lg">
                     “{[transcript, interimText].filter(Boolean).join(' ').trim()}”
                   </p>
                 ) : (
-                  <p className="text-xs text-[#94A3B8] font-normal">
+                  <p className="text-xs text-[#c3b2ba] font-normal">
                     {isListening ? 'Danışın... Səs qeyd olunur' : 'Danışmaq üçün mikrofona toxunun'}
                   </p>
                 )}
@@ -753,8 +753,8 @@ export const VoiceAssistantFullScreen: React.FC<VoiceAssistantFullScreenProps> =
             {/* Bottom Section: Sample Quotes & Action */}
             <div className="space-y-3 pt-2">
               {/* Highlighted Example Prompts */}
-              <div className="rounded-2xl border border-white/5 bg-[#111624] p-3 text-center">
-                <p className="text-[11px] text-violet-300 font-semibold mb-1">
+              <div className="rounded-2xl border border-white/5 bg-[#1d161c] p-3 text-center">
+                <p className="text-[13px] text-zer-300 font-semibold mb-1">
                   Nümunə səsli əmrlər:
                 </p>
                 <div className="space-y-1">
@@ -764,13 +764,13 @@ export const VoiceAssistantFullScreen: React.FC<VoiceAssistantFullScreenProps> =
                         'Sabah saat 10-da Anara zəng etməyi, günorta 2-də maşını ustaya aparmağı, axşam anamın dərmanını almağı xatırlat.'
                       )
                     }
-                    className="text-[11px] text-slate-300 italic cursor-pointer hover:text-violet-300 transition-colors"
+                    className="text-[13px] text-ink-300 italic cursor-pointer hover:text-zer-300 transition-colors"
                   >
                     “Sabah saat 10-da Anara zəng et, 2-də maşını apar, axşam dərmanı al”
                   </p>
                   <p
                     onClick={() => handleAnalyzeText('Sabah nə planım var?')}
-                    className="text-[11px] text-slate-400 italic cursor-pointer hover:text-violet-300 transition-colors"
+                    className="text-[13px] text-ink-400 italic cursor-pointer hover:text-zer-300 transition-colors"
                   >
                     “Sabah nə planım var?”
                   </p>
@@ -784,7 +784,7 @@ export const VoiceAssistantFullScreen: React.FC<VoiceAssistantFullScreenProps> =
                 id="voice-screen-analyze-btn"
                 onClick={() => handleAnalyzeText()}
                 disabled={isProcessing || (!transcript.trim() && !interimText.trim())}
-                className="flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-tr from-violet-600 to-indigo-600 py-3.5 text-sm font-bold text-white shadow-xl shadow-violet-500/30 border border-white/10 hover:brightness-110 disabled:opacity-40 transition-all"
+                className="flex w-full items-center justify-center gap-2 rounded-2xl py-3.5 text-sm font-bold btn-gold text-ink-950 shadow-xl shadow-zer-500/30 border border-white/10 hover:brightness-110 disabled:opacity-40 transition-all"
               >
                 {isProcessing ? (
                   <>
@@ -808,16 +808,16 @@ export const VoiceAssistantFullScreen: React.FC<VoiceAssistantFullScreenProps> =
           <div className="flex flex-col h-full justify-between pt-2">
             <div>
               <div className="text-center mb-3">
-                <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 text-[11px] font-bold text-emerald-400 mb-1.5">
+                <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full border border-pista-500/30 bg-pista-500/10 text-[13px] font-bold text-pista-400 mb-1.5">
                   <Check className="h-3 w-3" />
                   Analiz Tamamlandı
                 </div>
 
-                <h2 className="text-xl font-extrabold tracking-tight text-white">
+                <h2 className="font-display text-[26px] leading-[1.15] font-normal text-ink-50">
                   Bunu yadda saxlayaq?
                 </h2>
 
-                <p className="text-xs text-slate-400 mt-0.5 px-2">
+                <p className="text-xs text-ink-400 mt-0.5 px-2">
                   {parsedSummary || 'Xatırlatmanı nəzərdən keçirin, lazım olduqda düzəliş edin:'}
                 </p>
               </div>
@@ -831,11 +831,11 @@ export const VoiceAssistantFullScreen: React.FC<VoiceAssistantFullScreenProps> =
                       <h4 className="text-xs font-bold text-amber-300">Vaxt Toqquşması Xəbərdarlığı</h4>
                       {detectedConflicts.map((c, idx) => (
                         <div key={idx} className="mt-1">
-                          <p className="text-[11px] text-amber-200/90 leading-relaxed font-medium">
+                          <p className="text-[13px] text-amber-200/90 leading-relaxed font-medium">
                             {c.message}
                           </p>
                           {c.suggestedAlternativeTime && (
-                            <p className="text-[10px] text-amber-300/80 mt-0.5">
+                            <p className="text-[12px] text-amber-300/80 mt-0.5">
                               Təklif olunan boş vaxt: <span className="font-bold underline">{c.suggestedAlternativeTime}</span>
                             </p>
                           )}
@@ -843,21 +843,21 @@ export const VoiceAssistantFullScreen: React.FC<VoiceAssistantFullScreenProps> =
                             <button
                               id={`conflict-force-add-${idx}`}
                               onClick={handleForceSave}
-                              className="px-2.5 py-1 rounded-lg bg-amber-500/25 hover:bg-amber-500/35 border border-amber-500/40 text-[11px] font-bold text-amber-200 active:scale-95 transition-all"
+                              className="px-2.5 py-1 rounded-lg bg-amber-500/25 hover:bg-amber-500/35 border border-amber-500/40 text-[13px] font-bold text-amber-200 active:scale-95 transition-all"
                             >
                               Yenə də əlavə et
                             </button>
                             <button
                               id={`conflict-change-time-${idx}`}
                               onClick={() => handleApplyAlternativeTime(c)}
-                              className="px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/15 border border-white/20 text-[11px] font-bold text-white active:scale-95 transition-all"
+                              className="px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/15 border border-white/20 text-[13px] font-bold text-white active:scale-95 transition-all"
                             >
                               {c.suggestedAlternativeTime ? `Vaxtı ${c.suggestedAlternativeTime} et` : 'Vaxtı dəyiş'}
                             </button>
                             <button
                               id={`conflict-cancel-${idx}`}
                               onClick={() => handleCancelConflictReminder(c)}
-                              className="px-2.5 py-1 rounded-lg bg-rose-500/15 hover:bg-rose-500/25 border border-rose-500/30 text-[11px] font-bold text-rose-300 active:scale-95 transition-all"
+                              className="px-2.5 py-1 rounded-lg bg-nar-500/15 hover:bg-nar-500/25 border border-nar-500/30 text-[13px] font-bold text-nar-300 active:scale-95 transition-all"
                             >
                               Ləğv et
                             </button>
@@ -887,33 +887,33 @@ export const VoiceAssistantFullScreen: React.FC<VoiceAssistantFullScreenProps> =
                       key={item.id}
                       className={`rounded-2xl border p-3.5 shadow-md transition-all ${
                         itemHasConflict
-                          ? 'border-amber-500/50 bg-[#161720]'
-                          : 'border-white/10 bg-[#121828]'
+                          ? 'border-amber-500/50 bg-[#1d161c]'
+                          : 'border-white/10 bg-[#1d161c]'
                       }`}
                     >
                       {isEditing ? (
                         <div className="space-y-2">
-                          <label className="text-[10px] font-bold uppercase text-slate-400">Başlıq</label>
+                          <label className="text-[12px] font-bold text-ink-400">Başlıq</label>
                           <input
                             type="text"
                             value={item.title}
                             onChange={(e) => handleUpdateItem(item.id, { title: e.target.value })}
-                            className="w-full rounded-xl border border-white/10 bg-slate-800 px-3 py-2 text-xs font-semibold text-white focus:outline-none focus:border-violet-500"
+                            className="w-full rounded-xl border border-white/10 bg-ink-800 px-3 py-2 text-xs font-semibold text-white focus:outline-none focus:border-zer-500"
                             placeholder="Başlıq"
                           />
 
-                          <label className="text-[10px] font-bold uppercase text-slate-400">Təsvir / Qeyd</label>
+                          <label className="text-[12px] font-bold text-ink-400">Təsvir / Qeyd</label>
                           <input
                             type="text"
                             value={item.description}
                             onChange={(e) => handleUpdateItem(item.id, { description: e.target.value })}
-                            className="w-full rounded-xl border border-white/10 bg-slate-800 px-3 py-1.5 text-xs text-slate-300 focus:outline-none"
+                            className="w-full rounded-xl border border-white/10 bg-ink-800 px-3 py-1.5 text-xs text-ink-300 focus:outline-none"
                             placeholder="Əlavə qeyd"
                           />
 
                           <div className="grid grid-cols-2 gap-2">
                             <div>
-                              <label className="text-[10px] font-bold uppercase text-slate-400">Tarix və Saat</label>
+                              <label className="text-[12px] font-bold text-ink-400">Tarix və Saat</label>
                               <input
                                 type="datetime-local"
                                 value={item.dueDateTime ? toDateTimeLocalInput(item.dueDateTime) : ''}
@@ -924,21 +924,21 @@ export const VoiceAssistantFullScreen: React.FC<VoiceAssistantFullScreenProps> =
                                     });
                                   }
                                 }}
-                                className="w-full rounded-xl border border-white/10 bg-slate-800 px-2 py-1.5 text-[11px] text-white focus:outline-none"
+                                className="w-full rounded-xl border border-white/10 bg-ink-800 px-2 py-1.5 text-[13px] text-white focus:outline-none"
                               />
                             </div>
 
                             <div>
-                              <label className="text-[10px] font-bold uppercase text-slate-400">Kateqoriya</label>
+                              <label className="text-[12px] font-bold text-ink-400">Kateqoriya</label>
                               <select
                                 value={item.category}
                                 onChange={(e) =>
                                   handleUpdateItem(item.id, { category: e.target.value as ReminderCategory })
                                 }
-                                className="w-full rounded-xl border border-white/10 bg-slate-800 px-2 py-1.5 text-[11px] text-white focus:outline-none"
+                                className="w-full rounded-xl border border-white/10 bg-ink-800 px-2 py-1.5 text-[13px] text-white focus:outline-none"
                               >
                                 {Object.values(CATEGORIES).map((c) => (
-                                  <option key={c.id} value={c.id} className="bg-slate-900">
+                                  <option key={c.id} value={c.id} className="bg-ink-900">
                                     {c.label}
                                   </option>
                                 ))}
@@ -948,7 +948,7 @@ export const VoiceAssistantFullScreen: React.FC<VoiceAssistantFullScreenProps> =
 
                           <button
                             onClick={() => setEditingCardId(null)}
-                            className="w-full rounded-xl bg-violet-600 py-2 text-xs font-bold text-white hover:bg-violet-500 shadow-md"
+                            className="w-full rounded-xl py-2 text-xs font-bold btn-gold text-ink-950 shadow-md"
                           >
                             Yadda saxla
                           </button>
@@ -957,19 +957,19 @@ export const VoiceAssistantFullScreen: React.FC<VoiceAssistantFullScreenProps> =
                         <div className="flex items-start justify-between gap-3">
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 mb-1 flex-wrap">
-                              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-violet-500/20 text-violet-300 text-[10px] font-bold">
+                              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-zer-500/20 text-zer-300 text-[12px] font-bold">
                                 {index + 1}
                               </span>
-                              <span className="text-[11px] font-bold text-violet-300">
+                              <span className="text-[13px] font-bold text-zer-300">
                                 {formatTimeOnly(item.dueDateTime)}
                               </span>
-                              <span className="text-[10px] text-slate-400 font-medium">
+                              <span className="text-[12px] text-ink-400 font-medium">
                                 • {catMeta.label}
                               </span>
 
                               {/* Recurrence indicator badge */}
                               {item.recurrence && item.recurrence !== 'none' && (
-                                <span className="inline-flex items-center gap-1 rounded-full bg-violet-500/15 border border-violet-500/30 px-2 py-0.5 text-[9px] font-bold text-violet-300">
+                                <span className="inline-flex items-center gap-1 rounded-full bg-zer-500/15 border border-zer-500/30 px-2 py-0.5 text-[12px] font-bold text-zer-300">
                                   <Repeat className="h-2.5 w-2.5" />
                                   {getRecurrenceLabelAz(item as any)}
                                 </span>
@@ -977,14 +977,14 @@ export const VoiceAssistantFullScreen: React.FC<VoiceAssistantFullScreenProps> =
 
                               {/* Inferred time indicator badge */}
                               {item.inferredTime && (
-                                <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/15 border border-amber-500/30 px-2 py-0.5 text-[9px] font-bold text-amber-300">
+                                <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/15 border border-amber-500/30 px-2 py-0.5 text-[12px] font-bold text-amber-300">
                                   <Clock className="h-2.5 w-2.5" />
                                   Təxmini vaxt
                                 </span>
                               )}
 
                               {itemHasConflict && (
-                                <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/20 border border-amber-500/40 px-2 py-0.5 text-[9px] font-bold text-amber-300">
+                                <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/20 border border-amber-500/40 px-2 py-0.5 text-[12px] font-bold text-amber-300">
                                   <AlertTriangle className="h-2.5 w-2.5" />
                                   Toqquşma
                                 </span>
@@ -993,12 +993,12 @@ export const VoiceAssistantFullScreen: React.FC<VoiceAssistantFullScreenProps> =
 
                             <h4 className="text-xs font-bold text-white">{item.title}</h4>
                             {item.description && (
-                              <p className="text-[11px] text-slate-400 truncate mt-0.5">
+                              <p className="text-[13px] text-ink-400 truncate mt-0.5">
                                 {item.description}
                               </p>
                             )}
 
-                            <p className="text-[10px] text-slate-500 mt-1">
+                            <p className="text-[12px] text-ink-500 mt-1">
                               {formatDateAz(item.dueDateTime)}
                             </p>
                           </div>
@@ -1006,14 +1006,14 @@ export const VoiceAssistantFullScreen: React.FC<VoiceAssistantFullScreenProps> =
                           <div className="flex items-center gap-1 shrink-0">
                             <button
                               onClick={() => setEditingCardId(item.id)}
-                              className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800"
+                              className="p-1.5 text-ink-400 hover:text-white rounded-lg hover:bg-ink-800"
                               title="Düzəliş et"
                             >
                               <Edit2 className="h-3.5 w-3.5" />
                             </button>
                             <button
                               onClick={() => handleDeleteItem(item.id)}
-                              className="p-1.5 text-rose-400 hover:text-rose-300 rounded-lg hover:bg-rose-500/10"
+                              className="p-1.5 text-nar-400 hover:text-nar-300 rounded-lg hover:bg-nar-500/10"
                               title="Sil"
                             >
                               <Trash2 className="h-3.5 w-3.5" />
@@ -1033,7 +1033,7 @@ export const VoiceAssistantFullScreen: React.FC<VoiceAssistantFullScreenProps> =
                 id="confirm-extracted-reminders-btn"
                 onClick={() => handleConfirmAll()}
                 disabled={parsedReminders.length === 0}
-                className="flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-tr from-violet-600 to-indigo-600 py-3.5 text-sm font-bold text-white shadow-xl shadow-violet-500/30 border border-white/10 hover:brightness-110 active:scale-98 transition-all"
+                className="flex w-full items-center justify-center gap-2 rounded-2xl py-3.5 text-sm font-bold btn-gold text-ink-950 shadow-xl shadow-zer-500/30 border border-white/10 hover:brightness-110 active:scale-98 transition-all"
               >
                 <Check className="h-4 w-4 stroke-[2.5]" />
                 <span>Yadda saxla ({parsedReminders.length})</span>
@@ -1046,7 +1046,7 @@ export const VoiceAssistantFullScreen: React.FC<VoiceAssistantFullScreenProps> =
                   setInterimText('');
                   startListeningProcess();
                 }}
-                className="flex w-full items-center justify-center gap-1.5 py-1.5 text-xs font-semibold text-slate-400 hover:text-white transition-colors"
+                className="flex w-full items-center justify-center gap-1.5 py-1.5 text-xs font-semibold text-ink-400 hover:text-white transition-colors"
               >
                 <RefreshCw className="h-3.5 w-3.5" />
                 <span>Yenidən danış</span>
@@ -1059,14 +1059,14 @@ export const VoiceAssistantFullScreen: React.FC<VoiceAssistantFullScreenProps> =
           /* STEP 3: VOICE ASSISTANT SPOKEN ANSWER (e.g. Schedule Response) */
           <div className="flex flex-col h-full justify-between pt-6">
             <div className="space-y-4 text-center">
-              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-violet-600/20 border border-violet-500/30 text-violet-300 mx-auto">
+              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-zer-600/20 border border-zer-500/30 text-zer-300 mx-auto">
                 <Sparkles className="h-7 w-7" />
               </div>
 
-              <h2 className="text-xl font-extrabold text-white">AI Köməkçinin Cavabı</h2>
+              <h2 className="font-display text-[26px] leading-[1.15] font-normal text-ink-50">AI Köməkçinin Cavabı</h2>
 
-              <div className="rounded-2xl border border-white/10 bg-[#121828] p-4 text-left shadow-lg">
-                <p className="text-xs text-slate-200 leading-relaxed whitespace-pre-wrap">
+              <div className="rounded-2xl border border-white/10 bg-[#1d161c] p-4 text-left shadow-lg">
+                <p className="text-xs text-ink-200 leading-relaxed whitespace-pre-wrap">
                   {assistantSpokenResponse}
                 </p>
               </div>
@@ -1075,7 +1075,7 @@ export const VoiceAssistantFullScreen: React.FC<VoiceAssistantFullScreenProps> =
             <div className="space-y-2 pt-3">
               <button
                 onClick={onClose}
-                className="flex w-full items-center justify-center gap-2 rounded-2xl bg-violet-600 py-3 text-xs font-bold text-white hover:bg-violet-500"
+                className="flex w-full items-center justify-center gap-2 rounded-2xl py-3 text-xs font-bold btn-gold text-ink-950"
               >
                 Bağla
               </button>
@@ -1087,7 +1087,7 @@ export const VoiceAssistantFullScreen: React.FC<VoiceAssistantFullScreenProps> =
                   setInterimText('');
                   startListeningProcess();
                 }}
-                className="flex w-full items-center justify-center gap-1.5 py-1.5 text-xs font-semibold text-slate-400 hover:text-white"
+                className="flex w-full items-center justify-center gap-1.5 py-1.5 text-xs font-semibold text-ink-400 hover:text-white"
               >
                 <RefreshCw className="h-3.5 w-3.5" />
                 Yeni sual və ya əmr
