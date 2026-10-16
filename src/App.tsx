@@ -320,6 +320,17 @@ export default function App() {
                     onDelete={handleDeleteReminder}
                     onEdit={(r) => setEditingReminder(r)}
                     onSnooze={handleSnooze}
+                    onMoveHeavyToTomorrow={(ids) => {
+                      const tomorrowSameTime = (iso: string) => {
+                        const d = new Date(iso);
+                        d.setDate(d.getDate() + 1);
+                        return d.toISOString();
+                      };
+                      ids.forEach((id) => {
+                        const r = reminderService.getById(id);
+                        if (r) reminderService.updateReminder(id, { dueDateTime: tomorrowSameTime(r.dueDateTime) });
+                      });
+                    }}
                     onOpenVoice={() => setIsVoiceFullScreenOpen(true)}
                     onOpenManualAdd={() => setIsManualModalOpen(true)}
                     onOpenFocus={handleOpenFocus}
