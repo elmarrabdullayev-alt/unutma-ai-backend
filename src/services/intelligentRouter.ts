@@ -946,15 +946,15 @@ export class IntelligentRouter {
       targetDate = new Date(contextDate || now);
       let inferredDate = !contextDate;
 
-      if (/\bsabah\b/i.test(lower)) {
+      if (hasWord(lower, 'sabah|sabahkı|sabahki')) {
         targetDate = new Date(now);
         targetDate.setDate(now.getDate() + 1);
         inferredDate = false;
-      } else if (/\bbirigün\b|\bbiri\s*gün\b/i.test(lower)) {
+      } else if (hasWord(lower, 'birigün|biri\\s*gün')) {
         targetDate = new Date(now);
         targetDate.setDate(now.getDate() + 2);
         inferredDate = false;
-      } else if (/\bbu\s*gün\b|\bbugün\b/i.test(lower)) {
+      } else if (hasWord(lower, 'bu\\s*gün|bugün')) {
         targetDate = new Date(now);
         inferredDate = false;
       } else if (dayOfMonthMatch) {
@@ -1209,16 +1209,17 @@ export class IntelligentRouter {
     let targetDate = new Date();
     let dayLabel = 'Bu gün';
 
-    if (/\b(sabah|sabahkı|sabahki)\b/i.test(norm)) {
+    // Unicode-aware word edges: \b is ASCII-only and misses "sabahkı", "birigün", "dünən".
+    if (hasWord(norm, 'sabah|sabahkı|sabahki')) {
       targetDate.setDate(targetDate.getDate() + 1);
       dayLabel = 'Sabah';
-    } else if (/\b(birigün|biri gün|birigünkü|birigunku)\b/i.test(norm)) {
+    } else if (hasWord(norm, 'birigün|biri gün|birigünkü|birigunku')) {
       targetDate.setDate(targetDate.getDate() + 2);
       dayLabel = 'Birigün';
-    } else if (/\b(dünən|dunen|dünənki|dunenki)\b/i.test(norm)) {
+    } else if (hasWord(norm, 'dünən|dunen|dünənki|dunenki')) {
       targetDate.setDate(targetDate.getDate() - 1);
       dayLabel = 'Dünən';
-    } else if (/\b(bu gün|bugün|bugünkü|bugunku)\b/i.test(norm)) {
+    } else if (hasWord(norm, 'bu gün|bugün|bugünkü|bugunku')) {
       dayLabel = 'Bu gün';
     } else {
       // Check weekday name
