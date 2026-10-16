@@ -59,7 +59,7 @@ async function runTests() {
 
   assert(openAIResult === "Sabah saat 10-da Anara zəng et", "OpenAI transcription result parsed correctly");
   assert(capturedHeaders["Authorization"] === "Bearer sk-test-mock-key-12345", "OpenAI Authorization header set correctly");
-  assert(capturedBody?.get("model") === "gpt-4o-mini-transcribe", "OpenAI model set to gpt-4o-mini-transcribe");
+  assert(capturedBody?.get("model") === "gpt-4o-transcribe", "OpenAI model set to gpt-4o-transcribe");
   assert(capturedBody?.get("language") === "az", "OpenAI language set to Azerbaijani ('az')");
 
   // Verify missing API key error
@@ -88,8 +88,8 @@ async function runTests() {
       });
       req.on("end", () => {
         const bodyStr = bodyData.toString("utf-8");
-        if (bodyStr.includes('name="model"\r\n\r\ngpt-4o-mini-transcribe')) {
-          mockOpenAIReceivedModel = "gpt-4o-mini-transcribe";
+        if (bodyStr.includes('name="model"\r\n\r\ngpt-4o-transcribe')) {
+          mockOpenAIReceivedModel = "gpt-4o-transcribe";
         }
         if (bodyStr.includes('name="language"\r\n\r\naz')) {
           mockOpenAIReceivedLanguage = "az";
@@ -115,7 +115,7 @@ async function runTests() {
     baseUrl: `http://localhost:${MOCK_OPENAI_PORT}`,
   });
   assert(mockServerResult === "Sabah saat 10-da Anara zəng et", "OpenAI mock server response parsed");
-  assert(mockOpenAIReceivedModel === "gpt-4o-mini-transcribe", "OpenAI request sent gpt-4o-mini-transcribe model");
+  assert(mockOpenAIReceivedModel === "gpt-4o-transcribe", "OpenAI request sent gpt-4o-transcribe model");
   assert(mockOpenAIReceivedLanguage === "az", "OpenAI request favored Azerbaijani ('az')");
   assert(mockOpenAIReceivedAudioFilename === "audio.m4a", "OpenAI uploaded with filename audio.m4a");
 
