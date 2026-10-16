@@ -1,6 +1,6 @@
 /**
  * OpenAI Audio Transcription Service
- * Model: gpt-4o-mini-transcribe
+ * Model: gpt-4o-transcribe (set AZ_TRANSCRIPTION_MODEL to override)
  * Accepts: audio/m4a, audio/mp4, audio/webm, audio/wav, audio/mp3, audio/ogg, audio/flac, etc.
  * Language: Azerbaijani priority ('az')
  */
@@ -11,8 +11,20 @@ export interface OpenAITranscriptionOptions {
   timeoutMs?: number;
   model?: string;
   language?: string;
+  /** Context for the model: vocabulary and spelling hints (Azerbaijani letters, app words). */
+  prompt?: string;
   fetchFn?: typeof fetch;
 }
+
+/**
+ * Whisper-style models use this text as a hint for spelling and vocabulary.
+ * Without it, Azerbaijani speech (ə, ı, ö, ü, ş, ç, ğ, Azerbaijani words) is often
+ * transcribed with Turkish spellings.
+ */
+export const AZ_TRANSCRIPTION_PROMPT =
+  "Bu, Azərbaycan dilində səsli xatırlatma və gündəlik plan əmrləridir. " +
+  "Sözlər: xatırla, xatırlat, xatırlatma, zəng et, görüş, iclas, dərman, həkim, kirayə, " +
+  "sabah, bu gün, birigün, axşam, səhər, saat, dəqiqə, həftə, ayın, su iç, plan, rutin, sil, tamamla, təxirə sal.";
 
 export interface OpenAIUploadDetails {
   filename: string;
@@ -75,8 +87,9 @@ export async function transcribeWithOpenAI(
     throw new Error("OPENAI_API_KEY is not configured in server environment");
   }
 
-  const model = options.model || "gpt-4o-mini-transcribe";
+  const model = options.model || process.env.AZ_TRANSCRIPTION_MODEL || "gpt-4o-transcribe";
   const language = options.language || "az";
+  const prompt = options.prompt ?? AZ_TRANSCRIPTION_PROMPT;
   const timeoutMs = options.timeoutMs ?? 15000;
   const fetchImpl = options.fetchFn || globalThis.fetch;
 
@@ -91,6 +104,7 @@ export async function transcribeWithOpenAI(
   formData.append("file", blob, filename);
   formData.append("model", model);
   formData.append("language", language);
+  if (prompt) formData.append("prompt", prompt);
   formData.append("response_format", "json");
 
   const controller = new AbortController();
