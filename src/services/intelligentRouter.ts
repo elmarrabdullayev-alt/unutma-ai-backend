@@ -527,6 +527,23 @@ export class IntelligentRouter {
 
         console.log(`[VOICE-FLOW] reminders parsed: count=${draftReminders.length}`, draftReminders.map(d => d.title));
 
+        // Never create a reminder in the past (e.g. "bu gün saat 20:00" at 21:30).
+        const nowMs = Date.now();
+        const pastItem = parsedReminders.find((r) => new Date(r.dueDateTime).getTime() < nowMs - 60 * 1000);
+        if (pastItem) {
+          const when = formatDateAz(pastItem.dueDateTime);
+          return {
+            handledLocally: true,
+            action: 'clarification_needed',
+            payload: {
+              action: 'clarification_needed',
+              responseMessage: `Bu vaxt (${when}) artıq keçib. Gələcək bir tarix və saat deyin, xatırladım.`,
+            },
+            confidence: 0.95,
+            reason: 'Past reminder time refused.',
+          };
+        }
+
         const conflicts = conflictDetector.detectConflicts(draftReminders, currentReminders);
         const hasConflict = conflicts.length > 0;
 
@@ -603,7 +620,7 @@ export class IntelligentRouter {
       if (!item) {
         // "Bazar ertəsi" | "saat 9-da iclas": a piece that only says WHEN belongs
         // to the next piece instead of being dropped.
-        if (/(sabah|birigün|bu\s*gün|bugün|ayın|saat|\d|ertəsi|ertesi|çərşənbə|cümə|şənbə|bazar|axşam|səhər|günorta|gecə)/iu.test(segment)) {
+        if (/(dünən|dunen|sabah|birigün|bu\s*gün|bugün|ayın|saat|\d|ertəsi|ertesi|çərşənbə|cümə|şənbə|bazar|axşam|səhər|günorta|gecə)/iu.test(segment)) {
           carry = segment;
         }
         continue;
@@ -946,7 +963,11 @@ export class IntelligentRouter {
       targetDate = new Date(contextDate || now);
       let inferredDate = !contextDate;
 
-      if (hasWord(lower, 'sabah|sabahkı|sabahki')) {
+      if (hasWord(lower, 'dünən|dunen')) {
+        targetDate = new Date(now);
+        targetDate.setDate(now.getDate() - 1);
+        inferredDate = false;
+      } else if (hasWord(lower, 'sabah|sabahkı|sabahki')) {
         targetDate = new Date(now);
         targetDate.setDate(now.getDate() + 1);
         inferredDate = false;
