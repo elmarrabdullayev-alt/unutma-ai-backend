@@ -29,6 +29,7 @@ import { dailyPlannerService } from '../../services/dailyPlannerService';
 import { speechManager } from '../../services/speech/SpeechProviderManager';
 import { playMicStartSound, playSuccessSound } from '../../utils/soundUtils';
 import { CATEGORIES } from '../../utils/categoryMeta';
+import { getLocalYMD, localDateTimeToISO } from '../../utils/dateUtils';
 
 interface DailyPlanModalProps {
   isOpen: boolean;
@@ -204,7 +205,7 @@ export const DailyPlanModal: React.FC<DailyPlanModalProps> = ({
     const newTask: PlanTask = {
       id: `plan-task-${Date.now()}`,
       title: 'Yeni tapşırıq',
-      dueDateTime: `${new Date().toISOString().slice(0, 10)}T16:00:00.000Z`,
+      dueDateTime: localDateTimeToISO(getLocalYMD(), '16:00'),
       timeString: '16:00',
       durationMinutes: 30,
       priority: 'medium',

@@ -37,6 +37,10 @@ export interface AskAssistantResponse {
 
 export const NATIVE_API_FALLBACK = 'https://unutma-ai-backend.onrender.com';
 
+// Must match APP_API_KEY on the server when that is set (see .env.example).
+const APP_API_KEY: string =
+  (typeof import.meta !== 'undefined' && import.meta.env?.VITE_APP_API_KEY) || '';
+
 export class ApiClient {
   private customBaseUrl: string = '';
 
@@ -100,6 +104,7 @@ export class ApiClient {
         headers: {
           'Content-Type': 'application/json',
           Accept: 'application/json',
+          ...(APP_API_KEY ? { 'x-app-key': APP_API_KEY } : {}),
           ...(options.headers || {}),
         },
       });

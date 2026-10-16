@@ -62,6 +62,9 @@ class RoutineService {
 
   constructor() {
     this.loadFromStorage();
+    // Routine notifications must be part of every full reschedule, otherwise
+    // reminderService's startup rescheduleAll() wipes them on each app launch.
+    notificationService.registerExtraSource(() => this.getAllVirtualReminders());
   }
 
   public init(): void {
@@ -283,8 +286,13 @@ class RoutineService {
     const percent = total > 0 ? Math.round((completed / total) * 100) : 0;
     const isCompleted100 = completed >= total && total > 0;
 
-    // If just reached 100%, record completion and calculate streak
-    if (isCompleted100 && !isCurrentlyChecked) {
+    // If just reached 100%, record completion and calculate streak — but only
+    // once per routine per day (unchecking and re-checking a step used to add
+    // a duplicate history entry and inflate totalCompletions every time).
+    const alreadyRecorded = this.historyData.history.some(
+      (h) => h.routineId === routineId && h.date === dateStr
+    );
+    if (isCompleted100 && !isCurrentlyChecked && !alreadyRecorded) {
       this.handleRoutine100PercentCompleted(routine, dateStr);
     }
 
@@ -393,23 +401,39 @@ class RoutineService {
   }
 
   // --- Notification Engine Integration (Reusing notificationService) ---
+  /** All virtual reminders for active routines (used for full reschedules). */
+  public getAllVirtualReminders(): Reminder[] {
+    return this.routines
+      // The two sample routines seeded on first launch only start notifying once
+      // the user edits/saves them; otherwise every new user would suddenly get
+      // six daily alarms (07:00 "Oyan", 22:00 ...) they never set up.
+      .filter((r) => r.isActive && !(r.id.endsWith('-default') && r.updatedAt === r.createdAt))
+      .flatMap((routine) =>
+        routine.steps
+          .filter((step) => step.notificationEnabled)
+          .flatMap((step) => this.createVirtualRemindersForStep(routine, step))
+      );
+  }
+
   public scheduleRoutineNotifications(routine: Routine) {
     if (!routine.isActive) return;
 
     routine.steps.forEach((step) => {
       if (step.notificationEnabled) {
-        const virtualReminder = this.createVirtualReminderForStep(routine, step);
-        if (virtualReminder) {
-          notificationService.scheduleNotification(virtualReminder);
-        }
+        this.createVirtualRemindersForStep(routine, step).forEach((virtualReminder) =>
+          notificationService.scheduleNotification(virtualReminder)
+        );
       }
     });
   }
 
   public cancelRoutineNotifications(routine: Routine) {
     routine.steps.forEach((step) => {
-      const virtualId = `routine-${routine.id}-${step.id}`;
-      notificationService.cancelNotification(virtualId);
+      const baseId = `routine-${routine.id}-${step.id}`;
+      notificationService.cancelNotification(baseId);
+      for (let day = 0; day < 7; day++) {
+        notificationService.cancelNotification(`${baseId}-d${day}`);
+      }
     });
   }
 
@@ -421,31 +445,47 @@ class RoutineService {
     });
   }
 
-  private createVirtualReminderForStep(routine: Routine, step: RoutineStep): Reminder | null {
+  /**
+   * A daily routine step becomes one daily-repeating notification. A routine on
+   * some days only (e.g. Mon–Fri) becomes one weekly notification PER DAY —
+   * previously it got a single weekly one and fired on just one day a week.
+   */
+  private createVirtualRemindersForStep(routine: Routine, step: RoutineStep): Reminder[] {
     const timeStr = step.time || routine.startTime || '08:00';
     const [hourStr, minStr] = timeStr.split(':');
     const hour = parseInt(hourStr || '8', 10);
     const minute = parseInt(minStr || '0', 10);
+    const days = Array.from(new Set(routine.daysOfWeek)).filter((d) => d >= 0 && d <= 6);
+    if (days.length === 0) return [];
 
-    // Calculate next occurrence matching routine daysOfWeek
-    const nextDate = this.getNextOccurrenceDate(routine.daysOfWeek, hour, minute);
-    if (!nextDate) return null;
-
-    const isDaily = routine.daysOfWeek.length === 7;
-
-    return {
-      id: `routine-${routine.id}-${step.id}`,
+    const base = {
       title: `${routine.title}: ${step.title}`,
       description: `${routine.title} addımı (${timeStr})`,
-      dueDateTime: nextDate.toISOString(),
-      category: routine.type === 'morning' ? 'personal' : routine.type === 'evening' ? 'personal' : 'other',
-      priority: 'medium',
-      recurrence: isDaily ? 'daily' : 'weekly',
+      category: (routine.type === 'morning' || routine.type === 'evening' ? 'personal' : 'other') as Reminder['category'],
+      priority: 'medium' as const,
       notificationEnabled: true,
       isCompleted: false,
       createdAt: routine.createdAt,
       updatedAt: routine.updatedAt,
     };
+
+    if (days.length === 7) {
+      return [
+        {
+          ...base,
+          id: `routine-${routine.id}-${step.id}`,
+          dueDateTime: this.getNextOccurrenceDate(days, hour, minute).toISOString(),
+          recurrence: 'daily',
+        },
+      ];
+    }
+
+    return days.map((day) => ({
+      ...base,
+      id: `routine-${routine.id}-${step.id}-d${day}`,
+      dueDateTime: this.getNextOccurrenceDate([day], hour, minute).toISOString(),
+      recurrence: 'weekly' as const,
+    }));
   }
 
   private getNextOccurrenceDate(daysOfWeek: number[], hour: number, minute: number): Date {

@@ -163,6 +163,8 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
           if (Array.isArray(parsed)) {
             onImportReminders(parsed);
             alert('Məlumatlar uğurla bərpa olundu!');
+          } else {
+            alert('Fayl formatı düzgün deyil.');
           }
         } catch (err) {
           alert('Fayl formatı düzgün deyil.');

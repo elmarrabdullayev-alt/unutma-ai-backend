@@ -19,6 +19,12 @@ async function main() {
     console.log(">>> Running OpenAI Migration Tests...");
     await runCommand("npx", ["tsx", "tests/openai_migration.test.ts"]);
 
+    console.log("\n>>> Running Time Normalization Tests...");
+    await runCommand("npx", ["tsx", "tests/time_normalization.test.ts"]);
+
+    console.log("\n>>> Running Router & Notification Tests...");
+    await runCommand("npx", ["tsx", "tests/router_and_notifications.test.ts"]);
+
     console.log("\n>>> Running Audio Transcription Tests...");
     await runCommand("npx", ["tsx", "tests/transcription.test.ts"]);
 

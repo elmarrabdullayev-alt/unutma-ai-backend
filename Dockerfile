@@ -24,7 +24,8 @@ RUN npm install --omit=dev
 
 # Copy compiled artifacts from builder
 COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/dist-server ./dist-server
 
 EXPOSE 3000
 
-CMD ["node", "dist/server.cjs"]
+CMD ["node", "dist-server/server.cjs"]

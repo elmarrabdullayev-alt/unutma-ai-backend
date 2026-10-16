@@ -3,10 +3,10 @@ import {
   LocalNotifications,
   ScheduleOptions,
   LocalNotificationSchema,
-  ScheduleEvery,
 } from '@capacitor/local-notifications';
 import { Reminder } from '../../types';
 import { playReminderAlarmSound } from '../../utils/soundUtils';
+import { getNativeRepeatKind, getNextOccurrence, isRecurring } from '../../utils/recurrence';
 import { NotificationProvider, NotificationActionCallback } from './NotificationProvider';
 
 export class CapacitorLocalNotificationProvider implements NotificationProvider {
@@ -132,83 +132,126 @@ export class CapacitorLocalNotificationProvider implements NotificationProvider 
     return Math.abs(hash % 1000000000);
   }
 
-  public async schedule(reminder: Reminder, onTrigger?: () => void): Promise<void> {
-    if (!this.isAvailable()) return;
-    if (reminder.isCompleted || reminder.notificationEnabled === false) {
-      await this.cancel(reminder.id);
-      return;
-    }
+  /** Extra notification slots per reminder (weekdays need 5, upcoming one-shots up to 3). */
+  private static readonly SLOTS_PER_REMINDER = 6;
+  /** iOS keeps at most 64 pending notifications; leave a little headroom. */
+  private static readonly MAX_PENDING = 60;
 
-    const dueTime = new Date(reminder.dueDateTime);
+  private slotIds(reminderId: string): number[] {
+    const ids = [this.stringToNotificationId(reminderId)];
+    for (let k = 1; k <= CapacitorLocalNotificationProvider.SLOTS_PER_REMINDER; k++) {
+      ids.push(this.stringToNotificationId(`${reminderId}#${k}`));
+    }
+    return ids;
+  }
+
+  /**
+   * Turns a reminder into the native notifications that represent it.
+   *
+   * IMPORTANT: the plugin's `at` + `repeats` does NOT repeat daily/weekly on
+   * either platform — it repeats every (at - now) milliseconds, and `every` is
+   * ignored when `at` is set (see LocalNotificationsPlugin.swift and
+   * LocalNotificationManager.kt). Real calendar repeats need `on`.
+   */
+  private buildNotifications(reminder: Reminder): Array<{ schema: LocalNotificationSchema; fireAt: number; repeating: boolean }> {
+    if (reminder.isCompleted || reminder.notificationEnabled === false) return [];
+
+    const due = new Date(reminder.dueDateTime);
+    if (isNaN(due.getTime())) return [];
     const now = Date.now();
+    const ids = this.slotIds(reminder.id);
+    const hour = due.getHours();
+    const minute = due.getMinutes();
 
-    // First cancel existing to prevent duplicates
-    await this.cancel(reminder.id);
-
-    // If already past by more than 2 minutes, ignore
-    if (dueTime.getTime() < now - 2 * 60 * 1000) {
-      return;
-    }
-
-    const intId = this.stringToNotificationId(reminder.id);
-    const timeStr = dueTime.toLocaleTimeString('az-AZ', {
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-
-    let repeats: boolean | undefined = undefined;
-    let every: ScheduleEvery | undefined = undefined;
-
-    if (reminder.recurrence === 'daily') {
-      repeats = true;
-      every = 'day';
-    } else if (reminder.recurrence === 'weekly') {
-      repeats = true;
-      every = 'week';
-    } else if (reminder.recurrence === 'monthly') {
-      repeats = true;
-      every = 'month';
-    } else if (reminder.recurrence === 'yearly') {
-      repeats = true;
-      every = 'year';
-    }
-
-    // Normal reminder notification schema with default iOS notification sound explicitly set
-    const notifSchema: LocalNotificationSchema = {
-      id: intId,
-      title: `🔔 Unutma AI: ${reminder.title}`,
-      body: reminder.description
-        ? `${reminder.description}\nVaxt: ${timeStr}`
-        : `Xatırlatma vaxtı çatdı! (${timeStr})`,
-      schedule: {
-        at: dueTime.getTime() > now ? dueTime : new Date(now + 1000),
-        allowWhileIdle: true,
-        repeats,
-        every,
-      },
-      channelId: 'unutma_reminders_channel',
-      actionTypeId: 'REMINDER_ACTIONS',
-      sound: 'default',
-      extra: {
-        reminderId: reminder.id,
-        reminderData: reminder,
-      },
+    const make = (slot: number, schedule: LocalNotificationSchema['schedule'], fireAt: Date): LocalNotificationSchema => {
+      const timeStr = fireAt.toLocaleTimeString('az-AZ', { hour: '2-digit', minute: '2-digit' });
+      return {
+        id: ids[slot],
+        title: `🔔 Unutma AI: ${reminder.title}`,
+        body: reminder.description ? `${reminder.description}\nVaxt: ${timeStr}` : `Xatırlatma vaxtı çatdı! (${timeStr})`,
+        schedule,
+        channelId: 'unutma_reminders_channel',
+        actionTypeId: 'REMINDER_ACTIONS',
+        sound: 'default',
+        extra: { reminderId: reminder.id, reminderData: reminder },
+      };
     };
 
-    try {
-      console.log(`[NOTIFICATION] scheduling reminder: "${reminder.title}" (id: ${reminder.id}) at ${dueTime.toISOString()}`);
-      console.log('[NOTIFICATION] sound: default');
-      try {
-        const permStatus = await LocalNotifications.checkPermissions();
-        console.log(`[NOTIFICATION] permission status: ${permStatus.display}`);
-      } catch {
-        // Safe check ignore
+    const result: Array<{ schema: LocalNotificationSchema; fireAt: number; repeating: boolean }> = [];
+
+    if (isRecurring(reminder)) {
+      const kind = getNativeRepeatKind(reminder);
+      // A calendar repeat fires at its next calendar match. If the reminder's
+      // first occurrence is later than that (start date in the future), using it
+      // now would fire too early, so fall back to one-shots until then.
+      const startReached = kind ? due.getTime() <= this.nextCalendarMatch(kind, due, now) + 60 * 1000 : false;
+
+      if (kind && startReached) {
+        if (kind === 'daily') {
+          result.push({ schema: make(0, { on: { hour, minute, second: 0 }, allowWhileIdle: true }, due), fireAt: due.getTime(), repeating: true });
+        } else if (kind === 'weekly') {
+          // Capacitor weekday: 1 = Sunday ... 7 = Saturday
+          result.push({ schema: make(0, { on: { weekday: due.getDay() + 1, hour, minute, second: 0 }, allowWhileIdle: true }, due), fireAt: due.getTime(), repeating: true });
+        } else if (kind === 'monthly') {
+          const day = reminder.recurrenceDayOfMonth || due.getDate();
+          result.push({ schema: make(0, { on: { day, hour, minute, second: 0 }, allowWhileIdle: true }, due), fireAt: due.getTime(), repeating: true });
+        } else if (kind === 'weekdays') {
+          [2, 3, 4, 5, 6].forEach((weekday, i) => {
+            result.push({ schema: make(i, { on: { weekday, hour, minute, second: 0 }, allowWhileIdle: true }, due), fireAt: due.getTime(), repeating: true });
+          });
+        }
+        return result;
       }
 
-      await LocalNotifications.schedule({
-        notifications: [notifSchema],
-      });
-      console.log(`[CapacitorNotifications] Scheduled exact native alarm for "${reminder.title}" at ${dueTime.toISOString()} with sound: default`);
+      // Every N days/weeks, yearly, or a future start: schedule the next few
+      // occurrences one by one; they are topped up whenever the app opens.
+      let occ: Date | null = due;
+      let guard = 0;
+      while (occ && occ.getTime() < now - 2 * 60 * 1000 && guard++ < 1000) {
+        occ = getNextOccurrence(reminder, occ);
+      }
+      for (let slot = 0; occ && slot < 3; slot++) {
+        result.push({ schema: make(slot, { at: occ, allowWhileIdle: true }, occ), fireAt: occ.getTime(), repeating: false });
+        occ = getNextOccurrence(reminder, occ);
+      }
+      return result;
+    }
+
+    // One-time reminder. Already past by more than 2 minutes -> nothing to do.
+    if (due.getTime() < now - 2 * 60 * 1000) return [];
+    const fireAt = due.getTime() > now ? due : new Date(now + 1000);
+    result.push({ schema: make(0, { at: fireAt, allowWhileIdle: true }, fireAt), fireAt: fireAt.getTime(), repeating: false });
+    return result;
+  }
+
+  /** Next time (ms) a native calendar repeat of this shape would fire after `now`. */
+  private nextCalendarMatch(kind: 'daily' | 'weekly' | 'monthly' | 'weekdays', due: Date, now: number): number {
+    const c = new Date(now);
+    c.setHours(due.getHours(), due.getMinutes(), 0, 0);
+    for (let i = 0; i < 400; i++) {
+      const ok =
+        kind === 'daily' ||
+        (kind === 'weekly' && c.getDay() === due.getDay()) ||
+        (kind === 'weekdays' && c.getDay() >= 1 && c.getDay() <= 5) ||
+        (kind === 'monthly' && c.getDate() === due.getDate());
+      if (ok && c.getTime() > now) return c.getTime();
+      c.setDate(c.getDate() + 1);
+    }
+    return Number.MAX_SAFE_INTEGER;
+  }
+
+  public async schedule(reminder: Reminder, onTrigger?: () => void): Promise<void> {
+    if (!this.isAvailable()) return;
+
+    // First cancel existing to prevent duplicates (all slots)
+    await this.cancel(reminder.id);
+
+    const notifications = this.buildNotifications(reminder).map((n) => n.schema);
+    if (notifications.length === 0) return;
+
+    try {
+      await LocalNotifications.schedule({ notifications });
+      console.log(`[CapacitorNotifications] Scheduled ${notifications.length} notification(s) for "${reminder.title}"`);
     } catch (e) {
       console.error('[CapacitorNotifications] Schedule error:', e);
     }
@@ -217,11 +260,9 @@ export class CapacitorLocalNotificationProvider implements NotificationProvider 
   public async cancel(reminderId: string): Promise<void> {
     if (!this.isAvailable()) return;
     try {
-      const intId = this.stringToNotificationId(reminderId);
       await LocalNotifications.cancel({
-        notifications: [{ id: intId }],
+        notifications: this.slotIds(reminderId).map((id) => ({ id })),
       });
-      console.log(`[CapacitorNotifications] Cancelled notification for ${reminderId}`);
     } catch (e) {
       console.warn('[CapacitorNotifications] Cancel warning:', e);
     }
@@ -244,10 +285,21 @@ export class CapacitorLocalNotificationProvider implements NotificationProvider 
   public async rescheduleAll(reminders: Reminder[]): Promise<void> {
     if (!this.isAvailable()) return;
     await this.cancelAll();
-    for (const r of reminders) {
-      if (!r.isCompleted && r.notificationEnabled !== false) {
-        await this.schedule(r);
-      }
+
+    // Repeating notifications first (they occupy one slot forever), then the
+    // soonest one-shots, capped below the iOS limit of 64 pending notifications.
+    const all = reminders.flatMap((r) => this.buildNotifications(r));
+    all.sort((a, b) => (a.repeating === b.repeating ? a.fireAt - b.fireAt : a.repeating ? -1 : 1));
+    const selected = all.slice(0, CapacitorLocalNotificationProvider.MAX_PENDING).map((n) => n.schema);
+    if (all.length > selected.length) {
+      console.warn(`[CapacitorNotifications] ${all.length - selected.length} notification(s) deferred (OS limit); they are scheduled on a later app launch.`);
+    }
+    if (selected.length === 0) return;
+
+    try {
+      await LocalNotifications.schedule({ notifications: selected });
+    } catch (e) {
+      console.error('[CapacitorNotifications] rescheduleAll error:', e);
     }
   }
 
