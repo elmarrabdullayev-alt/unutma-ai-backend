@@ -11,7 +11,7 @@ import {
   springPress,
   springLayout,
 } from '../utils/motion';
-import { getFormattedTodayAz, isReminderToday, isReminderPast, formatTimeOnly } from '../utils/dateUtils';
+import { getFormattedTodayAz, isReminderToday, isReminderPast, isReminderTomorrow, formatTimeOnly } from '../utils/dateUtils';
 import { progressService } from '../services/progressService';
 import { routineService } from '../services/routineService';
 import { CATEGORIES } from '../utils/categoryMeta';
@@ -19,6 +19,7 @@ import { playSuccessSound } from '../utils/soundUtils';
 import { DayBriefingCard } from './home/DayBriefingCard';
 import { planForEnergy } from '../services/daySummary';
 import { isTiredToday } from '../services/energyMode';
+import { notesService } from '../services/notesService';
 
 interface HomeScreenProps {
   reminders: Reminder[];
@@ -129,6 +130,16 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   const nextDue = next ? new Date(next.dueDateTime).getTime() : 0;
   const nextIsToday = next ? isReminderToday(next) : false;
   const nextSoon = next ? nextDue - now < 30 * 60000 : false;
+
+  const tomorrowReminders = useMemo(
+    () =>
+      reminders
+        .filter((r) => isReminderTomorrow(r) && !r.isCompleted)
+        .sort((a, b) => new Date(a.dueDateTime).getTime() - new Date(b.dueDateTime).getTime())
+        .slice(0, 3),
+    [reminders]
+  );
+  const recentNotes = notesService.list().slice(0, 3);
 
   return (
     <motion.div
@@ -378,6 +389,40 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
           onOpenCreateRoutine={(initialType) => onOpenCreateRoutine?.(initialType)}
         />
       </motion.div>
+
+      {/* Tomorrow + notes: always visible, so the lower part of the screen is never empty */}
+      <motion.section variants={staggerCardVariants} aria-labelledby="tomorrow-heading" className="space-y-3">
+        <h2 id="tomorrow-heading" className="text-[13px] font-medium uppercase tracking-wide text-ink-400">Sabah</h2>
+        <div className="surface-quiet rounded-card p-4">
+          {tomorrowReminders.length === 0 ? (
+            <p className="text-[14px] text-ink-300">Sabah üçün xatırlatma yoxdur.</p>
+          ) : (
+            <ul className="space-y-3">
+              {tomorrowReminders.map((r) => (
+                <li key={r.id} className="flex items-center justify-between gap-3">
+                  <span className="min-w-0 truncate text-[15px] text-ink-50">{r.title}</span>
+                  <span className="shrink-0 text-[13px] text-ink-300">{formatTimeOnly(r.dueDateTime)}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+
+        <h2 className="pt-2 text-[13px] font-medium uppercase tracking-wide text-ink-400">Qeydlər</h2>
+        <div className="surface-quiet rounded-card p-4">
+          {recentNotes.length === 0 ? (
+            <p className="text-[14px] text-ink-300">
+              Xatırlatma olmayan qeydlər üçün səsli köməkçidə "qeyd et: …" deyin.
+            </p>
+          ) : (
+            <ul className="space-y-3">
+              {recentNotes.map((n) => (
+                <li key={n.id} className="text-[15px] leading-snug text-ink-50">{n.text}</li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </motion.section>
 
       {/* Streak */}
       {streakCount > 0 && (
