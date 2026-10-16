@@ -58,6 +58,15 @@ async function main() {
   }));
 
   const evalP = (p: string) => R.evaluateLocalFastPath(p, existing);
+
+  section("Daily schedule day words (\\b is ASCII-only; Azerbaijani letters need Unicode edges)");
+  {
+    const dayLabelOf = (p: string) => String((evalP(p) as any)?.payload?.responseMessage ?? "").split(" (")[0];
+    assert(dayLabelOf("Sabahkı planımı göstər") === "Sabah", "'Sabahkı planımı göstər' → tomorrow (Sabah), not today");
+    assert(dayLabelOf("sabahki planlarım") === "Sabah", "'sabahki planlarım' (no dotless ı) → Sabah");
+    assert(dayLabelOf("Birigünkü planlarım") === "Birigün", "'Birigünkü planlarım' → Birigün");
+    assert(dayLabelOf("Bugünkü planımı göstər") === "Bu gün", "'Bugünkü planımı göstər' → Bu gün");
+  }
   const first = (p: string) => evalP(p).payload.remindersToCreate?.[0];
   const local = (iso: string) => new Date(iso);
 
