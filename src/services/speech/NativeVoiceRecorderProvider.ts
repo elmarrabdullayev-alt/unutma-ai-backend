@@ -18,6 +18,7 @@ export class NativeVoiceRecorderProvider implements SpeechRecognitionProvider {
   private audioLevelInterval: number | null = null;
   private currentAudioLevel = 0;
   private silenceListenerHandle: { remove: () => Promise<void> | void } | null = null;
+  private levelListenerHandle: { remove: () => Promise<void> | void } | null = null;
 
   public get isRecording(): boolean {
     return this.lifecycleState === 'RECORDING';
@@ -71,6 +72,14 @@ export class NativeVoiceRecorderProvider implements SpeechRecognitionProvider {
   }
 
   private async removeSilenceListener(): Promise<void> {
+    if (this.levelListenerHandle) {
+      try {
+        await this.levelListenerHandle.remove();
+      } catch (e: any) {
+        console.warn('[NATIVE VOICE] Error removing audioLevel listener:', e?.message || e);
+      }
+      this.levelListenerHandle = null;
+    }
     if (this.silenceListenerHandle) {
       try {
         if (typeof this.silenceListenerHandle.remove === 'function') {
@@ -166,6 +175,22 @@ export class NativeVoiceRecorderProvider implements SpeechRecognitionProvider {
         console.warn('[NATIVE VOICE] Could not attach silenceAutoStop listener before recording:', listenerErr?.name || 'Error', listenerErr?.message || listenerErr);
       }
 
+      // Real microphone level from the native meter (drives the UI and the silence logic)
+      try {
+        if (typeof (VoiceRecorder as any).addListener === 'function') {
+          this.levelListenerHandle = await (VoiceRecorder as any).addListener('audioLevel', (eventData?: any) => {
+            const level = Number(eventData?.level);
+            if (!Number.isFinite(level) || this.sessionId !== currentSession) return;
+            this.currentAudioLevel = Math.min(1, Math.max(0, level));
+            if (this.callbacks?.onAudioLevel) {
+              this.callbacks.onAudioLevel(this.currentAudioLevel);
+            }
+          });
+        }
+      } catch (levelErr: any) {
+        console.warn('[NATIVE VOICE] Could not attach audioLevel listener:', levelErr?.message || levelErr);
+      }
+
       // 5. Start native recording
       const startResult = await VoiceRecorder.startRecording();
       if (!startResult?.value) {
@@ -178,8 +203,6 @@ export class NativeVoiceRecorderProvider implements SpeechRecognitionProvider {
       }
       console.log('[NATIVE VOICE] recording started');
 
-      // 6. Simulate audio level pulsation for UI waveform
-      this.startAudioLevelSimulation();
     } catch (err: any) {
       await this.removeSilenceListener();
       this.lifecycleState = 'IDLE';
@@ -316,20 +339,6 @@ export class NativeVoiceRecorderProvider implements SpeechRecognitionProvider {
 
   public getAudioLevel(): number {
     return this.currentAudioLevel;
-  }
-
-  private startAudioLevelSimulation(): void {
-    this.stopAudioLevelSimulation();
-    const setIntervalFn = typeof window !== 'undefined' && typeof window.setInterval === 'function' ? window.setInterval : setInterval;
-    this.audioLevelInterval = (setIntervalFn as any)(() => {
-      if (!this.isRecording) return;
-      // Generate natural acoustic pulse pattern between 0.35 and 0.85
-      const base = 0.4 + Math.random() * 0.45;
-      this.currentAudioLevel = Math.min(1, Math.max(0.1, base));
-      if (this.callbacks?.onAudioLevel) {
-        this.callbacks.onAudioLevel(this.currentAudioLevel);
-      }
-    }, 100);
   }
 
   private stopAudioLevelSimulation(): void {
