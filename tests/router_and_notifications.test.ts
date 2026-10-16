@@ -67,6 +67,14 @@ async function main() {
     assert(dayLabelOf("Birigünkü planlarım") === "Birigün", "'Birigünkü planlarım' → Birigün");
     assert(dayLabelOf("Bugünkü planımı göstər") === "Bu gün", "'Bugünkü planımı göstər' → Bu gün");
   }
+
+  section("Past times are never saved as reminders");
+  {
+    const isRefused = (p: string) => (evalP(p) as any)?.payload?.action === "clarification_needed";
+    const createdDue = (p: string) => (evalP(p) as any)?.payload?.remindersToCreate?.[0]?.dueDateTime;
+    assert(isRefused("Dünən saat 10-da zəng et"), "'Dünən saat 10-da zəng et' is refused (yesterday)");
+    assert(!isRefused("Saat 10-da zəng et") && new Date(createdDue("Saat 10-da zəng et")).getTime() > Date.now(), "time-only past hour rolls to a future time");
+  }
   const first = (p: string) => evalP(p).payload.remindersToCreate?.[0];
   const local = (iso: string) => new Date(iso);
 
