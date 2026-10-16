@@ -33,7 +33,12 @@ public class VoiceRecorder: CAPPlugin, CAPBridgedPlugin {
     private var silenceMeterTimer: Timer?
     private var speechBegan: Bool = false
     private var silenceBeganTime: Date?
-    private let speechThresholdDb: Float = -46.0
+    // Speech threshold is adaptive: it follows the room's background noise
+    // (noise floor + 10 dB), clamped so soft speech still counts and a noisy
+    // room can still reach silence.
+    private var noiseFloorDb: Float = -60.0
+    private let minSpeechThresholdDb: Float = -50.0
+    private let maxSpeechThresholdDb: Float = -38.0
     private let silenceAutoStopTimeoutSec: TimeInterval = 1.0
     private var isStoppingNative: Bool = false
     private let recordingLock = NSLock()
@@ -110,6 +115,7 @@ public class VoiceRecorder: CAPPlugin, CAPBridgedPlugin {
             self.recordingStartTime = Date()
             self.speechBegan = false
             self.silenceBeganTime = nil
+            self.noiseFloorDb = -60.0
             self.isStoppingNative = false
 
             DispatchQueue.main.async { [weak self] in
@@ -151,8 +157,16 @@ public class VoiceRecorder: CAPPlugin, CAPBridgedPlugin {
         let avgPower = recorder.averagePower(forChannel: 0) // -160 dB to 0 dB
         let peakPower = recorder.peakPower(forChannel: 0)
 
-        // Stabilized voice detection: avg > threshold OR peak > (threshold + 8 dB)
-        let isSpeaking = (avgPower > self.speechThresholdDb) || (peakPower > (self.speechThresholdDb + 8.0))
+        // Live level for the UI (0 = silence, 1 = loud), roughly -60 dB..0 dB
+        let level = max(0, min(1, (avgPower + 60) / 60))
+        self.notifyListeners("audioLevel", data: ["level": Double(level)])
+
+        // Track background noise while the user is not speaking
+        let threshold = max(self.minSpeechThresholdDb, min(self.maxSpeechThresholdDb, self.noiseFloorDb + 10.0))
+        let isSpeaking = (avgPower > threshold) || (peakPower > (threshold + 8.0))
+        if !isSpeaking && avgPower > -100 {
+            self.noiseFloorDb = self.noiseFloorDb * 0.95 + avgPower * 0.05
+        }
 
         if isSpeaking {
             // Real speech detected
