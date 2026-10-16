@@ -4,6 +4,7 @@ import { Haptics, ImpactStyle, NotificationType } from '@capacitor/haptics';
 import { LocalNotifications } from '@capacitor/local-notifications';
 import { FocusSession, FocusHistoryItem, FocusTodayStats, FocusAudioPreset } from '../types';
 import { playReminderAlarmSound } from '../utils/soundUtils';
+import { getNotificationSound } from './notificationProvider/notificationSound';
 import { focusAudioService } from './focusAudioService';
 
 export const FOCUS_SESSION_STORAGE_KEY = 'unutma_ai_focus_session_v1';
@@ -168,7 +169,7 @@ class FocusService {
                   allowWhileIdle: true,
                 },
                 channelId: 'unutma_reminders_channel',
-                sound: 'default',
+                sound: getNotificationSound(),
               },
             ],
           });
