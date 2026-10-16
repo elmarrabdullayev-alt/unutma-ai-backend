@@ -666,7 +666,7 @@ export const VoiceAssistantFullScreen: React.FC<VoiceAssistantFullScreenProps> =
                 <span>{isListening ? `Dinləyirəm... (${formatSeconds(recordingSeconds)})` : isProcessing ? 'Analiz edilir...' : 'Mikrofon dayandırılıb'}</span>
               </div>
 
-              <h2 className="font-display text-[30px] leading-[1.1] sm:text-[34px] leading-[1.08] font-normal text-[#f8f2ec]">
+              <h2 className="font-display text-[30px] leading-[1.1] font-normal text-[#f8f2ec]">
                 {isListening ? 'Dinləyirəm...' : 'Nəyi yadda saxlayaq?'}
               </h2>
 

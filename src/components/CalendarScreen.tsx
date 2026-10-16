@@ -57,10 +57,14 @@ export const CalendarScreen: React.FC<CalendarScreenProps> = ({
 
   const weekDates = getWeekDates();
 
-  const selectedDayReminders = reminders.filter((r) => {
-    const rDate = new Date(r.dueDateTime);
-    return isSameDay(rDate, selectedDate);
-  });
+  // Active ones first, each group in time order (was in creation order)
+  const selectedDayReminders = reminders
+    .filter((r) => isSameDay(new Date(r.dueDateTime), selectedDate))
+    .sort(
+      (a, b) =>
+        Number(a.isCompleted) - Number(b.isCompleted) ||
+        new Date(a.dueDateTime).getTime() - new Date(b.dueDateTime).getTime()
+    );
 
   const changeDayBy = (offset: number) => {
     const next = new Date(selectedDate);
@@ -73,7 +77,7 @@ export const CalendarScreen: React.FC<CalendarScreenProps> = ({
       {/* Top Native Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="font-display text-[26px] leading-[1.15] sm:text-[30px] leading-[1.1] font-normal text-[#f8f2ec]">
+          <h1 className="font-display text-[26px] leading-[1.15] font-normal text-[#f8f2ec]">
             Təqvim
           </h1>
           <p className="text-xs font-normal text-[#c3b2ba] mt-0.5">

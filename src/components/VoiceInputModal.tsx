@@ -314,7 +314,7 @@ export const VoiceInputModal: React.FC<VoiceInputModalProps> = ({
             <Sparkles className="h-3.5 w-3.5 text-zer-400" />
             Süni İntellekt Səs Analizi
           </div>
-          <h2 className="font-display text-[26px] leading-[1.15] font-normal text-ink-50 sm:text-[30px] leading-[1.1]">
+          <h2 className="font-display text-[26px] leading-[1.15] font-normal text-ink-50">
             Nəyi xatırlamaq istəyirsiniz?
           </h2>
           <p className="text-xs text-ink-400 mt-1 max-w-sm mx-auto">
