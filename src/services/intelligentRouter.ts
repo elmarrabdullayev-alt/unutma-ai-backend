@@ -11,6 +11,8 @@ import {
   DailyPlanProposal,
   RoutineProposal,
 } from '../types';
+import { setTiredToday, TIRED_PHRASE } from './energyMode';
+import { notesService } from './notesService';
 import { reminderService } from './reminderService';
 import { apiClient } from './apiClient';
 import { formatDateAz, formatTimeOnly, getLocalYMD } from '../utils/dateUtils';
@@ -381,6 +383,41 @@ export class IntelligentRouter {
   ): LocalEvaluationResult {
     const clean = prompt.trim();
     const lower = clean.toLowerCase();
+
+    // Energy: "Bu gün yorğunam" (today only)
+    if (TIRED_PHRASE.test(clean) && !this.hasExplicitCreateVerb(clean)) {
+      setTiredToday(true);
+      return {
+        handledLocally: true,
+        action: 'general_chat',
+        payload: {
+          action: 'general_chat',
+          responseMessage: 'Anladım, bu gün yorğunsan. Yüngül işləri önə keçirdim. Ağır işləri sabaha köçürmək üçün ana səhifədəki kartdan istifadə et.',
+        },
+        confidence: 0.95,
+        reason: 'Energy mode enabled for today.',
+      };
+    }
+
+    // Notes that are not reminders: "qeyd et: ..." / "qeydlərimi göstər"
+    const noteSave = clean.match(/^(qeyd et|qeyd kimi saxla|not et)\s*[:,.-]?\s+(.+)$/i);
+    if (noteSave) {
+      const note = notesService.add(noteSave[2]);
+      return {
+        handledLocally: true,
+        action: 'general_chat',
+        payload: { action: 'general_chat', responseMessage: `Qeyd saxlandı: "${note.text}". Xatırlatma kimi əlavə etmək istəsən, "xatırlat" de.` },
+        confidence: 0.95,
+        reason: 'Saved as a note, not a reminder.',
+      };
+    }
+    if (/(qeydlərimi|notlarımı|qeydlərim|notlarım)\s+(göstər|goster|oxu|de)/i.test(clean)) {
+      const notes = notesService.list();
+      const text = notes.length
+        ? `Qeydlərin (${notes.length}):\n` + notes.slice(0, 10).map((n, i) => `${i + 1}. ${n.text}`).join('\n')
+        : 'Hələ heç bir qeyd saxlamamısan.';
+      return { handledLocally: true, action: 'general_chat', payload: { action: 'general_chat', responseMessage: text }, confidence: 0.95, reason: 'Notes list.' };
+    }
 
     // 0. MANDATORY SAFETY GUARD: Query/view phrases MUST NEVER create reminders.
     // "göstər" must always be treated as retrieval/query intent.

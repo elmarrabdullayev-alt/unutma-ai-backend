@@ -16,6 +16,9 @@ import { progressService } from '../services/progressService';
 import { routineService } from '../services/routineService';
 import { CATEGORIES } from '../utils/categoryMeta';
 import { playSuccessSound } from '../utils/soundUtils';
+import { DayBriefingCard } from './home/DayBriefingCard';
+import { planForEnergy } from '../services/daySummary';
+import { isTiredToday } from '../services/energyMode';
 
 interface HomeScreenProps {
   reminders: Reminder[];
@@ -37,6 +40,7 @@ interface HomeScreenProps {
   activeFocusSession?: FocusSession | null;
   notificationPermission?: NotificationPermission;
   onRequestNotificationPermission?: () => void;
+  onMoveHeavyToTomorrow?: (ids: string[]) => void;
 }
 
 function greetingFor(hour: number): string {
@@ -80,6 +84,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   const [showAllTasks, setShowAllTasks] = useState(false);
   const [progressData, setProgressData] = useState(() => progressService.getProgressData());
   const [now, setNow] = useState(() => Date.now());
+  const [, setTiredTick] = useState(0);
 
   useEffect(() => progressService.subscribe(() => setProgressData(progressService.getProgressData())), []);
 
@@ -105,7 +110,19 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
 
   // Overdue first, then the rest of today in time order (the hero item is not repeated)
   const timeline = [...overdue, ...upcomingToday].filter((r) => !next || r.id !== next.id);
-  const visible = showAllTasks ? timeline : timeline.slice(0, 5);
+  // Tired today: light tasks first, heavy ones offered for tomorrow
+  const nowDate = new Date(now);
+  const tired = isTiredToday(nowDate);
+  const energyPlan = tired ? planForEnergy(timeline, nowDate, true) : null;
+  const orderedTimeline = energyPlan ? energyPlan.ordered : timeline;
+  const visible = showAllTasks ? orderedTimeline : orderedTimeline.slice(0, 5);
+  const routineCount = (() => {
+    try {
+      return routineService.getTodayRoutines(nowDate).length;
+    } catch {
+      return 0;
+    }
+  })();
   const streakCount = routineService.getStreakData().currentStreak || progressData.streakSummary.currentStreak;
 
   const nextCategory = next ? CATEGORIES[next.category as keyof typeof CATEGORIES] || CATEGORIES.other : null;
@@ -154,6 +171,17 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
           )}
         </motion.button>
       </motion.header>
+
+      <DayBriefingCard
+        reminders={reminders}
+        now={nowDate}
+        routineCount={routineCount}
+        tired={tired}
+        heavyIds={energyPlan ? energyPlan.moveLater.map((r) => r.id) : []}
+        energyMessage={energyPlan ? energyPlan.message : ''}
+        onMoveHeavyToTomorrow={(ids) => onMoveHeavyToTomorrow?.(ids)}
+        onTiredChange={() => setTiredTick((t) => t + 1)}
+      />
 
       {/* Next up — the one big moment on the screen */}
       <motion.section variants={staggerCardVariants} aria-label="Növbəti xatırlatma">
