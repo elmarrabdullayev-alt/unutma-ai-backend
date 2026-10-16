@@ -66,6 +66,13 @@ export const CalendarScreen: React.FC<CalendarScreenProps> = ({
         new Date(a.dueDateTime).getTime() - new Date(b.dueDateTime).getTime()
     );
 
+  // A day strictly before today: no new reminders can be added to it.
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+  const selectedStart = new Date(selectedDate);
+  selectedStart.setHours(0, 0, 0, 0);
+  const isPastDay = selectedStart.getTime() < todayStart.getTime();
+
   const changeDayBy = (offset: number) => {
     const next = new Date(selectedDate);
     next.setDate(next.getDate() + offset);
@@ -184,13 +191,17 @@ export const CalendarScreen: React.FC<CalendarScreenProps> = ({
             <p className="text-xs font-medium text-[#f8f2ec]">
               Bu tarixdə xatırlatma yoxdur
             </p>
-            <button
-              onClick={onOpenVoice}
-              className="mt-3 inline-flex items-center gap-1.5 rounded-[14px] bg-[#e2a332]/20 border border-[#e2a332]/30 px-3.5 py-1.5 text-xs font-medium text-[#f1c868] hover:bg-[#e2a332]/30 active:scale-95 transition-all"
-            >
-              <Sparkles className="h-3.5 w-3.5" />
-              <span>Xatırlatma əlavə et</span>
-            </button>
+            {isPastDay ? (
+              <p className="mt-3 text-[11px] text-[#c3b2ba]">Keçmiş günə xatırlatma əlavə etmək olmaz.</p>
+            ) : (
+              <button
+                onClick={onOpenVoice}
+                className="mt-3 inline-flex items-center gap-1.5 rounded-[14px] bg-[#e2a332]/20 border border-[#e2a332]/30 px-3.5 py-1.5 text-xs font-medium text-[#f1c868] hover:bg-[#e2a332]/30 active:scale-95 transition-all"
+              >
+                <Sparkles className="h-3.5 w-3.5" />
+                <span>Xatırlatma əlavə et</span>
+              </button>
+            )}
           </div>
         )}
       </div>
