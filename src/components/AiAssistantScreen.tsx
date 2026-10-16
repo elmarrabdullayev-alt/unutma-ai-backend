@@ -269,7 +269,8 @@ export const AiAssistantScreen: React.FC<AiAssistantScreenProps> = ({
   };
 
   return (
-    <div className="w-full px-4 pt-2 pb-24 flex flex-col min-h-[calc(100vh-140px)]">
+    // Fill the space above the bottom nav (main reserves pb-36 for it), so the composer sits on top of the nav.
+    <div className="w-full px-4 pt-2 pb-2 flex flex-col min-h-[calc(100dvh-9rem)]">
       {/* Top Header */}
       <div className="flex items-center justify-between pb-3">
         <div className="flex items-center gap-2">
